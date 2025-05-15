@@ -2,14 +2,23 @@ import bpy
 import bmesh
 from mathutils import Vector, Quaternion
 
+
 def on_frame(scene, panel_objs, roof_obj, roof_quads, member_objs, node_objs):
     """
-    フレーム毎に呼び出され、壁パネル・屋根・柱梁を
-    最新のノード位置に合わせて再構築・再配置します。
+    毎フレーム呼び出され、壁パネル・屋根・柱梁を
+    最新のノード位置に合わせて再構築・再配置する関数。
+
+    引数:
+        scene: bpy.types.Scene
+        panel_objs: [Object, ...] 壁パネルオブジェクトリスト
+        roof_obj: Object or None   屋根オブジェクト
+        roof_quads: [ (bl, br, tr, tl), ... ] 屋根パネルごとのノードIDタプル
+        member_objs: [ (Object, a, b), ... ] 柱・梁オブジェクト＋対応ノードID
+        node_objs: { nid: Object } ノード球の辞書
     """
     up = Vector((0, 0, 1))
 
-    # ── 壁パネル再構築 ───────────────────────────────────
+    # ── 壁パネル再構築 ────────────────────
     for obj in panel_objs:
         if obj is None:
             continue
@@ -34,7 +43,7 @@ def on_frame(scene, panel_objs, roof_obj, roof_quads, member_objs, node_objs):
         bm.to_mesh(mesh)
         bm.free()
 
-    # ── 屋根再構築 ─────────────────────────────────────
+    # ── 屋根再構築 ──────────────────────
     if roof_obj is not None and roof_quads:
         mesh = roof_obj.data
         mesh.clear_geometry()
@@ -46,18 +55,20 @@ def on_frame(scene, panel_objs, roof_obj, roof_quads, member_objs, node_objs):
                 if nid not in vert_map:
                     vert_map[nid] = bm.verts.new(node_objs[nid].location)
         for bl, br, tr, tl in roof_quads:
-            face = bm.faces.new([
-                vert_map[bl],
-                vert_map[br],
-                vert_map[tr],
-                vert_map[tl],
-            ])
+            face = bm.faces.new(
+                [
+                    vert_map[bl],
+                    vert_map[br],
+                    vert_map[tr],
+                    vert_map[tl],
+                ]
+            )
             for loop, uv in zip(face.loops, [(0, 0), (1, 0), (1, 1), (0, 1)]):
                 loop[uv_layer].uv = uv
         bm.to_mesh(mesh)
         bm.free()
 
-    # ── 柱・梁再配置 ───────────────────────────────────
+    # ── 柱・梁（Member）再配置 ───────────────
     for obj, a, b in member_objs:
         if obj is None:
             continue
@@ -71,17 +82,24 @@ def on_frame(scene, panel_objs, roof_obj, roof_quads, member_objs, node_objs):
         if axis.length > 1e-3:
             axis.normalize()
             angle = up.angle(vec)
-            obj.rotation_mode       = 'AXIS_ANGLE'
+            obj.rotation_mode = "AXIS_ANGLE"
             obj.rotation_axis_angle = (angle, axis.x, axis.y, axis.z)
         else:
-            obj.rotation_mode       = 'QUATERNION'
+            obj.rotation_mode = "QUATERNION"
             obj.rotation_quaternion = Quaternion((1, 0, 0, 0))
         obj.scale = (obj.scale.x, obj.scale.y, length)
 
 
 def init_animation(panel_objs, roof_obj, roof_quads, member_objs, node_objs):
     """
-    フレームチェンジハンドラを一度クリアし、毎フレーム最新のオブジェクトを取得して on_frame を呼び出します。
+    フレームチェンジハンドラを一度クリアし、毎フレーム最新のオブジェクトを取得して on_frame を呼び出す
+
+    引数:
+        panel_objs: [Object, ...]         壁パネル
+        roof_obj: Object or None          屋根
+        roof_quads: [(bl, br, tr, tl), ...] 屋根面定義
+        member_objs: [(Object, a, b), ...] 柱・梁
+        node_objs: {nid: Object}          ノード球
     """
     # 1) 既存のハンドラをすべてクリア
     bpy.app.handlers.frame_change_pre.clear()
@@ -96,11 +114,11 @@ def init_animation(panel_objs, roof_obj, roof_quads, member_objs, node_objs):
     def _viz_on_frame(scene):
         # 最新オブジェクトを名前から取得
         panels = [bpy.data.objects.get(n) for n in panel_names]
-        members= [(bpy.data.objects.get(n), a, b) for (n,a,b) in member_info]
-        nodes  = {nid: bpy.data.objects.get(name) for nid,name in node_name_map.items()}
-        roof   = bpy.data.objects.get(roof_name) if roof_name else None
+        members = [(bpy.data.objects.get(n), a, b) for (n, a, b) in member_info]
+        nodes = {nid: bpy.data.objects.get(name) for nid, name in node_name_map.items()}
+        roof = bpy.data.objects.get(roof_name) if roof_name else None
 
-        # ここで「最新の panels, members, nodes, roof 」を渡す
+        # 最新の panels, members, nodes, roof を渡す
         on_frame(scene, panels, roof, roof_quads, members, nodes)
 
     # 4) ハンドラ登録
