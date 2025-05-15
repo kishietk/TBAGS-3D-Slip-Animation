@@ -4,23 +4,23 @@ import csv
 from collections import defaultdict
 from mathutils import Vector
 from logging_utils import setup_logging
-from config import ANIM_CSV, VALID_NODE_IDS, FPS
+from config import ANIM_CSV, VALID_NODE_IDS, ANIM_FPS, DISP_SCALE
 
 log = setup_logging()
 
 def load_animation_data(path=ANIM_CSV):
     """
     本番のアニメーション CSV から、
-      { node_id: { frame: Vector(dx,dy,dz), ... }, ... }
+    { node_id: { frame: Vector(dx,dy,dz), ... }, ... }
     の辞書を返す。
     CSV の構造:
-      行0: タイトル行
-      行1: HISTORY
-      行2: (TYPE)   DISP or ACC など
-      行3: (CMP)    1,2,3（X,Y,Z 成分）
-      行4: (ID)     ノードID
-      行5: 空行
-      行6以降: 時刻＋数値データ
+    行0: タイトル行
+    行1: HISTORY
+    行2: (TYPE)   DISP or ACC など
+    行3: (CMP)    1,2,3（X,Y,Z 成分）
+    行4: (ID)     ノードID
+    行5: 空行
+    行6以降: 時刻＋数値データ
     """
     log.info(f"Reading animation data from: {path}")
     rows = []
@@ -100,7 +100,7 @@ def load_animation_data(path=ANIM_CSV):
         except:
             log.debug(f"[Line {lineno}] Skipping invalid time: {row[0]}")
             continue
-        frame = int(round(t_sec * FPS))
+        frame = int(round(t_sec * ANIM_FPS))
 
         # 各 DISP 列を読んでベクトルを埋める
         for j, (nid, comp_idx) in col_map.items():
@@ -111,11 +111,12 @@ def load_animation_data(path=ANIM_CSV):
             if not val_s:
                 continue
             try:
-                disp = float(val_s)
+                disp = float(val_s) * DISP_SCALE
             except:
                 log.debug(f"[Line {lineno}] Skipping invalid number at col {j}: {val_s}")
                 continue
             anim_data[nid][frame][comp_idx] = disp
+
 
     # Vector 生成
     result = {}

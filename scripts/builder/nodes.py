@@ -27,19 +27,30 @@ def build_nodes(nodes: dict, radius: float, anim_data: dict = None):
 
 def create_node_labels(nodes: dict, radius: float):
     """
-    各ノード球に対応するラベル（ノードID）を作成。
-    configで定義されたオフセット方向に配置される。
+    各ノード球に対応するラベル（ノードID）を、
+    ノードオブジェクトの子として作成する。
     """
     from math import radians
+
     for nid, pos in nodes.items():
-        label_pos = pos + Vector(NODE_LABEL_OFFSET)
-        bpy.ops.object.text_add(location=label_pos)
+        # ノードオブジェクトを取得
+        node_name = f"Node_{nid}"
+        if node_name not in bpy.data.objects:
+            continue
+        node_obj = bpy.data.objects[node_name]
+
+        # ラベル用テキスト追加（まずワールド座標に置く必要はありません）
+        bpy.ops.object.text_add()
         text_obj = bpy.context.object
         text_obj.name = f"Label_{nid}"
         text_obj.data.body = str(nid)
         text_obj.data.size = NODE_LABEL_SIZE
         text_obj.data.align_x = 'CENTER'
         text_obj.data.align_y = 'CENTER'
-        # 水平表示（上向き、カメラから見える）
+        # テキストはX方向に傾けてカメラ向きに
         text_obj.rotation_euler = (radians(90), 0, 0)
 
+        # 親子付け
+        text_obj.parent = node_obj
+        # 相対オフセットを設定
+        text_obj.location = Vector(NODE_LABEL_OFFSET)

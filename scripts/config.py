@@ -33,8 +33,10 @@ VALID_NODE_IDS = (
 
 # ── ノードラベル表示設定 ──────────────────────────────
 NODE_LABEL_SIZE = 0.4       # ラベル文字サイズ
-NODE_LABEL_OFFSET = (0.8, 0, 0.5)  # 表示オフセット（X, Y, Z）
+NODE_LABEL_OFFSET = (0.8, -0.5, 0.5)  # 表示オフセット（X, Y, Z）
 
-# ── アニメーション設定（必要なら）────────────────
-ANIM_FPS         = 20  # Blender上で使うフレームレート
-ANIM_TOTAL_FRAMES = 400
+# ── アニメーション設定────────────────
+ANIM_FPS         = 60 
+ANIM_SECONDS     = 30
+ANIM_TOTAL_FRAMES = ANIM_FPS * ANIM_SECONDS
+DISP_SCALE = 5.0 
