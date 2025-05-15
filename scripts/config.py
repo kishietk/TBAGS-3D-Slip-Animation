@@ -8,7 +8,7 @@ TEXTURE_DIR = os.path.normpath(os.path.join(PROJECT_DIR, "../textures"))
 # ── ファイルパス ──────────────────────────────
 NODE_CSV     = os.path.join(DATA_DIR, "node_position.csv")
 EDGES_FILE   = os.path.join(DATA_DIR, "self.str")
-ANIM_CSV     = os.path.join(DATA_DIR, "smooth_earthquake_dummy.csv")  # ※未使用なら使わなくてOK
+ANIM_CSV     = os.path.join(DATA_DIR, "with_tbags-kumamoto.csv")
 
 # ── 可視化パラメータ ──────────────────────────
 SPHERE_RADIUS = 0.05   # ノード球の半径
@@ -36,5 +36,5 @@ NODE_LABEL_SIZE = 0.4       # ラベル文字サイズ
 NODE_LABEL_OFFSET = (0.8, 0, 0.5)  # 表示オフセット（X, Y, Z）
 
 # ── アニメーション設定（必要なら）────────────────
-ANIM_FPS         = 20
+ANIM_FPS         = 20  # Blender上で使うフレームレート
 ANIM_TOTAL_FRAMES = 400

@@ -17,7 +17,7 @@ if scripts_dir not in sys.path:
 # ──────────────────────────────────────────────────
 try:
     from logging_utils import setup_logging
-    log = setup_logging(logging.INFO)   # INFOレベルで控えめに出力
+    log = setup_logging(logging.ERROR)
 except Exception:
     logging.basicConfig(level=logging.INFO)
     log = logging.getLogger("fallback")

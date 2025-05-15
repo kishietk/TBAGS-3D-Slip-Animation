@@ -1,88 +1,107 @@
 import bpy
 import bmesh
 from mathutils import Vector, Quaternion
-from logging_utils import setup_logging
-
-log = setup_logging()
 
 def on_frame(scene, panel_objs, roof_obj, roof_quads, member_objs, node_objs):
+    """
+    フレーム毎に呼び出され、壁パネル・屋根・柱梁を
+    最新のノード位置に合わせて再構築・再配置します。
+    """
     up = Vector((0, 0, 1))
 
-    # ── 壁パネル 再構築 ───────────────────────
+    # ── 壁パネル再構築 ───────────────────────────────────
     for obj in panel_objs:
-        a, b, c, d = obj["panel_ids"]
-        verts = [node_objs[n].location for n in (a, b, d, c)]  # CCW
+        if obj is None:
+            continue
+        ids = obj.get("panel_ids")
+        if not ids or len(ids) != 4:
+            continue
+        a, b, c, d = ids
+        verts = [
+            node_objs[a].location,
+            node_objs[b].location,
+            node_objs[d].location,
+            node_objs[c].location,
+        ]
         mesh = obj.data
         mesh.clear_geometry()
         bm = bmesh.new()
-        uv = bm.loops.layers.uv.new("UVMap")
-        v_bm = [bm.verts.new(v) for v in verts]
-        face = bm.faces.new(v_bm)
-        for loop, uvco in zip(face.loops, [(0,0), (1,0), (1,1), (0,1)]):
-            loop[uv].uv = uvco
+        uv_layer = bm.loops.layers.uv.new("UVMap")
+        vlist = [bm.verts.new(v) for v in verts]
+        face = bm.faces.new(vlist)
+        for loop, uv in zip(face.loops, [(0, 0), (1, 0), (1, 1), (0, 1)]):
+            loop[uv_layer].uv = uv
         bm.to_mesh(mesh)
         bm.free()
 
-    # ── 屋根 再構築 ───────────────────────────
-    if roof_obj and roof_quads:
+    # ── 屋根再構築 ─────────────────────────────────────
+    if roof_obj is not None and roof_quads:
         mesh = roof_obj.data
         mesh.clear_geometry()
         bm = bmesh.new()
-        uv = bm.loops.layers.uv.new("UVMap")
-        vids = {}
+        uv_layer = bm.loops.layers.uv.new("UVMap")
+        vert_map = {}
         for quad in roof_quads:
             for nid in quad:
-                if nid not in vids:
-                    vids[nid] = bm.verts.new(node_objs[nid].location)
+                if nid not in vert_map:
+                    vert_map[nid] = bm.verts.new(node_objs[nid].location)
         for bl, br, tr, tl in roof_quads:
-            face = bm.faces.new([vids[bl], vids[br], vids[tr], vids[tl]])
-            for loop, uvco in zip(face.loops, [(0,0), (1,0), (1,1), (0,1)]):
-                loop[uv].uv = uvco
+            face = bm.faces.new([
+                vert_map[bl],
+                vert_map[br],
+                vert_map[tr],
+                vert_map[tl],
+            ])
+            for loop, uv in zip(face.loops, [(0, 0), (1, 0), (1, 1), (0, 1)]):
+                loop[uv_layer].uv = uv
         bm.to_mesh(mesh)
         bm.free()
 
-    # ── 柱・梁 再配置 ──────────────────────────
+    # ── 柱・梁再配置 ───────────────────────────────────
     for obj, a, b in member_objs:
+        if obj is None:
+            continue
         p1 = node_objs[a].location
         p2 = node_objs[b].location
         vec = p2 - p1
         mid = (p1 + p2) * 0.5
         length = vec.length
-
         obj.location = mid
-
-        # 回転
         axis = up.cross(vec)
-        if axis.length > 1e-6:
+        if axis.length > 1e-3:
             axis.normalize()
             angle = up.angle(vec)
-            obj.rotation_mode = 'AXIS_ANGLE'
+            obj.rotation_mode       = 'AXIS_ANGLE'
             obj.rotation_axis_angle = (angle, axis.x, axis.y, axis.z)
         else:
-            obj.rotation_mode = 'QUATERNION'
+            obj.rotation_mode       = 'QUATERNION'
             obj.rotation_quaternion = Quaternion((1, 0, 0, 0))
+        obj.scale = (obj.scale.x, obj.scale.y, length)
 
-        # スケール
-        sx, sy, _ = obj.scale
-        obj.scale = (sx, sy, length)
 
 def init_animation(panel_objs, roof_obj, roof_quads, member_objs, node_objs):
     """
-    アニメーション更新関数を登録し、初回フレームも即実行。
+    フレームチェンジハンドラを一度クリアし、毎フレーム最新のオブジェクトを取得して on_frame を呼び出します。
     """
-    handler_name = "_viz_on_frame"
+    # 1) 既存のハンドラをすべてクリア
+    bpy.app.handlers.frame_change_pre.clear()
 
+    # 2) 名前リスト／IDマップをキャプチャ
+    panel_names = [o.name for o in panel_objs if o]
+    member_info = [(o.name, a, b) for (o, a, b) in member_objs if o]
+    node_name_map = {nid: f"Node_{nid}" for nid in node_objs}
+    roof_name = roof_obj.name if roof_obj else None
+
+    # 3) 毎フレーム呼び出す関数
     def _viz_on_frame(scene):
-        on_frame(scene, panel_objs, roof_obj, roof_quads, member_objs, node_objs)
+        # 最新オブジェクトを名前から取得
+        panels = [bpy.data.objects.get(n) for n in panel_names]
+        members= [(bpy.data.objects.get(n), a, b) for (n,a,b) in member_info]
+        nodes  = {nid: bpy.data.objects.get(name) for nid,name in node_name_map.items()}
+        roof   = bpy.data.objects.get(roof_name) if roof_name else None
 
-    _viz_on_frame.__name__ = handler_name
+        # ここで「最新の panels, members, nodes, roof 」を渡す
+        on_frame(scene, panels, roof, roof_quads, members, nodes)
 
-    # 既存登録削除
-    handlers = bpy.app.handlers.frame_change_pre
-    for h in list(handlers):
-        if getattr(h, "__name__", "") == handler_name:
-            handlers.remove(h)
-
+    # 4) ハンドラ登録
     bpy.app.handlers.frame_change_pre.append(_viz_on_frame)
-    _viz_on_frame(bpy.context.scene)
-    log.info("Animation handler registered.")

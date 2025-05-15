@@ -50,10 +50,10 @@ def load_edges(path=EDGES_FILE):
                 a, b = sorted(valid)
                 edges.add((a, b))
                 if (a, b) in suspicious_targets and (a, b) not in suspicious_found:
-                    log.info(f"⚠️ Suspicious edge added: ({a}, {b}) from line {lineno}: {line_strip}")
+                    # log.info(f"⚠️ Suspicious edge added: ({a}, {b}) from line {lineno}: {line_strip}")
                     suspicious_found.add((a, b))
                 elif printed_lines < MAX_LOG_LINES:
-                    log.info(f"[Line {lineno}] Edge added: ({a}, {b})")
+                    # log.info(f"[Line {lineno}] Edge added: ({a}, {b})")
                     printed_lines += 1
             elif len(valid) > 2 and printed_lines < MAX_LOG_LINES:
                 log.info(f"[Line {lineno}] Ignored (too many valid nodes): {valid}")
