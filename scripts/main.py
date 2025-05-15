@@ -7,7 +7,7 @@ import logging
 # ───────────────────────────────
 # 1. パス設定：scripts ディレクトリを sys.path に追加
 # ───────────────────────────────
-project_root = os.path.expanduser("~/Documents/python-in-blender")
+project_root = os.path.expanduser("~/Documents/TBAGS-3D-Slip-Animation")
 scripts_dir = os.path.join(project_root, "scripts")
 if scripts_dir not in sys.path:
     sys.path.insert(0, scripts_dir)
