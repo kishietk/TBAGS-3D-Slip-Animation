@@ -1,0 +1,20 @@
+.venv/
+/.venv/*
+
+# --- Gitの一時ファイル ---
+*.swp
+*.swo
+*.bak
+*.tmp
+*.log
+*.lock
+
+tbags-slip-animation
+tbags-slip-animation.blend1
+tbags-slip-animation.blend
+
+blender_log.txt
+animation.log
+
+__pycache__/
+*.pyc
