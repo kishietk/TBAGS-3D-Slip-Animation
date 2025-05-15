@@ -8,16 +8,16 @@ TEXTURE_DIR = os.path.normpath(os.path.join(PROJECT_DIR, "../textures"))
 # ── ファイルパス ──────────────────────────────
 NODE_CSV     = os.path.join(DATA_DIR, "node_position.csv")
 EDGES_FILE   = os.path.join(DATA_DIR, "self.str")
-ANIM_CSV     = os.path.join(DATA_DIR, "node_earthquake_animation.csv")  # ※未使用なら使わなくてOK
+ANIM_CSV     = os.path.join(DATA_DIR, "smooth_earthquake_dummy.csv")  # ※未使用なら使わなくてOK
 
 # ── 可視化パラメータ ──────────────────────────
-SPHERE_RADIUS = 0.3   # ノード球の半径
+SPHERE_RADIUS = 0.05   # ノード球の半径
 MEMBER_THICK  = 0.5    # 柱・梁の直径（半径）
 
 # ── マテリアル画像・透明度 ─────────────────────
 WALL_IMG  = os.path.join(TEXTURE_DIR, "wall_texture.png")
 ROOF_IMG  = os.path.join(TEXTURE_DIR, "roof_texture.png")
-WALL_ALPHA = 0.2
+WALL_ALPHA = 0.4
 ROOF_ALPHA = 0.6
 
 # ── 有効ノードID（必要なら）──────────────────────

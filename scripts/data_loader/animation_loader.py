@@ -5,30 +5,34 @@ from logging_utils import setup_logging
 
 log = setup_logging()
 
-# ───────────────────────────────
-# アニメーション読み込み（未使用時は無視）
-# ───────────────────────────────
 def load_animation_data(path=ANIM_CSV):
+    """
+    戻り値: {
+        node_id1: { frame0: Vector(dx,dy,dz), frame1: …, … },
+        node_id2: { … },
+        …
+    }
+    """
     log.info(f"Reading animation data from: {path}")
-    anim = []
+    anim = {}
     try:
-        with open(path, newline='', encoding="utf-8", errors="ignore") as f:
+        with open(path, newline='', encoding='utf-8', errors='ignore') as f:
             reader = csv.DictReader(f)
             for row in reader:
                 try:
-                    node_id = int(row["node_id"])
-                    if node_id not in VALID_NODE_IDS:
+                    nid = int(row["node_id"])
+                    if nid not in VALID_NODE_IDS:
                         continue
-                    anim.append({
-                        "node_id": node_id,
-                        "time": int(row["time"]),
-                        "dx": float(row["dx"]),
-                        "dy": float(row["dy"]),
-                        "dz": float(row["dz"]),
-                    })
+                    frame = int(row["time"])
+                    offset = Vector((
+                        float(row["dx"]),
+                        float(row["dy"]),
+                        float(row["dz"])
+                    ))
+                    anim.setdefault(nid, {})[frame] = offset
                 except Exception as e:
                     log.info(f"Skipping anim row: {row} ({e})")
     except FileNotFoundError:
         log.info(f"Animation file not found: {path}")
-    log.info(f"Loaded {len(anim)} animation keyframes")
+    log.info(f"Loaded animation data for {len(anim)} nodes")
     return anim

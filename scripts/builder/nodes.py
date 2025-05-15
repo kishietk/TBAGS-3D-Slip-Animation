@@ -9,14 +9,21 @@ def clear_scene():
     bpy.ops.object.select_all(action="SELECT")
     bpy.ops.object.delete()
 
-def build_nodes(nodes: dict, radius: float):
-    log.debug(f"Building {len(nodes)} nodes.")
+def build_nodes(nodes: dict, radius: float, anim_data: dict = None):
     objs = {}
     for nid, pos in nodes.items():
         bpy.ops.mesh.primitive_uv_sphere_add(radius=radius, location=pos)
-        o = bpy.context.object; o.name = f"Node_{nid}"
+        o = bpy.context.object
+        o.name = f"Node_{nid}"
         objs[nid] = o
+
+        # アニメーションがある場合：位置＋変位をキーフレームに登録
+        if anim_data and nid in anim_data:
+            for frame, offset in anim_data[nid].items():
+                o.location = pos + offset
+                o.keyframe_insert(data_path="location", frame=frame)
     return objs
+
 
 def create_node_labels(nodes: dict, radius: float):
     """
