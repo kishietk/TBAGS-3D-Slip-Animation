@@ -1,25 +1,23 @@
 import bpy
 import bmesh
+from typing import List, Tuple
 from mathutils import Vector, Quaternion
-from config import EPS_XY_MATCH, NODE_OBJ_PREFIX
 
 
-def on_frame(scene, panel_objs, roof_obj, roof_quads, member_objs, node_objs):
+def on_frame(
+    scene: bpy.types.Scene,
+    panel_objs: list[bpy.types.Object],
+    roof_obj: bpy.types.Object | None,
+    roof_quads: list[tuple[int, int, int, int]],
+    member_objs: list[tuple[bpy.types.Object, int, int]],
+    node_objs: dict[int, bpy.types.Object],
+) -> None:
     """
     毎フレーム呼び出され、壁パネル・屋根・柱梁を
     最新のノード位置に合わせて再構築・再配置する関数。
-
-    引数:
-        scene: bpy.types.Scene
-        panel_objs: [Object, ...] 壁パネルオブジェクトリスト
-        roof_obj: Object or None   屋根オブジェクト
-        roof_quads: [ (bl, br, tr, tl), ... ] 屋根パネルごとのノードIDタプル
-        member_objs: [ (Object, a, b), ... ] 柱・梁オブジェクト＋対応ノードID
-        node_objs: { nid: Object } ノード球の辞書
     """
     up = Vector((0, 0, 1))
 
-    # ── 壁パネル再構築 ────────────────────
     for obj in panel_objs:
         if obj is None:
             continue
@@ -44,13 +42,12 @@ def on_frame(scene, panel_objs, roof_obj, roof_quads, member_objs, node_objs):
         bm.to_mesh(mesh)
         bm.free()
 
-    # ── 屋根再構築 ──────────────────────
     if roof_obj is not None and roof_quads:
         mesh = roof_obj.data
         mesh.clear_geometry()
         bm = bmesh.new()
         uv_layer = bm.loops.layers.uv.new("UVMap")
-        vert_map = {}
+        vert_map: dict[int, bmesh.types.BMVert] = {}
         for quad in roof_quads:
             for nid in quad:
                 if nid not in vert_map:
@@ -69,7 +66,6 @@ def on_frame(scene, panel_objs, roof_obj, roof_quads, member_objs, node_objs):
         bm.to_mesh(mesh)
         bm.free()
 
-    # ── 柱・梁（Member）再配置 ───────────────
     for obj, a, b in member_objs:
         if obj is None:
             continue
@@ -80,7 +76,7 @@ def on_frame(scene, panel_objs, roof_obj, roof_quads, member_objs, node_objs):
         length = vec.length
         obj.location = mid
         axis = up.cross(vec)
-        if axis.length > EPS_XY_MATCH:
+        if axis.length > 1e-3:
             axis.normalize()
             angle = up.angle(vec)
             obj.rotation_mode = "AXIS_ANGLE"
@@ -91,36 +87,27 @@ def on_frame(scene, panel_objs, roof_obj, roof_quads, member_objs, node_objs):
         obj.scale = (obj.scale.x, obj.scale.y, length)
 
 
-def init_animation(panel_objs, roof_obj, roof_quads, member_objs, node_objs):
+def init_animation(
+    panel_objs: list[bpy.types.Object],
+    roof_obj: bpy.types.Object | None,
+    roof_quads: list[tuple[int, int, int, int]],
+    member_objs: list[tuple[bpy.types.Object, int, int]],
+    node_objs: dict[int, bpy.types.Object],
+) -> None:
     """
     フレームチェンジハンドラを一度クリアし、毎フレーム最新のオブジェクトを取得して on_frame を呼び出す
-
-    引数:
-        panel_objs: [Object, ...]         壁パネル
-        roof_obj: Object or None          屋根
-        roof_quads: [(bl, br, tr, tl), ...] 屋根面定義
-        member_objs: [(Object, a, b), ...] 柱・梁
-        node_objs: {nid: Object}          ノード球
     """
-    # 1) 既存のハンドラをすべてクリア
     bpy.app.handlers.frame_change_pre.clear()
-
-    # 2) 名前リスト／IDマップをキャプチャ
     panel_names = [o.name for o in panel_objs if o]
     member_info = [(o.name, a, b) for (o, a, b) in member_objs if o]
-    node_name_map = {nid: f"{NODE_OBJ_PREFIX}{nid}" for nid in node_objs}
+    node_name_map = {nid: f"Node_{nid}" for nid in node_objs}
     roof_name = roof_obj.name if roof_obj else None
 
-    # 3) 毎フレーム呼び出す関数
-    def _viz_on_frame(scene):
-        # 最新オブジェクトを名前から取得
+    def _viz_on_frame(scene: bpy.types.Scene):
         panels = [bpy.data.objects.get(n) for n in panel_names]
         members = [(bpy.data.objects.get(n), a, b) for (n, a, b) in member_info]
         nodes = {nid: bpy.data.objects.get(name) for nid, name in node_name_map.items()}
         roof = bpy.data.objects.get(roof_name) if roof_name else None
-
-        # 最新の panels, members, nodes, roof を渡す
         on_frame(scene, panels, roof, roof_quads, members, nodes)
 
-    # 4) ハンドラ登録
     bpy.app.handlers.frame_change_pre.append(_viz_on_frame)

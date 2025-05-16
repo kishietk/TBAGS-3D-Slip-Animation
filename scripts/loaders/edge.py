@@ -1,5 +1,6 @@
 import csv
 import re
+from typing import Set, Tuple
 from mathutils import Vector
 from config import EDGES_FILE, VALID_NODE_IDS
 from logging_utils import setup_logging
@@ -7,13 +8,16 @@ from logging_utils import setup_logging
 log = setup_logging()
 
 
-def load_edges(path=EDGES_FILE):
+def load_edges(path: str = EDGES_FILE) -> set[tuple[int, int]]:
     """
     STRファイルからエッジ情報（ノードペア）を抽出する関数
+
     引数:
         path: エッジ情報が記載されたSTRファイルパス
+
     戻り値:
         edges: set((node_id_1, node_id_2), ...)
+
     備考:
         - "EBEAM3D" ブロック内のみを対象
         - VALID_NODE_IDS に含まれるノードペアのみ抽出
@@ -21,7 +25,7 @@ def load_edges(path=EDGES_FILE):
         - THRU構文や不正データはスキップ
     """
     log.info(f"Reading edge data from: {path}")
-    edges = set()
+    edges: set[tuple[int, int]] = set()
 
     in_target_block = False
     suspicious_targets = [(201, 208), (301, 308), (401, 408)]

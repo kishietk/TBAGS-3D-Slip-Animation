@@ -1,5 +1,6 @@
 import csv
 from collections import defaultdict
+from typing import Dict
 from mathutils import Vector
 from logging_utils import setup_logging
 from config import ANIM_CSV, VALID_NODE_IDS, ANIM_FPS, DISP_SCALE
@@ -7,22 +8,15 @@ from config import ANIM_CSV, VALID_NODE_IDS, ANIM_FPS, DISP_SCALE
 log = setup_logging()
 
 
-def load_animation_data(path=ANIM_CSV):
+def load_animation_data(path: str = ANIM_CSV) -> dict[int, dict[int, Vector]]:
     """
     アニメーションCSVからノードごとのフレーム毎変位データを抽出する関数
 
     引数:
         path: アニメーションCSVファイルパス
+
     戻り値:
         { node_id: { frame: Vector(dx, dy, dz), ... }, ... }
-    CSV仕様:
-        - 行0: タイトル行
-        - 行1: HISTORY
-        - 行2: (TYPE)   DISPやACCなど（DISPのみ抽出）
-        - 行3: (CMP)    1,2,3（X,Y,Z成分）
-        - 行4: (ID)     ノードID
-        - 行5: 空行
-        - 行6以降: 時刻+数値データ
     """
     log.info(f"Reading animation data from: {path}")
     rows = []
@@ -64,7 +58,7 @@ def load_animation_data(path=ANIM_CSV):
 
     # --- DISP列だけ抽出 ---
     # col_map: col_index → (node_id, comp_index 0:x,1:y,2:z)
-    col_map = {}
+    col_map: dict[int, tuple[int, int]] = {}
     for j in range(1, len(id_row)):
         typ = type_row[j].strip().upper() if j < len(type_row) else ""
         if typ != "DISP":
@@ -93,7 +87,9 @@ def load_animation_data(path=ANIM_CSV):
 
     # --- データ行読み込み ---
     # anim_data[node_id][frame] = Vector(dx, dy, dz)
-    anim_data = defaultdict(lambda: defaultdict(lambda: Vector((0.0, 0.0, 0.0))))
+    anim_data: dict[int, dict[int, Vector]] = defaultdict(
+        lambda: defaultdict(lambda: Vector((0.0, 0.0, 0.0)))
+    )
     for lineno, row in enumerate(rows[data_start:], start=data_start + 1):
         if not row or not row[0].strip():
             continue
@@ -123,7 +119,7 @@ def load_animation_data(path=ANIM_CSV):
             anim_data[nid][frame][comp_idx] = disp
 
     # --- Vector生成 ---
-    result = {}
+    result: dict[int, dict[int, Vector]] = {}
     for nid, frames in anim_data.items():
         result[nid] = {}
         for frame, vec in frames.items():
