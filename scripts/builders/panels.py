@@ -1,3 +1,16 @@
+"""
+panels.py
+
+【役割】
+- ノード座標から壁パネル・屋根オブジェクトを自動生成するビルダー。
+- 階層・外周エッジごとの判定しきい値等、数値マジックナンバーは定数化。
+- エラーや異常時もファイル・ID・行番号つきで詳細ログ。
+
+【設計方針】
+- EPS_XY_MATCH等はファイル先頭に定数で一元管理し、将来的な設計変更も容易に。
+- 保守性/解析性の高いログ・型ヒント・コメントを徹底。
+"""
+
 import bpy
 import bmesh
 from typing import Dict, List, Tuple
@@ -6,6 +19,9 @@ from logging_utils import setup_logging
 
 log = setup_logging()
 
+# --- 判定しきい値定数（マジックナンバー排除） ---
+EPS_XY_MATCH = 1e-3
+
 
 def build_panels(
     nodes: dict[int, Vector], edges: set[tuple[int, int]]
@@ -13,21 +29,16 @@ def build_panels(
     """
     ノード座標から外周水平セグメントを自動抽出し、
     各階層の壁パネルをBlender上に生成する関数
-
-    引数:
-        nodes: {nid: Vector}  ノード座標辞書
-        edges: set           （未使用。将来の拡張用シグネチャ）
-
-    戻り値:
-        panels: [Object, ...] 壁パネルBlenderオブジェクトのリスト
     """
     if not nodes:
+        log.warning("No nodes supplied to build_panels()")
         return []
 
     xs = [v.x for v in nodes.values()]
     ys = [v.y for v in nodes.values()]
     zs = sorted({v.z for v in nodes.values()})
     if len(zs) < 2:
+        log.warning("Insufficient Z levels for panel generation")
         return []
 
     xmin, xmax = min(xs), max(xs)
@@ -40,7 +51,7 @@ def build_panels(
             [
                 nid
                 for nid, pos in nodes.items()
-                if abs(pos.x - xmin) < 1e-3 and abs(pos.z - z) < 1e-3
+                if abs(pos.x - xmin) < EPS_XY_MATCH and abs(pos.z - z) < EPS_XY_MATCH
             ],
             key=lambda i: nodes[i].y,
         )
@@ -48,7 +59,7 @@ def build_panels(
             [
                 nid
                 for nid, pos in nodes.items()
-                if abs(pos.x - xmax) < 1e-3 and abs(pos.z - z) < 1e-3
+                if abs(pos.x - xmax) < EPS_XY_MATCH and abs(pos.z - z) < EPS_XY_MATCH
             ],
             key=lambda i: nodes[i].y,
         )
@@ -56,7 +67,7 @@ def build_panels(
             [
                 nid
                 for nid, pos in nodes.items()
-                if abs(pos.y - ymin) < 1e-3 and abs(pos.z - z) < 1e-3
+                if abs(pos.y - ymin) < EPS_XY_MATCH and abs(pos.z - z) < EPS_XY_MATCH
             ],
             key=lambda i: nodes[i].x,
         )
@@ -64,7 +75,7 @@ def build_panels(
             [
                 nid
                 for nid, pos in nodes.items()
-                if abs(pos.y - ymax) < 1e-3 and abs(pos.z - z) < 1e-3
+                if abs(pos.y - ymax) < EPS_XY_MATCH and abs(pos.z - z) < EPS_XY_MATCH
             ],
             key=lambda i: nodes[i].x,
         )
@@ -77,9 +88,9 @@ def build_panels(
             def find_at(x: float, y: float, zval: float) -> int | None:
                 for nid2, pos2 in nodes.items():
                     if (
-                        abs(pos2.z - zval) < 1e-3
-                        and abs(pos2.x - x) < 1e-3
-                        and abs(pos2.y - y) < 1e-3
+                        abs(pos2.z - zval) < EPS_XY_MATCH
+                        and abs(pos2.x - x) < EPS_XY_MATCH
+                        and abs(pos2.y - y) < EPS_XY_MATCH
                     ):
                         return nid2
                 return None
@@ -93,11 +104,14 @@ def build_panels(
 
     panels: list[bpy.types.Object] = []
     for a, b, c, d in panel_ids:
-        mesh = bpy.data.meshes.new(f"Panel_{a}_{b}")
-        obj = bpy.data.objects.new(f"Panel_{a}_{b}", mesh)
-        bpy.context.collection.objects.link(obj)
-        obj["panel_ids"] = (a, b, c, d)
-        panels.append(obj)
+        try:
+            mesh = bpy.data.meshes.new(f"Panel_{a}_{b}")
+            obj = bpy.data.objects.new(f"Panel_{a}_{b}", mesh)
+            bpy.context.collection.objects.link(obj)
+            obj["panel_ids"] = (a, b, c, d)
+            panels.append(obj)
+        except Exception as e:
+            log.error(f"Failed to create panel ({a}, {b}, {c}, {d}): {e}")
     return panels
 
 
@@ -106,26 +120,23 @@ def build_roof(
 ) -> tuple[bpy.types.Object | None, list[tuple[int, int, int, int]]]:
     """
     最上階ノードから屋根パネル群を生成し、Blenderオブジェクトとして返す
-
-    引数:
-        nodes: {nid: Vector}
-
-    戻り値:
-        (roof_obj, quads)
-        - roof_obj: 屋根Blenderオブジェクト
-        - quads: [(bl, br, tr, tl), ...] 各屋根パネルのノードIDタプル
     """
     zs = sorted({v.z for v in nodes.values()})
     if not zs:
+        log.warning("No Z levels found for roof generation")
         return None, []
     top_z = zs[-1]
-    tops = {nid: pos for nid, pos in nodes.items() if abs(pos.z - top_z) < 1e-3}
+    tops = {nid: pos for nid, pos in nodes.items() if abs(pos.z - top_z) < EPS_XY_MATCH}
     xs = sorted({v.x for v in tops.values()})
     ys = sorted({v.y for v in tops.values()})
 
     def fid(x: float, y: float) -> int | None:
         return next(
-            (n for n, p in tops.items() if abs(p.x - x) < 1e-3 and abs(p.y - y) < 1e-3),
+            (
+                n
+                for n, p in tops.items()
+                if abs(p.x - x) < EPS_XY_MATCH and abs(p.y - y) < EPS_XY_MATCH
+            ),
             None,
         )
 
@@ -139,8 +150,12 @@ def build_roof(
             if None not in (bl, br, tr, tl):
                 quads.append((bl, br, tr, tl))
 
-    mesh = bpy.data.meshes.new("RoofMesh")
-    obj = bpy.data.objects.new("Roof", mesh)
-    bpy.context.collection.objects.link(obj)
-    obj["roof_quads"] = quads
-    return obj, quads
+    try:
+        mesh = bpy.data.meshes.new("RoofMesh")
+        obj = bpy.data.objects.new("Roof", mesh)
+        bpy.context.collection.objects.link(obj)
+        obj["roof_quads"] = quads
+        return obj, quads
+    except Exception as e:
+        log.error(f"Failed to create roof mesh: {e}")
+        return None, quads
