@@ -1,6 +1,7 @@
 import bpy
 from mathutils import Vector, Quaternion
 from logging_utils import setup_logging
+from config import CYLINDER_VERTS, EPS_AXIS, MEMBER_OBJ_PREFIX
 
 log = setup_logging()
 
@@ -31,17 +32,17 @@ def build_members(nodes: dict, edges: set, thickness: float):
         length = vec.length
 
         bpy.ops.mesh.primitive_cylinder_add(
-            vertices=16,
+            vertices=CYLINDER_VERTS,
             radius=thickness,
             depth=1,  # 初期の高さ（スケールで伸縮させる）
             location=mid,
         )
         obj = bpy.context.object
-        obj.name = f"Member_{a}_{b}"
+        obj.name = f"{MEMBER_OBJ_PREFIX}{a}_{b}"
 
         # 柱方向に合わせて回転・スケール
         axis = up.cross(vec)
-        if axis.length > 1e-6:
+        if axis.length > EPS_AXIS:
             axis.normalize()
             angle = up.angle(vec)
             obj.rotation_mode = "AXIS_ANGLE"

@@ -1,6 +1,7 @@
 import bpy
 from logging_utils import setup_logging
 from config import WALL_IMG, ROOF_IMG, WALL_ALPHA, ROOF_ALPHA
+from config import COLUMN_OBJ_PREFIX, MEMBER_OBJ_PREFIX
 
 log = setup_logging()
 
@@ -166,8 +167,8 @@ def apply_all_materials(
 
     # 柱・梁
     for obj, a, b in member_objs:
-        if obj.name.startswith("Column_") or (
-            obj.name.startswith("Member_") and "Column" in obj.name
+        if obj.name.startswith(COLUMN_OBJ_PREFIX) or (
+            obj.name.startswith(MEMBER_OBJ_PREFIX) and COLUMN_OBJ_PREFIX in obj.name
         ):
             obj.data.materials.clear()
             obj.data.materials.append(mat_col)

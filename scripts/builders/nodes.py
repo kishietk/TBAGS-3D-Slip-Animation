@@ -2,6 +2,7 @@ import bpy
 from logging_utils import setup_logging
 from config import NODE_LABEL_SIZE, NODE_LABEL_OFFSET
 from mathutils import Vector, Quaternion
+from config import NODE_OBJ_PREFIX
 
 log = setup_logging()
 
@@ -31,7 +32,7 @@ def build_nodes(nodes: dict, radius: float, anim_data: dict = None):
     for nid, pos in nodes.items():
         bpy.ops.mesh.primitive_uv_sphere_add(radius=radius, location=pos)
         o = bpy.context.object
-        o.name = f"Node_{nid}"
+        o.name = f"{NODE_OBJ_PREFIX}{nid}"
         objs[nid] = o
 
         # アニメーションデータがあれば、キーフレーム登録
@@ -58,7 +59,7 @@ def create_node_labels(nodes: dict, radius: float):
     from math import radians
 
     for nid, pos in nodes.items():
-        node_name = f"Node_{nid}"
+        node_name = f"{NODE_OBJ_PREFIX}{nid}"
         if node_name not in bpy.data.objects:
             continue
         node_obj = bpy.data.objects[node_name]

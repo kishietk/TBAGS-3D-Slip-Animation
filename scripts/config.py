@@ -54,3 +54,13 @@ ANIM_FPS = 60  # FPS (Frames Per Second)
 ANIM_SECONDS = 30  # アニメーション時間[秒]
 ANIM_TOTAL_FRAMES = ANIM_FPS * ANIM_SECONDS  # 総フレーム数
 DISP_SCALE = 10  # 変位量のスケーリング係数
+
+# -----------------------
+# 固定値
+# -----------------------
+EPS_XY_MATCH = 1e-3  # X/Y/Z判定しきい値
+EPS_AXIS = 1e-6  # ベクトル向き判定用
+CYLINDER_VERTS = 16  # 柱・梁の円柱分割数
+NODE_OBJ_PREFIX = "Node_"
+COLUMN_OBJ_PREFIX = "Column_"
+MEMBER_OBJ_PREFIX = "Member_"

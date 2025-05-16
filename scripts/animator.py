@@ -1,6 +1,7 @@
 import bpy
 import bmesh
 from mathutils import Vector, Quaternion
+from config import EPS_XY_MATCH, NODE_OBJ_PREFIX
 
 
 def on_frame(scene, panel_objs, roof_obj, roof_quads, member_objs, node_objs):
@@ -79,7 +80,7 @@ def on_frame(scene, panel_objs, roof_obj, roof_quads, member_objs, node_objs):
         length = vec.length
         obj.location = mid
         axis = up.cross(vec)
-        if axis.length > 1e-3:
+        if axis.length > EPS_XY_MATCH:
             axis.normalize()
             angle = up.angle(vec)
             obj.rotation_mode = "AXIS_ANGLE"
@@ -107,7 +108,7 @@ def init_animation(panel_objs, roof_obj, roof_quads, member_objs, node_objs):
     # 2) 名前リスト／IDマップをキャプチャ
     panel_names = [o.name for o in panel_objs if o]
     member_info = [(o.name, a, b) for (o, a, b) in member_objs if o]
-    node_name_map = {nid: f"Node_{nid}" for nid in node_objs}
+    node_name_map = {nid: f"{NODE_OBJ_PREFIX}{nid}" for nid in node_objs}
     roof_name = roof_obj.name if roof_obj else None
 
     # 3) 毎フレーム呼び出す関数

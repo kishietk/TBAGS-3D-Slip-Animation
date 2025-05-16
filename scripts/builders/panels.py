@@ -1,6 +1,7 @@
 import bpy
 import bmesh
 from logging_utils import setup_logging
+from config import EPS_XY_MATCH
 
 log = setup_logging()
 
@@ -44,7 +45,7 @@ def build_panels(nodes, edges):
             [
                 nid
                 for nid, pos in nodes.items()
-                if abs(pos.x - xmin) < 1e-3 and abs(pos.z - z) < 1e-3
+                if abs(pos.x - xmin) < EPS_XY_MATCH and abs(pos.z - z) < EPS_XY_MATCH
             ],
             key=lambda i: nodes[i].y,
         )
@@ -52,7 +53,7 @@ def build_panels(nodes, edges):
             [
                 nid
                 for nid, pos in nodes.items()
-                if abs(pos.x - xmax) < 1e-3 and abs(pos.z - z) < 1e-3
+                if abs(pos.x - xmax) < EPS_XY_MATCH and abs(pos.z - z) < EPS_XY_MATCH
             ],
             key=lambda i: nodes[i].y,
         )
@@ -60,7 +61,7 @@ def build_panels(nodes, edges):
             [
                 nid
                 for nid, pos in nodes.items()
-                if abs(pos.y - ymin) < 1e-3 and abs(pos.z - z) < 1e-3
+                if abs(pos.y - ymin) < EPS_XY_MATCH and abs(pos.z - z) < EPS_XY_MATCH
             ],
             key=lambda i: nodes[i].x,
         )
@@ -68,7 +69,7 @@ def build_panels(nodes, edges):
             [
                 nid
                 for nid, pos in nodes.items()
-                if abs(pos.y - ymax) < 1e-3 and abs(pos.z - z) < 1e-3
+                if abs(pos.y - ymax) < EPS_XY_MATCH and abs(pos.z - z) < EPS_XY_MATCH
             ],
             key=lambda i: nodes[i].x,
         )
@@ -82,9 +83,9 @@ def build_panels(nodes, edges):
             def find_at(x, y, zval):
                 for nid2, pos2 in nodes.items():
                     if (
-                        abs(pos2.z - zval) < 1e-3
-                        and abs(pos2.x - x) < 1e-3
-                        and abs(pos2.y - y) < 1e-3
+                        abs(pos2.z - zval) < EPS_XY_MATCH
+                        and abs(pos2.x - x) < EPS_XY_MATCH
+                        and abs(pos2.y - y) < EPS_XY_MATCH
                     ):
                         return nid2
                 return None
@@ -124,14 +125,14 @@ def build_roof(nodes):
         return None, []
     top_z = zs[-1]
     # 最上階ノードを抽出
-    tops = {nid: pos for nid, pos in nodes.items() if abs(pos.z - top_z) < 1e-3}
+    tops = {nid: pos for nid, pos in nodes.items() if abs(pos.z - top_z) < EPS_XY_MATCH}
     xs = sorted({v.x for v in tops.values()})
     ys = sorted({v.y for v in tops.values()})
 
     # 座標値からノードIDを逆引き
     def fid(x, y):
         return next(
-            (n for n, p in tops.items() if abs(p.x - x) < 1e-3 and abs(p.y - y) < 1e-3),
+            (n for n, p in tops.items() if abs(p.x - x) < EPS_XY_MATCH and abs(p.y - y) < EPS_XY_MATCH),
             None,
         )
 
