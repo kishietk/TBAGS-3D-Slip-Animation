@@ -13,12 +13,26 @@ from cores.panel import Panel
 from loaders.edge_loader import load_edges_from_str
 import csv
 
+"""
+manager.py
+
+【役割 / Purpose】
+- 構造全体（ノード・エッジ・パネル）を一元管理・API化するクラス。
+- データ読込→構造体構築→相互リンク→パネル自動生成まで行う。
+- 「梁だけ抽出」等の便利APIも提供。
+
+【設計方針】
+- CSV直読の独自ノードローダ（クラス内関数）も用意。
+- パネル自動生成は座標グリッド・階層検出で面生成。
+- 型ヒント・詳細コメント徹底。
+"""
+
 log = setup_logging()
 
 
 class CoreManager:
     """
-    Node/Edge/Panelの全体生成・相互参照管理・フィルタAPIを集中管理するコアマネージャー。
+    Node/Edge/Panel全体生成・API・フィルタ管理クラス
     """
 
     def __init__(
@@ -40,6 +54,9 @@ class CoreManager:
         self._build_all()
 
     def _build_all(self):
+        """
+        ノード・エッジ・パネル全体を一括生成
+        """
         log.info("CoreManager: Loading nodes...")
         self.nodes = self._load_nodes(self.node_csv, self.valid_node_ids)
 
@@ -54,6 +71,9 @@ class CoreManager:
         )
 
     def _load_nodes(self, path: str, valid_ids: Set[int]) -> Dict[int, Node]:
+        """
+        ノード座標CSVをNodeインスタンス辞書に変換（loaderとほぼ同じ実装）
+        """
         node_map: Dict[int, Node] = {}
         try:
             with open(path, newline="", encoding="utf-8", errors="ignore") as f:
@@ -78,6 +98,9 @@ class CoreManager:
         return node_map
 
     def _build_panels(self, node_map: Dict[int, Node]) -> List[Panel]:
+        """
+        ノード群からグリッド検出・階層判定で自動的にPanelリスト生成
+        """
         panels: List[Panel] = []
         zs = sorted({n.pos.z for n in node_map.values()})
         if len(zs) < 2:
@@ -110,19 +133,31 @@ class CoreManager:
         return panels
 
     def get_nodes(self, ids: Optional[List[int]] = None) -> List[Node]:
+        """
+        ノードリスト取得（ID指定でフィルタも可）
+        """
         if ids is None:
             return list(self.nodes.values())
         return [self.nodes[i] for i in ids if i in self.nodes]
 
     def get_edges(self, kind_ids: Optional[List[int]] = None) -> List[Edge]:
+        """
+        エッジリスト取得（部材種別IDでフィルタ可）
+        """
         if kind_ids is None:
             return self.edges
         return [e for e in self.edges if getattr(e, "kind_id", None) in kind_ids]
 
     def get_panels(self) -> List[Panel]:
+        """
+        パネルリスト取得
+        """
         return self.panels
 
     def summary(self) -> str:
+        """
+        サマリ文字列出力
+        """
         return (
             f"Nodes: {len(self.nodes)}\n"
             f"Edges: {len(self.edges)}\n"

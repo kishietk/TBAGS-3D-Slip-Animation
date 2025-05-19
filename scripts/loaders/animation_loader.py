@@ -1,17 +1,3 @@
-"""
-animation.py
-
-【役割】
-- アニメーションCSVから、ノードごとのフレーム毎変位データを抽出し辞書で返すローダ。
-- ヘッダー文字列（(TYPE)、(CMP)、(ID)など）やデータ開始行を柔軟かつ定数で管理。
-- どのファイル・何行・何IDで失敗したか、すべて詳細ログで出力。
-
-【設計方針】
-- 文字列マジックナンバーはすべて定数化。設定値・IDセットもconfig.pyで一元管理。
-- 例外・異常時はfail-fastも適用、ログ粒度も現場水準で強化。
-- 型ヒント・コメントも徹底。
-"""
-
 import csv
 from collections import defaultdict
 from typing import Dict
@@ -19,9 +5,23 @@ from mathutils import Vector
 from logging_utils import setup_logging
 from config import ANIM_CSV, VALID_NODE_IDS, ANIM_FPS, DISP_SCALE
 
+"""
+animation_loader.py
+
+【役割 / Purpose】
+- animation.csv（ノードごとのフレーム毎変位データ）を「ノードID→{フレーム: 変位Vector}」の辞書に変換するローダ関数。
+- どの列がどのノード/成分かは(TYPE)/(CMP)/(ID)ヘッダーで柔軟に認識。
+- すべての異常・例外は詳細ログ。
+
+【設計方針】
+- 定数/ヘッダー名/しきい値はconfig.pyからimportし、ハードコーディング禁止。
+- データ不備・パース失敗は即例外または詳細ログ。
+- 型ヒント・詳細運用コメントつき。
+"""
+
 log = setup_logging()
 
-# ---- ヘッダー検出用の定数 ----
+# ---- ヘッダー判定用 ----
 TYPE_HEADER = "(TYPE)"
 CMP_HEADER = "(CMP)"
 ID_HEADER = "(ID)"
@@ -29,11 +29,10 @@ ID_HEADER = "(ID)"
 
 def load_animation_data(path: str = ANIM_CSV) -> dict[int, dict[int, Vector]]:
     """
-    アニメーションCSVからノードごとのフレーム毎変位データを抽出する関数
+    アニメーションCSVをパースし、ノードIDごと・フレームごとの変位量辞書を返す
 
     引数:
-        path: アニメーションCSVファイルパス
-
+        path: アニメーションCSVパス（デフォルトはconfig.pyのANIM_CSV）
     戻り値:
         { node_id: { frame: Vector(dx, dy, dz), ... }, ... }
     """
@@ -50,6 +49,7 @@ def load_animation_data(path: str = ANIM_CSV) -> dict[int, dict[int, Vector]]:
     type_row = None
     cmp_row = None
     id_row = None
+    # ヘッダー3種を自動検出
     for i, row in enumerate(rows):
         if not row:
             continue
@@ -73,6 +73,7 @@ def load_animation_data(path: str = ANIM_CSV) -> dict[int, dict[int, Vector]]:
         log.critical(f"[{path}] No data rows found after header in animation CSV.")
         raise RuntimeError("No data rows in animation CSV")
 
+    # DISPカラムをノードID・成分idxでマッピング
     col_map: dict[int, tuple[int, int]] = {}
     for j in range(1, len(id_row)):
         typ = type_row[j].strip().upper() if j < len(type_row) else ""

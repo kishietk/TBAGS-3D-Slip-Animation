@@ -1,16 +1,3 @@
-"""
-panels.py
-
-【役割】
-- ノード座標から壁パネル・屋根オブジェクトを自動生成するビルダー。
-- 階層・外周エッジごとの判定しきい値等、数値マジックナンバーは定数化。
-- エラーや異常時もファイル・ID・行番号つきで詳細ログ。
-
-【設計方針】
-- EPS_XY_MATCH等はファイル先頭に定数で一元管理し、将来的な設計変更も容易に。
-- 保守性/解析性の高いログ・型ヒント・コメントを徹底。
-"""
-
 import bpy
 import bmesh
 from typing import Dict, List, Tuple
@@ -19,7 +6,20 @@ from logging_utils import setup_logging
 
 log = setup_logging()
 
-# --- 判定しきい値定数（マジックナンバー排除） ---
+"""
+panels.py
+
+【役割 / Purpose】
+- ノード座標から「壁パネル」「屋根」オブジェクト（メッシュ）をBlender上に自動生成するビルダー。
+- グリッド認識や階層・外周エッジ検出もここで一括処理。
+
+【設計方針】
+- EPS_XY_MATCH等は必ず定数管理でマジックナンバー排除。
+- 例外やデータ不足時も詳細ログ。
+- 柔軟な拡張（面の属性付与・階層フィルタ等）も対応しやすい。
+"""
+
+# --- 判定しきい値定数（マジックナンバー排除：必要ならconfig.pyからimport） ---
 EPS_XY_MATCH = 1e-3
 
 
@@ -29,6 +29,12 @@ def build_panels(
     """
     ノード座標から外周水平セグメントを自動抽出し、
     各階層の壁パネルをBlender上に生成する関数
+
+    引数:
+        nodes: {nid: Vector}
+        edges: set((a, b), ...)
+    戻り値:
+        panels: list[Object]
     """
     if not nodes:
         log.warning("No nodes supplied to build_panels()")
@@ -120,6 +126,11 @@ def build_roof(
 ) -> tuple[bpy.types.Object | None, list[tuple[int, int, int, int]]]:
     """
     最上階ノードから屋根パネル群を生成し、Blenderオブジェクトとして返す
+
+    引数:
+        nodes: {nid: Vector}
+    戻り値:
+        (roof_obj, quads): (屋根Object, ルーフ面ノードIDリスト)
     """
     zs = sorted({v.z for v in nodes.values()})
     if not zs:
