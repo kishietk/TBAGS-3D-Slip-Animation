@@ -31,7 +31,7 @@ TEXTURE_DIR = os.path.normpath(os.path.join(PROJECT_DIR, "../textures"))
 
 NODE_CSV = os.path.join(DATA_DIR, "node_position.csv")  # ノード座標CSV
 EDGES_FILE = os.path.join(DATA_DIR, "self.str")  # エッジ定義STR
-ANIM_CSV = os.path.join(DATA_DIR, "with_tbags-kumamoto.csv")  # アニメーションCSV
+ANIM_CSV = os.path.join(DATA_DIR, "animation.csv")  # アニメーションCSV
 WALL_IMG = os.path.join(TEXTURE_DIR, "wall_texture.png")  # 壁テクスチャ
 ROOF_IMG = os.path.join(TEXTURE_DIR, "roof_texture.png")  # 屋根テクスチャ
 
