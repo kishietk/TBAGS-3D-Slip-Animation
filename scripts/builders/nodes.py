@@ -1,28 +1,28 @@
-"""
-nodes.py
-
-【役割】
-- ノード球の生成・削除、ノードIDラベル（Textオブジェクト）生成。
-- ラベルの大きさやオフセット、親子関係、回転設定などのパラメータはすべて定数化。
-
-【設計方針】
-- NODE_LABEL_SIZE や NODE_LABEL_OFFSET など設定値はconfig.py・定数で一元化。
-- 例外や異常は行番号・ID等つきで詳細ログ（現場水準）。
-- 型ヒント・コメントも徹底。
-"""
-
 import bpy
 from typing import Dict
 from logging_utils import setup_logging
 from config import NODE_LABEL_SIZE, NODE_LABEL_OFFSET
 from mathutils import Vector, Quaternion
 
+"""
+nodes.py
+
+【役割 / Purpose】
+- ノード座標リストからBlender上に「球体（ノード球）」と「IDラベル（Text）」を生成。
+- ラベルの大きさ・オフセット等はconfig.pyの定数から一元管理。
+
+【設計方針】
+- ノード球生成時にアニメーションデータも与えれば自動でキーフレーム化。
+- ラベルはノード球の子オブジェクトとして親子付け＆座標調整。
+- 例外時にはIDや行番号付きで詳細ログ。
+"""
+
 log = setup_logging()
 
 
 def clear_scene() -> None:
     """
-    シーン内の全オブジェクトを削除し、完全クリア状態にする
+    シーン内の全オブジェクトを一括削除し、完全クリア状態にする
     """
     try:
         bpy.ops.object.select_all(action="SELECT")
@@ -42,7 +42,7 @@ def build_nodes(
 
     引数:
         nodes: {nid: Vector}
-        radius: float
+        radius: 球体半径
         anim_data: {nid: {frame: Vector(dx,dy,dz), ...}, ...}
 
     戻り値:
@@ -56,7 +56,7 @@ def build_nodes(
             o.name = f"Node_{nid}"
             objs[nid] = o
 
-            # アニメーションデータがあれば、キーフレーム登録
+            # アニメーションデータがあればキーフレーム登録
             if anim_data and nid in anim_data:
                 for frame, offset in anim_data[nid].items():
                     o.location = pos + offset
@@ -87,7 +87,7 @@ def create_node_labels(nodes: dict[int, Vector], radius: float) -> None:
             text_obj.data.size = NODE_LABEL_SIZE
             text_obj.data.align_x = "CENTER"
             text_obj.data.align_y = "CENTER"
-            text_obj.rotation_euler = (radians(90), 0, 0)
+            text_obj.rotation_euler = (radians(90), 0, 0)  # テキストを水平に
 
             text_obj.parent = node_obj
             text_obj.location = Vector(NODE_LABEL_OFFSET)

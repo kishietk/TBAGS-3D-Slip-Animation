@@ -1,16 +1,3 @@
-"""
-materials.py
-
-【役割】
-- 壁・屋根・柱・梁・ノード球それぞれに最適なBlenderマテリアルを生成するビルダー群。
-- 画像パスや透明度などはすべてconfig.pyで集中管理。
-- どのオブジェクトにどのマテリアルを適用したかをログで追跡可能。
-
-【設計方針】
-- マジックナンバーやパス/名前直書きは全廃し、全て定数/設定で一元管理。
-- 例外時は「何の材料・何のオブジェクトで失敗か」を明記しログ出力。
-"""
-
 import bpy
 from typing import Dict, List, Tuple
 from logging_utils import setup_logging
@@ -18,10 +5,29 @@ from config import WALL_IMG, ROOF_IMG, WALL_ALPHA, ROOF_ALPHA
 
 log = setup_logging()
 
+"""
+materials.py
+
+【役割 / Purpose】
+- 壁・屋根・柱・梁・ノード球それぞれに最適なBlenderマテリアルを自動生成・適用。
+- 画像パスや透明度等はすべてconfig.pyから一元管理。直接値やパスを直書きしない！
+
+【設計方針】
+- 例外時は「どの材料・何のオブジェクトで失敗したか」を詳細ログ。
+- オブジェクト名や種別に応じて自動で正しいマテリアルを割り当てる。
+"""
+
 
 def make_texture_mat(name: str, img_path: str, alpha: float) -> bpy.types.Material:
     """
     画像テクスチャ＋透明度を持つマテリアルを生成（壁・屋根用）
+
+    引数:
+        name: マテリアル名
+        img_path: テクスチャ画像パス
+        alpha: 透明度
+    戻り値:
+        Blenderマテリアル
     """
     try:
         mat = bpy.data.materials.get(name) or bpy.data.materials.new(name)
@@ -52,7 +58,7 @@ def make_texture_mat(name: str, img_path: str, alpha: float) -> bpy.types.Materi
 
 def make_column_mat() -> bpy.types.Material:
     """
-    柱用マテリアル（波・ノイズを混ぜた木目調）を生成
+    柱用マテリアル（波・ノイズ混ぜた木目調）を生成
     """
     try:
         name = "ColumnMat"
@@ -147,6 +153,12 @@ def apply_all_materials(
 ) -> None:
     """
     全オブジェクト（ノード球・壁パネル・屋根・柱・梁）にマテリアルを一括適用
+
+    引数:
+        node_objs: {nid: Object}
+        panel_objs: [Object, ...]
+        roof_obj: Object
+        member_objs: [(Object, a, b), ...]
     """
     log.info("=== Applying all materials ===")
     try:
