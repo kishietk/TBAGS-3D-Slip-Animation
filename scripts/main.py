@@ -20,23 +20,22 @@ import traceback
 
 import bpy
 
-from logging_utils import setup_logging
-import config
-
-# -----------------------------
-# 1. パス初期化・loggingセットアップ
-# -----------------------------
-log = setup_logging()
-
 # プロジェクトscriptsの絶対パスをsys.pathに（相対import対策）
 scripts_dir = os.path.dirname(os.path.abspath(__file__))
 if scripts_dir not in sys.path:
     sys.path.insert(0, scripts_dir)
 
 # -----------------------------
+# 1. パス初期化・loggingセットアップ
+# -----------------------------
+from logging_utils import setup_logging
+log = setup_logging()
+
+# -----------------------------
 # 2. モジュールimport＆リロード（開発時ホットリロードにも対応）
 # -----------------------------
 try:
+    import config
     import loaders.node as node_loader
     import loaders.edge as edge_loader
     import loaders.animation as anim_loader
