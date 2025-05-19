@@ -109,3 +109,25 @@ ID_HEADER = "(ID)"
 # =======================
 
 # --- 必要な新定数はこの下へ ---
+# =======================
+# 10. EBEAM3Dグループ定義
+# =======================
+
+# EBEAM3Dブロックのグループ番号と種別ラベル
+EBEAM_KIND_LABELS = {
+    42: "frame_beam",  # Frame beam (x, and y)
+    43: "upper_sandbag_beam",  # Top of upper level sandbag connecting beam (Y direction)
+    44: "lower_sandbag_beam",  # Bottom of upper level sandbag connecting beam (Y direction)
+    45: "left_wall_column",  # Left side wall column (Y direction)
+    46: "right_wall_column",  # Right side wall column (Y direction)
+    47: "outer_column",  # Exterior column (Z direction)
+    48: "floor_column",  # Column between 2nd and 3rd floor (Z direction)
+    49: "upper_brace",  # Upper level sandbag connecting brace (Y direction)
+    50: "lower_brace",  # Lower level sandbag connecting brace (Y direction)
+    51: "main_roof_beam",  # Main roof beam (X direction)
+    52: "sub_roof_beam",  # Sub roof beam (Y direction)
+    53: "parapet",  # Parapet
+    54: "foundation_column",  # Column to foundation
+    55: "foundation_connection",  # Connecting bottom of lower level sandbag to ground without foundation
+    # 必要に応じて拡張
+}

@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import List, TYPE_CHECKING
+from typing import List, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from cores.node import Node
@@ -8,26 +8,25 @@ if TYPE_CHECKING:
 
 class Panel:
     """
-    パネル（面）クラス
+    パネル（壁・屋根など面）情報のコアクラス。
     """
 
     def __init__(
         self,
-        node_ids: List[int],
         nodes: List["Node"],
-        edges: List["Edge"],
-        kind_label: str = "",
+        edges: Optional[List["Edge"]] = None,
+        kind: str = "wall",
+        floor: Optional[str] = None,
+        attributes: Optional[dict] = None,
     ):
-        self.node_ids = node_ids
+        self.id = "_".join(str(n.id) for n in sorted(nodes, key=lambda n: n.id))
         self.nodes = nodes
-        self.edges = edges
-        self.kind_label = kind_label
+        self.edges = edges if edges is not None else []
+        self.kind = kind
+        self.floor = floor
+        self.attributes = attributes if attributes is not None else {}
 
-        for edge in edges:
-            edge.add_panel(self)
-
-    def __repr__(self):
-        return (
-            f"Panel(node_ids={self.node_ids}, kind_label={self.kind_label}, "
-            f"nodes={[n.id for n in self.nodes]}, edges={[e.id for e in self.edges]})"
-        )
+        for n in self.nodes:
+            n.add_panel(self)
+        for e in self.edges:
+            e.add_panel(self)

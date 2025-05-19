@@ -1,6 +1,7 @@
 from __future__ import annotations
-from typing import List, TYPE_CHECKING
+from typing import List, Optional, TYPE_CHECKING
 from mathutils import Vector
+
 if TYPE_CHECKING:
     from cores.edge import Edge
     from cores.panel import Panel
@@ -8,17 +9,21 @@ if TYPE_CHECKING:
 
 class Node:
     """
-    ノード（接点）コアクラス
+    ノード情報のコアクラス。
     """
 
-    def __init__(self, nid: int, pos: Vector):
-        self.id = id
-        self.pos = pos  # Vector型 or (x, y, z) tuple
+    def __init__(self, id: int, pos: Vector, floor: Optional[str] = None):
+        self.id: int = id
+        self.pos: Vector = pos
+        self.floor: Optional[str] = floor
         self.edges: List["Edge"] = []
         self.panels: List["Panel"] = []
 
     def __repr__(self):
-        return f"Node(id={self.id}, pos={self.pos})"
+        return (
+            f"Node(id={self.id}, pos={tuple(self.pos)}, floor={self.floor}, "
+            f"edges={len(self.edges)}, panels={len(self.panels)})"
+        )
 
     def add_edge(self, edge: "Edge"):
         if edge not in self.edges:

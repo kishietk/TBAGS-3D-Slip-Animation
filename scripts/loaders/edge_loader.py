@@ -1,3 +1,4 @@
+from __future__ import annotations
 import re
 from typing import List, Dict, Optional
 from logging_utils import setup_logging
@@ -16,21 +17,6 @@ def load_edges_from_str(
     node_map: Dict[int, Node],
     valid_kind_ids: Optional[List[int]] = None,
 ) -> List[Edge]:
-    """
-    self.strのEBEAM3Dブロックからエッジデータを抽出し、Edgeオブジェクトリストとして返す。
-
-    - 各エッジは、所属グループ番号(kind_id)と種別ラベル(kind_label)を属性として持つ。
-    - valid_kind_ids指定時はそのグループ番号のみを対象にする（Noneなら全種別）。
-
-    Args:
-        path: self.strファイルパス
-        node_map: {ノードID: Nodeインスタンス}
-        valid_kind_ids: フィルタしたいグループ番号リスト（例: [42, 45]）
-
-    Returns:
-        List[Edge]
-    """
-
     edges: List[Edge] = []
     current_kind_id: Optional[int] = None
     current_kind_label: Optional[str] = None
@@ -76,12 +62,13 @@ def load_edges_from_str(
                     continue
                 node_a_id, node_b_id = nums[-2], nums[-1]
 
-                # 異常なノードペア（0, 負数、重複）ならカウントだけしてスキップ
+                # ---【ここで異常ペアは完全にWARN出さずカウントのみ】---
                 if node_a_id <= 0 or node_b_id <= 0 or node_a_id == node_b_id:
                     abnormal_skip_count += 1
                     continue
+                # ----------------------------------------------------
 
-                # フィルタ条件：両端が有効ノードIDかつ、必要なkind_idか
+                # 両端有効ノードかつkind_id一致のみ生成
                 if (
                     node_a_id in node_map
                     and node_b_id in node_map
@@ -97,13 +84,13 @@ def load_edges_from_str(
                         f"Build Edge: nodes=({node_a_id}, {node_b_id}), kind_id={current_kind_id}, label={current_kind_label}"
                     )
                     edges.append(edge)
-                # 一部だけ有効ノードIDの場合はWARN
-                elif node_a_id in node_map or node_b_id in node_map:
+                # 片方だけ有効な場合のみWARN（両方invalidや異常値はスルー）
+                elif (node_a_id in node_map) != (node_b_id in node_map):
                     log.warning(
                         f"Skipped edge line {line_num}: nodes=({nums}), kind_id={current_kind_id}, "
-                        f"missing node (node_a={node_a_id in node_map}, node_b={node_b_id in node_map})"
+                        f"片側だけ有効 (node_a={node_a_id in node_map}, node_b={node_b_id in node_map})"
                     )
-                # 両方有効IDでない/異常値（既にスキップ済み）はログ出さず
+                # 両方ともnode_mapにいない場合（普通は有効ノード範囲外や異常値）は無視
 
     except Exception as e:
         log.critical(f"[{path}] CRITICAL: Failed to read edge STR ({e})")
@@ -111,7 +98,7 @@ def load_edges_from_str(
 
     if abnormal_skip_count > 0:
         log.info(
-            f"Skipped {abnormal_skip_count} edge lines due to abnormal node ids (0, negative or duplicate)."
+            f"Skipped {abnormal_skip_count} edge lines due to abnormal node ids (0, negative, or duplicate)."
         )
 
     log.info(f"Loaded {len(edges)} edges from {path}")
