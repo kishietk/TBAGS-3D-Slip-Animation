@@ -8,7 +8,6 @@ import importlib
 # - 必要なファイルはMODULESリストに追加
 # ============================================
 
-# プロジェクトのscripts絶対パスをsys.pathに追加（相対import対策）
 scripts_dir = os.path.dirname(os.path.abspath(__file__))
 if scripts_dir not in sys.path:
     sys.path.insert(0, scripts_dir)
@@ -24,7 +23,7 @@ MODULES = [
     "cores.panel",
     "cores.manager",
     "builders.nodes",
-    "builders.edges",  # 旧 members
+    "builders.edges",  # 旧members
     "builders.panels",
     "builders.materials",
     # 必要があればここに追加
@@ -48,8 +47,9 @@ from logging_utils import setup_logging
 from cores.manager import CoreManager
 from builders.nodes import build_nodes, create_node_labels
 from builders.panels import build_panels, build_roof
-from builders.edges import build_members  # builders/edges.pyでOK
+from builders.edges import build_members
 from builders.materials import apply_all_materials
+from loaders.animation_loader import load_animation_data  # ← 追加
 
 log = setup_logging()
 
@@ -60,10 +60,10 @@ main.py
 - データ→構造体→Blenderビルドの全自動一発実行スクリプト（現場運用主力）。
 - 各種設定・生成流れを整理し、エラー時も詳細ログ＋トレースバックで記録。
 - ホットリロードブロックにより再起動不要＆効率最大化。
+- animation.csvによるノード球の変位アニメーションにも完全対応！
 
 【設計方針】
 - ビルド順：シーン初期化→データ読込→各種生成→マテリアル適用まで一発。
-- animation周りは今はスキップ（将来拡張容易）。
 """
 
 
@@ -81,9 +81,12 @@ def main():
         edges = cm.get_edges()
         panels = cm.get_panels()
 
-        # --- ノード球生成＋アニメ用データセット（今はanim_data=None） ---
+        # --- アニメーションデータもロード ---
+        anim_data = load_animation_data()
+
+        # --- ノード球生成＋アニメ付与 ---
         node_objs = build_nodes(
-            {n.id: n.pos for n in nodes}, radius=0.05, anim_data=None
+            {n.id: n.pos for n in nodes}, radius=0.05, anim_data=anim_data
         )
         create_node_labels({n.id: n.pos for n in nodes}, radius=0.05)
 
@@ -104,7 +107,7 @@ def main():
         apply_all_materials(node_objs, panel_objs, roof_obj, member_objs)
 
         # --- アニメーションハンドラ登録・他処理（未実装、将来用） ---
-        # （例：from animator import init_animation ...）
+        # 例：from animator import init_animation ...
 
         log.info("=== Visualization Completed ===")
     except Exception as e:
