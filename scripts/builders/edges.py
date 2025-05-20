@@ -14,7 +14,7 @@ members.py
 import bpy
 from typing import Dict, Set, List, Tuple
 from mathutils import Vector, Quaternion
-from logging_utils import setup_logging
+from utils.logging import setup_logging
 
 log = setup_logging()
 

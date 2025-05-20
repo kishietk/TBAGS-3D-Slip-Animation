@@ -1,6 +1,6 @@
 import bpy
 from typing import Dict, List, Tuple
-from logging_utils import setup_logging
+from utils.logging import setup_logging
 from config import WALL_IMG, ROOF_IMG, WALL_ALPHA, ROOF_ALPHA
 
 log = setup_logging()

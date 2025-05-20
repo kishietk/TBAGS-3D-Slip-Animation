@@ -1,6 +1,6 @@
 import bpy
 from typing import Dict
-from logging_utils import setup_logging
+from utils.logging import setup_logging
 from config import NODE_LABEL_SIZE, NODE_LABEL_OFFSET
 from mathutils import Vector, Quaternion
 

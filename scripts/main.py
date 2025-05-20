@@ -14,7 +14,7 @@ if scripts_dir not in sys.path:
 
 MODULES = [
     "config",
-    "logging_utils",
+    "utils.logging",
     "loader.node_loader",
     "loader.edge_loader",
     "loader.animation_loader",
@@ -43,7 +43,7 @@ for m in MODULES:
 # ↓以降は普通にimport＆実装
 # ==========================
 import bpy
-from logging_utils import setup_logging
+from utils.logging import setup_logging
 from cores.manager import CoreManager
 from builders.nodes import build_nodes, create_node_labels
 from builders.panels import build_panels, build_roof

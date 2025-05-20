@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import Dict, List, Optional, Set
 from mathutils import Vector
-from logging_utils import setup_logging
+from utils.logging import setup_logging
 from config import (
     NODE_CSV,
     EDGES_FILE,

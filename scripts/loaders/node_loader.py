@@ -2,7 +2,7 @@ import csv
 from typing import Dict
 from mathutils import Vector
 from config import NODE_CSV, VALID_NODE_IDS
-from logging_utils import setup_logging
+from utils.logging import setup_logging
 
 """
 node_loader.py

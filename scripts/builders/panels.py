@@ -2,7 +2,7 @@ import bpy
 import bmesh
 from typing import Dict, List, Tuple
 from mathutils import Vector
-from logging_utils import setup_logging
+from utils.logging import setup_logging
 
 log = setup_logging()
 

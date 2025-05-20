@@ -1,7 +1,7 @@
 from __future__ import annotations
 import re
 from typing import List, Dict, Optional
-from logging_utils import setup_logging
+from utils.logging import setup_logging
 from config import EDGES_FILE, EBEAM_KIND_LABELS
 from cores.node import Node
 from cores.edge import Edge
