@@ -15,7 +15,7 @@ node_loader.py
 - 行のパース失敗時は必ずエラー・行番号・内容を詳細ログ出力。
 - 明らかなヘッダー・非データ行はWARNING、それ以外はERROR。
 - VALID_NODE_IDS以外のIDはスキップ。
-- 型ヒント・現場向けコメント徹底。
+- 型ヒント徹底。
 """
 
 log = setup_logging()

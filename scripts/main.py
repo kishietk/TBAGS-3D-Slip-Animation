@@ -4,10 +4,6 @@ import importlib
 
 # ============================================
 # モジュールホットリロード対応（Blender再起動不要）
-# - 開発中はモジュール編集→main.py実行で即反映
-# - 必要なファイルはMODULESリストに追加
-# ============================================
-
 scripts_dir = os.path.dirname(os.path.abspath(__file__))
 if scripts_dir not in sys.path:
     sys.path.insert(0, scripts_dir)
@@ -15,17 +11,19 @@ if scripts_dir not in sys.path:
 MODULES = [
     "config",
     "utils.logging",
-    "loader.node_loader",
-    "loader.edge_loader",
-    "loader.animation_loader",
+    "utils.column_grouper",
+    "loaders.node_loader",
+    "loaders.edge_loader",
+    "loaders.animation_loader",
     "cores.node",
     "cores.edge",
     "cores.panel",
     "cores.manager",
     "builders.nodes",
-    "builders.edges",  # 旧members
+    "builders.edges",
     "builders.panels",
     "builders.materials",
+    "builders.columns_armature",
     # 必要があればここに追加
 ]
 for m in MODULES:
@@ -44,12 +42,14 @@ for m in MODULES:
 # ==========================
 import bpy
 from utils.logging import setup_logging
+from utils.column_grouper import group_columns_by_edges
 from cores.manager import CoreManager
 from builders.nodes import build_nodes, create_node_labels
 from builders.panels import build_panels, build_roof
 from builders.edges import build_members
 from builders.materials import apply_all_materials
-from loaders.animation_loader import load_animation_data  # ← 追加
+from loaders.animation_loader import load_animation_data
+from builders.columns_armature import build_column_with_armature
 
 log = setup_logging()
 
@@ -57,13 +57,8 @@ log = setup_logging()
 main.py
 
 【役割 / Purpose】
-- データ→構造体→Blenderビルドの全自動一発実行スクリプト（現場運用主力）。
-- 各種設定・生成流れを整理し、エラー時も詳細ログ＋トレースバックで記録。
-- ホットリロードブロックにより再起動不要＆効率最大化。
-- animation.csvによるノード球の変位アニメーションにも完全対応！
-
-【設計方針】
-- ビルド順：シーン初期化→データ読込→各種生成→マテリアル適用まで一発。
+- データ→構造体→Blenderビルドの全自動一発実行スクリプト
+- 通常の可視化（ノード球・パネル・梁）＋「ボーン入り柱」両立型
 """
 
 
@@ -75,39 +70,55 @@ def main():
         bpy.ops.object.delete()
         bpy.app.handlers.frame_change_pre.clear()
 
-        # --- コアマネージャーからフィルタ済みデータ取得 ---
+        # --- データ読込 ---
         cm = CoreManager()
         nodes = cm.get_nodes()
         edges = cm.get_edges()
         panels = cm.get_panels()
 
-        # --- アニメーションデータもロード ---
+        node_dict = {n.id: n.pos for n in nodes}
+        print(f"[DEBUG] node_dict sample: {list(node_dict.items())[:5]}")
+
+        # --- アニメーションデータ読込 ---
         anim_data = load_animation_data()
+        print(f"[DEBUG] anim_data sample: {list(anim_data.items())[:3]}")
 
-        # --- ノード球生成＋アニメ付与 ---
-        node_objs = build_nodes(
-            {n.id: n.pos for n in nodes}, radius=0.05, anim_data=anim_data
-        )
-        create_node_labels({n.id: n.pos for n in nodes}, radius=0.05)
-
-        # --- パネル・屋根生成 ---
+        # --- [A] ノード球＆通常部材 ---
+        node_objs = build_nodes(node_dict, radius=0.05, anim_data=anim_data)
+        create_node_labels(node_dict, radius=0.05)
         panel_objs = build_panels(
-            {n.id: n.pos for n in nodes}, {(e.node_a.id, e.node_b.id) for e in edges}
+            node_dict, {(e.node_a.id, e.node_b.id) for e in edges}
         )
-        roof_obj, roof_quads = build_roof({n.id: n.pos for n in nodes})
-
-        # --- 柱・梁生成 ---
+        roof_obj, roof_quads = build_roof(node_dict)
         member_objs = build_members(
-            {n.id: n.pos for n in nodes},
+            node_dict,
             {(e.node_a.id, e.node_b.id) for e in edges},
             thickness=0.5,
         )
 
-        # --- マテリアル一括適用 ---
-        apply_all_materials(node_objs, panel_objs, roof_obj, member_objs)
+        # --- [B] ボーン入り柱（id=53のみ）---
+        pillar_edges = [
+            (e.node_a.id, e.node_b.id)
+            for e in edges
+            if getattr(e, "kind_id", None) == 53
+        ]
+        pillar_groups = group_columns_by_edges(pillar_edges)
+        log.info(f"Building {len(pillar_groups)} column groups (id=53)")
+        bone_col_objs = []
+        for group in pillar_groups:
+            print(f"[DEBUG] Calling build_column_with_armature for group: {group}")
+            col_obj = build_column_with_armature(
+                node_ids=group,
+                node_positions=node_dict,
+                anim_data=anim_data,
+                radius=0.2,
+                name_prefix="BoneCol",
+            )
+            if col_obj is not None:
+                bone_col_objs.append(col_obj)
 
-        # --- アニメーションハンドラ登録・他処理（未実装、将来用） ---
-        # 例：from animator import init_animation ...
+        # --- マテリアル一括適用（従来部材のみ）---
+        apply_all_materials(node_objs, panel_objs, roof_obj, member_objs)
 
         log.info("=== Visualization Completed ===")
     except Exception as e:
