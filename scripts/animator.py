@@ -1,15 +1,3 @@
-"""
-animator.py
-
-【役割】
-- Blender上で壁パネル・屋根・柱梁を「毎フレーム自動で再配置」するアニメーション制御モジュール。
-- すべての定数/文字列/しきい値/命名規則/UV名はconfig.pyで集中管理、importして使用。
-
-【設計方針】
-- 値やパス、名前は絶対直書き禁止。config.pyから必ずimport！
-- エラーは何のオブジェクト/ノードID/行で起きたかを詳細ログ。
-"""
-
 import bpy
 import bmesh
 from typing import List, Tuple
@@ -99,7 +87,7 @@ def on_frame(
         except Exception as e:
             log.error(f"Failed to update roof: {e}")
 
-    # 柱・梁再配置
+    # 柱・梁再配置（ここで必ず毎フレーム動かす！）
     for obj, a, b in member_objs:
         try:
             if obj is None:

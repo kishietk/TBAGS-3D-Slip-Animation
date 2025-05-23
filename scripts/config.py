@@ -75,7 +75,7 @@ UV_MAP_NAME = "UVMap"
 # =======================
 
 SPHERE_RADIUS = 0.05  # ノード球 半径[m]
-MEMBER_THICK = 0.5  # 柱・梁 半径[m]
+MEMBER_THICK = 0.4  # 柱・梁 半径[m]
 CYLINDER_VERTS = 16  # 柱・梁 円柱分割数
 EPS_XY_MATCH = 1e-3  # XY一致判定しきい値
 EPS_AXIS = 1e-6  # ベクトル軸判定しきい値
@@ -89,7 +89,7 @@ NODE_LABEL_OFFSET = (0.8, -0.5, 0.5)  # ラベル表示オフセット(X,Y,Z)
 ANIM_FPS = 60  # アニメーションFPS
 ANIM_SECONDS = 30  # アニメーション時間（秒）
 ANIM_TOTAL_FRAMES = ANIM_FPS * ANIM_SECONDS  # 総フレーム数
-DISP_SCALE = 10  # 変位量スケーリング
+DISP_SCALE = 5  # 変位量スケーリング
 
 # =======================
 # 7. マテリアル透明度

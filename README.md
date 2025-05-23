@@ -1,10 +1,3 @@
-Blenderでcsvを読み取ってモデル生成、アニメ―ション付与まで行うpyスクリプトを作成しました。この後、コード送るので待機して。
-root/scripts/直下
-root/scripts/loaders/直下
-root/scripts/cores/直下
-root/scripts/builders/直下
-root/scripts/utils/直下
-root/data/直下
 animation.csvはもっと巨大なデータですので、「...」で行を大幅に削っています。ここまでで、使用するデータは共有しました。
 
 次はblenderのボーンをつかった柱の表現を行いたい。

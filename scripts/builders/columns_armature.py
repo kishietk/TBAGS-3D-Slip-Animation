@@ -4,6 +4,7 @@ import bpy
 import bmesh
 from mathutils import Vector, Matrix
 from typing import List, Dict, Optional
+from config import CYLINDER_VERTS, MEMBER_THICK
 
 from utils.logging import setup_logging
 
@@ -14,10 +15,26 @@ def build_column_with_armature(
     node_ids: List[int],
     node_positions: Dict[int, Vector],
     anim_data: Optional[Dict[int, Dict[int, Vector]]] = None,
-    radius: float = 0.5,
-    segments: int = 24,  # 断面分割数
+    radius: float = MEMBER_THICK,
+    segments: int = CYLINDER_VERTS,
     name_prefix: str = "Column",
 ) -> bpy.types.Object:
+    """
+    指定ノード列を通る1本の柱メッシュ＋アーマチュアを作成し、
+    ノードID変位アニメデータを各ボーンに自動割当する。
+    ※従来の分割柱ではなく、物理的に連続・滑らかに変形
+
+    引数:
+        node_ids: [ノードID, ...]（柱に沿った順）
+        node_positions: {ノードID: Vector}
+        anim_data: {ノードID: {frame: Vector(dx,dy,dz)}}
+        radius: 柱半径
+        segments: 円柱分割数
+        name_prefix: 名前プリフィクス
+
+    戻り値:
+        Blender Object（柱メッシュ）
+    """
     if len(node_ids) < 2:
         log.warning(f"Node list too short for column: {node_ids}")
         return None
@@ -116,6 +133,48 @@ def build_column_with_armature(
     log.info(
         f"Column mesh '{column_mesh_obj.name}' parented to armature '{arm_obj.name}' with automatic weights."
     )
+
+    # --- 6. 各ボーンにノードの変位アニメーションを登録 ---
+    # ※各ノードの変位を該当ボーンのhead/tailのポーズに反映
+    if anim_data is not None:
+        bpy.context.view_layer.objects.active = arm_obj
+        bpy.ops.object.mode_set(mode="POSE")
+        for i, bone_name in enumerate(bone_names):
+            a = node_ids[i]
+            b = node_ids[i + 1]
+            pose_bone = arm_obj.pose.bones.get(bone_name)
+            if not pose_bone:
+                continue
+            node_anim_a = anim_data.get(a, {})
+            node_anim_b = anim_data.get(b, {})
+            for frame in sorted(set(node_anim_a.keys()) | set(node_anim_b.keys())):
+                # head/tailの変位を計算
+                offset_head = node_anim_a.get(frame, Vector((0, 0, 0)))
+                offset_tail = node_anim_b.get(frame, Vector((0, 0, 0)))
+                # Blenderボーンはローカル変換なので、近似的にhead/tailの差分で回転・スケールも設定したい場合は要調整
+                # 今回はロケーションだけ単純適用
+                pose_bone.location = offset_head
+                pose_bone.keyframe_insert(data_path="location", frame=frame)
+                # tail側の変位を反映したければ、より細かなボーンコントロールが必要（今回省略）
+
+################################
+# tail側の変位を反映する必要がある
+################################
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        bpy.ops.object.mode_set(mode="OBJECT")
 
     log.info(f"Column with armature built: {column_mesh_obj.name} / {arm_obj.name}")
     return column_mesh_obj

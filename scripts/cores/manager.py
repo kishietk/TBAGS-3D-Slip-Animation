@@ -1,3 +1,5 @@
+# cores/manager.py
+
 from __future__ import annotations
 from typing import Dict, List, Optional, Set
 from mathutils import Vector
@@ -13,6 +15,8 @@ from cores.panel import Panel
 from loaders.edge_loader import load_edges_from_str
 import csv
 
+log = setup_logging()
+
 """
 manager.py
 
@@ -20,14 +24,13 @@ manager.py
 - 構造全体（ノード・エッジ・パネル）を一元管理・API化するクラス。
 - データ読込→構造体構築→相互リンク→パネル自動生成まで行う。
 - 「梁だけ抽出」等の便利APIも提供。
+- 分割柱・従来部材は一切生成しない（柱はボーン化前提）。
 
 【設計方針】
 - CSV直読の独自ノードローダ（クラス内関数）も用意。
 - パネル自動生成は座標グリッド・階層検出で面生成。
 - 型ヒント・詳細コメント徹底。
 """
-
-log = setup_logging()
 
 
 class CoreManager:

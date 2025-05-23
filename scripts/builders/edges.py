@@ -1,8 +1,11 @@
+# builders/edges.py
+
 """
-members.py
+edges.py
 
 【役割】
-- ノード座標とエッジリストから柱・梁（円柱メッシュ）を生成するビルダー。
+- ノード座標とエッジリストから「梁（ビーム）」のみを生成するビルダー。
+- 柱（カラム）はボーン化アーマチュア方式に完全移行し、このファイルでは生成しない。
 - 円柱分割数やしきい値などのパラメータは定数化、Blender名付け規則もconfig.py由来で統一。
 - 例外時にはノードIDも含めて詳細ログ。
 
@@ -15,18 +18,16 @@ import bpy
 from typing import Dict, Set, List, Tuple
 from mathutils import Vector, Quaternion
 from utils.logging import setup_logging
+from config import CYLINDER_VERTS
 
 log = setup_logging()
-
-# --- 柱・梁の円柱分割数などパラメータ（マジックナンバー排除） ---
-CYLINDER_VERTS = 16
 
 
 def build_members(
     nodes: dict[int, Vector], edges: set[tuple[int, int]], thickness: float
 ) -> list[tuple[bpy.types.Object, int, int]]:
     """
-    ノード座標とエッジリストから柱・梁（円柱メッシュ）を生成する関数
+    ノード座標とエッジリストから梁（ビーム）のみ生成する関数
 
     引数:
         nodes: {nid: Vector}
@@ -36,7 +37,7 @@ def build_members(
     戻り値:
         objs: [(Object, a, b), ...]
     """
-    log.debug(f"Building members for {len(edges)} edges (thickness={thickness})")
+    log.debug(f"Building beams for {len(edges)} edges (thickness={thickness})")
     objs: list[tuple[bpy.types.Object, int, int]] = []
     up = Vector((0, 0, 1))
     for a, b in edges:
@@ -65,11 +66,11 @@ def build_members(
 
             objs.append((obj, a, b))
         except Exception as e:
-            log.error(f"Failed to create member between node {a} and {b}: {e}")
+            log.error(f"Failed to create beam between node {a} and {b}: {e}")
 
-    log.debug("Member objects built.")
+    log.debug("Beam objects built.")
     return objs
 
 
-# 旧 API 名が使われている場合のフォールバック
+# 旧API名が使われている場合のフォールバック（将来削除OK）
 create_member_objects = build_members

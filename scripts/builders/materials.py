@@ -1,3 +1,5 @@
+# builders/materials.py
+
 import bpy
 from typing import Dict, List, Tuple
 from utils.logging import setup_logging
@@ -9,12 +11,9 @@ log = setup_logging()
 materials.py
 
 【役割 / Purpose】
-- 壁・屋根・柱・梁・ノード球それぞれに最適なBlenderマテリアルを自動生成・適用。
+- 壁・屋根・梁・ボーン柱それぞれに最適なBlenderマテリアルを自動生成・適用。
 - 画像パスや透明度等はすべてconfig.pyから一元管理。直接値やパスを直書きしない！
-
-【設計方針】
-- 例外時は「どの材料・何のオブジェクトで失敗したか」を詳細ログ。
-- オブジェクト名や種別に応じて自動で正しいマテリアルを割り当てる。
+- ノード球用のマテリアル生成は（現状非表示なので）省略可。
 """
 
 
@@ -58,7 +57,7 @@ def make_texture_mat(name: str, img_path: str, alpha: float) -> bpy.types.Materi
 
 def make_column_mat() -> bpy.types.Material:
     """
-    柱用マテリアル（波・ノイズ混ぜた木目調）を生成
+    ボーン柱用マテリアル（波・ノイズ混ぜた木目調）を生成
     """
     try:
         name = "ColumnMat"
@@ -122,43 +121,24 @@ def make_beam_mat() -> bpy.types.Material:
         raise
 
 
-def make_node_mat() -> bpy.types.Material:
-    """
-    ノード球用マテリアル（シンプルなオレンジ色）を生成
-    """
-    try:
-        name = "NodeMat"
-        mat = bpy.data.materials.get(name) or bpy.data.materials.new(name)
-        mat.use_nodes = True
-        nt = mat.node_tree
-        bsdf = next((n for n in nt.nodes if n.type == "BSDF_PRINCIPLED"), None)
-        if not bsdf:
-            nt.nodes.clear()
-            bsdf = nt.nodes.new(type="ShaderNodeBsdfPrincipled")
-            out = nt.nodes.new(type="ShaderNodeOutputMaterial")
-            nt.links.new(bsdf.outputs["BSDF"], out.inputs["Surface"])
-        bsdf.inputs["Base Color"].default_value = (1.0, 0.5, 0.0, 1)
-        log.debug("Node material created")
-        return mat
-    except Exception as e:
-        log.error(f"Failed to create node material: {e}")
-        raise
-
-
 def apply_all_materials(
-    node_objs: dict[int, bpy.types.Object],
-    panel_objs: list[bpy.types.Object],
+    node_objs: dict,  # ノード球は使わないので空dictでOK
+    panel_objs: List[bpy.types.Object],
     roof_obj: bpy.types.Object,
-    member_objs: list[tuple[bpy.types.Object, int, int]],
+    member_objs: List[Tuple[bpy.types.Object, int, int]],
+    bone_col_objs: List[
+        bpy.types.Object
+    ] = None,  # ボーン柱オブジェクト（必要なら渡す）
 ) -> None:
     """
-    全オブジェクト（ノード球・壁パネル・屋根・柱・梁）にマテリアルを一括適用
+    全オブジェクト（パネル・屋根・梁・ボーン柱）にマテリアルを一括適用
 
     引数:
-        node_objs: {nid: Object}
+        node_objs: {nid: Object}（ノード球。非表示なら空dictでOK）
         panel_objs: [Object, ...]
         roof_obj: Object
-        member_objs: [(Object, a, b), ...]
+        member_objs: [(Object, a, b), ...]（梁）
+        bone_col_objs: [Object, ...]（ボーン柱オブジェクト）
     """
     log.info("=== Applying all materials ===")
     try:
@@ -166,7 +146,6 @@ def apply_all_materials(
         mat_roof = make_texture_mat("RoofMat", ROOF_IMG, ROOF_ALPHA)
         mat_col = make_column_mat()
         mat_beam = make_beam_mat()
-        mat_node = make_node_mat()
 
         for o in panel_objs:
             o.data.materials.clear()
@@ -177,18 +156,13 @@ def apply_all_materials(
             roof_obj.data.materials.append(mat_roof)
 
         for obj, a, b in member_objs:
-            if obj.name.startswith("Column_") or (
-                obj.name.startswith("Member_") and "Column" in obj.name
-            ):
+            obj.data.materials.clear()
+            obj.data.materials.append(mat_beam)
+
+        if bone_col_objs:
+            for obj in bone_col_objs:
                 obj.data.materials.clear()
                 obj.data.materials.append(mat_col)
-            else:
-                obj.data.materials.clear()
-                obj.data.materials.append(mat_beam)
-
-        for o in node_objs.values():
-            o.data.materials.clear()
-            o.data.materials.append(mat_node)
 
         log.info("Materials applied successfully.")
     except Exception as e:

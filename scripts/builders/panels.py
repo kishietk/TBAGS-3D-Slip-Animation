@@ -1,8 +1,11 @@
+# builders/panels.py
+
 import bpy
 import bmesh
 from typing import Dict, List, Tuple
 from mathutils import Vector
 from utils.logging import setup_logging
+from config import EPS_XY_MATCH
 
 log = setup_logging()
 
@@ -12,15 +15,13 @@ panels.py
 【役割 / Purpose】
 - ノード座標から「壁パネル」「屋根」オブジェクト（メッシュ）をBlender上に自動生成するビルダー。
 - グリッド認識や階層・外周エッジ検出もここで一括処理。
+- 柱の“分割エッジ”依存なしで、ノード配置だけから面を生成。
 
 【設計方針】
 - EPS_XY_MATCH等は必ず定数管理でマジックナンバー排除。
 - 例外やデータ不足時も詳細ログ。
-- 柔軟な拡張（面の属性付与・階層フィルタ等）も対応しやすい。
+- パネル面のID設定などはobject["panel_ids"]で保持
 """
-
-# --- 判定しきい値定数（マジックナンバー排除：必要ならconfig.pyからimport） ---
-EPS_XY_MATCH = 1e-3
 
 
 def build_panels(
