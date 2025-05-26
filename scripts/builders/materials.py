@@ -1,33 +1,19 @@
 import bpy
-from typing import Dict, List, Tuple
-from logging_utils import setup_logging
+from utils.logging_utils import setup_logging
 from config import WALL_IMG, ROOF_IMG, WALL_ALPHA, ROOF_ALPHA
 
 log = setup_logging()
 
-"""
-materials.py
-
-【役割 / Purpose】
-- 壁・屋根・柱・梁・ノード球それぞれに最適なBlenderマテリアルを自動生成・適用。
-- 画像パスや透明度等はすべてconfig.pyから一元管理。直接値やパスを直書きしない！
-
-【設計方針】
-- 例外時は「どの材料・何のオブジェクトで失敗したか」を詳細ログ。
-- オブジェクト名や種別に応じて自動で正しいマテリアルを割り当てる。
-"""
-
 
 def make_texture_mat(name: str, img_path: str, alpha: float) -> bpy.types.Material:
     """
-    画像テクスチャ＋透明度を持つマテリアルを生成（壁・屋根用）
-
+    テクスチャ画像・透明度を持つマテリアルを生成する
     引数:
         name: マテリアル名
-        img_path: テクスチャ画像パス
-        alpha: 透明度
+        img_path: テクスチャ画像ファイルパス
+        alpha: 透明度（0.0～1.0）
     戻り値:
-        Blenderマテリアル
+        生成したBlenderマテリアル
     """
     try:
         mat = bpy.data.materials.get(name) or bpy.data.materials.new(name)
@@ -58,7 +44,7 @@ def make_texture_mat(name: str, img_path: str, alpha: float) -> bpy.types.Materi
 
 def make_column_mat() -> bpy.types.Material:
     """
-    柱用マテリアル（波・ノイズ混ぜた木目調）を生成
+    柱用マテリアル（木目調）を生成する
     """
     try:
         name = "ColumnMat"
@@ -91,7 +77,7 @@ def make_column_mat() -> bpy.types.Material:
 
 def make_beam_mat() -> bpy.types.Material:
     """
-    梁用マテリアル（ノイズ+グラデーション金属調）を生成
+    梁用マテリアル（金属調）を生成する
     """
     try:
         name = "BeamMat"
@@ -124,7 +110,7 @@ def make_beam_mat() -> bpy.types.Material:
 
 def make_node_mat() -> bpy.types.Material:
     """
-    ノード球用マテリアル（シンプルなオレンジ色）を生成
+    ノード球用マテリアル（オレンジ色）を生成する
     """
     try:
         name = "NodeMat"
@@ -152,13 +138,8 @@ def apply_all_materials(
     member_objs: list[tuple[bpy.types.Object, int, int]],
 ) -> None:
     """
-    全オブジェクト（ノード球・壁パネル・屋根・柱・梁）にマテリアルを一括適用
-
-    引数:
-        node_objs: {nid: Object}
-        panel_objs: [Object, ...]
-        roof_obj: Object
-        member_objs: [(Object, a, b), ...]
+    ノード球・壁パネル・屋根・柱・梁にマテリアルを一括適用し、
+    各種オブジェクトに適用した数を詳細ログに出力する
     """
     log.info("=== Applying all materials ===")
     try:
@@ -168,29 +149,50 @@ def apply_all_materials(
         mat_beam = make_beam_mat()
         mat_node = make_node_mat()
 
+        panel_count = 0
+        roof_count = 0
+        column_count = 0
+        beam_count = 0
+        node_count = 0
+
         for o in panel_objs:
             o.data.materials.clear()
             o.data.materials.append(mat_wall)
+            panel_count += 1
+            log.debug(f"Panel {o.name}: Material set to WallMat")
 
         if roof_obj:
             roof_obj.data.materials.clear()
             roof_obj.data.materials.append(mat_roof)
+            roof_count += 1
+            log.debug(f"Roof {roof_obj.name}: Material set to RoofMat")
 
         for obj, a, b in member_objs:
-            if obj.name.startswith("Column_") or (
-                obj.name.startswith("Member_") and "Column" in obj.name
-            ):
+            if obj.name.startswith("Column_"):
                 obj.data.materials.clear()
                 obj.data.materials.append(mat_col)
+                column_count += 1
+                log.debug(f"Column {obj.name}: Material set to ColumnMat")
+            elif obj.name.startswith("Beam_"):
+                obj.data.materials.clear()
+                obj.data.materials.append(mat_beam)
+                beam_count += 1
+                log.debug(f"Beam {obj.name}: Material set to BeamMat")
             else:
                 obj.data.materials.clear()
                 obj.data.materials.append(mat_beam)
+                log.debug(f"Member {obj.name}: Material set to BeamMat (default)")
 
         for o in node_objs.values():
             o.data.materials.clear()
             o.data.materials.append(mat_node)
+            node_count += 1
+            log.debug(f"Node {o.name}: Material set to NodeMat")
 
-        log.info("Materials applied successfully.")
+        log.info(
+            f"Materials applied successfully. Panels: {panel_count}, Roofs: {roof_count}, "
+            f"Columns: {column_count}, Beams: {beam_count}, Nodes: {node_count}"
+        )
     except Exception as e:
         log.error(f"Failed to apply all materials: {e}")
         raise

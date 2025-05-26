@@ -1,29 +1,14 @@
-"""
-animator.py
-
-【役割】
-- Blender上で壁パネル・屋根・柱梁を「毎フレーム自動で再配置」するアニメーション制御モジュール。
-- すべての定数/文字列/しきい値/命名規則/UV名はconfig.pyで集中管理、importして使用。
-
-【設計方針】
-- 値やパス、名前は絶対直書き禁止。config.pyから必ずimport！
-- エラーは何のオブジェクト/ノードID/行で起きたかを詳細ログ。
-"""
+# アニメーション制御モジュール
+# フレーム毎に壁パネル・屋根・柱梁をノード位置に自動追従させる
 
 import bpy
 import bmesh
 from typing import List, Tuple
 from mathutils import Vector, Quaternion
-from logging_utils import setup_logging
+from utils.logging_utils import setup_logging
 from config import (
     EPS_AXIS,
-    PANEL_OBJ_PREFIX,
     NODE_OBJ_PREFIX,
-    ROOF_OBJ_NAME,
-    ROOF_MESH_NAME,
-    MEMBER_OBJ_PREFIX,
-    COLUMN_OBJ_PREFIX,
-    LABEL_OBJ_PREFIX,
     UV_MAP_NAME,
 )
 
@@ -39,7 +24,16 @@ def on_frame(
     node_objs: dict[int, bpy.types.Object],
 ) -> None:
     """
-    フレームごとに壁パネル・屋根・柱梁を最新ノード位置に自動追従させる。
+    フレームごとに壁パネル・屋根・柱梁を最新ノード位置に追従させる
+    引数:
+        scene: Blenderのシーン
+        panel_objs: 壁パネルオブジェクトのリスト
+        roof_obj: 屋根オブジェクト
+        roof_quads: 屋根パネルIDタプルリスト
+        member_objs: (オブジェクト, ノードAのID, ノードBのID)のリスト
+        node_objs: ノードID→Blenderオブジェクトの辞書
+    戻り値:
+        なし
     """
     up = Vector((0, 0, 1))
 
@@ -134,8 +128,15 @@ def init_animation(
     node_objs: dict[int, bpy.types.Object],
 ) -> None:
     """
-    Blenderのフレームチェンジ時に「on_frame」を毎回呼ぶイベントを登録。
-    config.pyの命名規則・定数ですべて動くため保守性抜群！
+    Blenderのフレームチェンジ時にon_frameを呼ぶイベントを登録する
+    引数:
+        panel_objs: 壁パネルオブジェクトのリスト
+        roof_obj: 屋根オブジェクト
+        roof_quads: 屋根パネルIDタプルリスト
+        member_objs: (オブジェクト, ノードAのID, ノードBのID)のリスト
+        node_objs: ノードID→Blenderオブジェクトの辞書
+    戻り値:
+        なし
     """
     try:
         bpy.app.handlers.frame_change_pre.clear()

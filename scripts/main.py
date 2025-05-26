@@ -1,35 +1,41 @@
+# Blender用実行エントリースクリプト（ホットリロード対応）
+# 全ビルド・マテリアル適用・アニメーション登録を一括実行する
+
 import sys
 import os
 import importlib
 
-# ============================================
-# モジュールホットリロード対応（Blender再起動不要）
-# - 開発中はモジュール編集→main.py実行で即反映
-# - 必要なファイルはMODULESリストに追加
-# ============================================
-
+# --- パス設定 ---
 scripts_dir = os.path.dirname(os.path.abspath(__file__))
 if scripts_dir not in sys.path:
     sys.path.insert(0, scripts_dir)
 
+# --- ホットリロード対象モジュールリスト ---
 MODULES = [
     "config",
-    "logging_utils",
-    "loader.node_loader",
-    "loader.edge_loader",
-    "loader.animation_loader",
+    "utils.logging_utils",
+    "utils.scene_utils",
+    "loaders.node_loader",
+    "loaders.edge_loader",
+    "loaders.animation_loader",
     "cores.node",
     "cores.edge",
     "cores.panel",
+    "cores.beam",
+    "cores.column",
     "cores.manager",
     "builders.nodes",
-    "builders.edges",  # 旧members
     "builders.panels",
     "builders.materials",
-    # 必要があればここに追加
+    "builders.columns",
+    "builders.beams",
+    "builders.scene_factory",
+    "animators.animator",
 ]
+
 for m in MODULES:
     try:
+        # モジュールがすでにロードされていればreload、なければimport
         if m in locals():
             importlib.reload(locals()[m])
         elif m in globals():
@@ -39,76 +45,44 @@ for m in MODULES:
     except Exception as e:
         print(f"[WARN] Failed to reload/import {m}: {e}")
 
-# ==========================
-# ↓以降は普通にimport＆実装
-# ==========================
+# --- 各種import ---
 import bpy
-from logging_utils import setup_logging
+from utils.logging_utils import setup_logging
+from utils.scene_utils import clear_scene
 from cores.manager import CoreManager
-from builders.nodes import build_nodes, create_node_labels
-from builders.panels import build_panels, build_roof
-from builders.edges import build_members
+from loaders.animation_loader import load_animation_data
+from builders.scene_factory import create_blender_objects
 from builders.materials import apply_all_materials
-from loaders.animation_loader import load_animation_data  # ← 追加
+from animators.animator import init_animation
 
 log = setup_logging()
 
-"""
-main.py
-
-【役割 / Purpose】
-- データ→構造体→Blenderビルドの全自動一発実行スクリプト（現場運用主力）。
-- 各種設定・生成流れを整理し、エラー時も詳細ログ＋トレースバックで記録。
-- ホットリロードブロックにより再起動不要＆効率最大化。
-- animation.csvによるノード球の変位アニメーションにも完全対応！
-
-【設計方針】
-- ビルド順：シーン初期化→データ読込→各種生成→マテリアル適用まで一発。
-"""
-
 
 def main():
-    log.info("=== Start Visualization (with CoreManager) ===")
+    """
+    構造可視化シーンを初期化・構築する
+    引数:
+        なし
+    戻り値:
+        なし
+    """
+    log.info("=== Start Visualization ===")
     try:
-        # --- シーン初期化 ---
-        bpy.ops.object.select_all(action="SELECT")
-        bpy.ops.object.delete()
-        bpy.app.handlers.frame_change_pre.clear()
-
-        # --- コアマネージャーからフィルタ済みデータ取得 ---
+        # シーン初期化（全オブジェクト削除）
+        clear_scene()
+        # コアデータ生成・取得
         cm = CoreManager()
         nodes = cm.get_nodes()
-        edges = cm.get_edges()
-        panels = cm.get_panels()
-
-        # --- アニメーションデータもロード ---
+        column_edges, beam_edges = cm.classify_edges()
         anim_data = load_animation_data()
-
-        # --- ノード球生成＋アニメ付与 ---
-        node_objs = build_nodes(
-            {n.id: n.pos for n in nodes}, radius=0.05, anim_data=anim_data
+        # Blenderオブジェクト生成
+        node_objs, panel_objs, roof_obj, roof_quads, member_objs = (
+            create_blender_objects(nodes, column_edges, beam_edges, anim_data)
         )
-        create_node_labels({n.id: n.pos for n in nodes}, radius=0.05)
-
-        # --- パネル・屋根生成 ---
-        panel_objs = build_panels(
-            {n.id: n.pos for n in nodes}, {(e.node_a.id, e.node_b.id) for e in edges}
-        )
-        roof_obj, roof_quads = build_roof({n.id: n.pos for n in nodes})
-
-        # --- 柱・梁生成 ---
-        member_objs = build_members(
-            {n.id: n.pos for n in nodes},
-            {(e.node_a.id, e.node_b.id) for e in edges},
-            thickness=0.5,
-        )
-
-        # --- マテリアル一括適用 ---
+        # マテリアル適用
         apply_all_materials(node_objs, panel_objs, roof_obj, member_objs)
-
-        # --- アニメーションハンドラ登録・他処理（未実装、将来用） ---
-        # 例：from animator import init_animation ...
-
+        # アニメーションイベント登録
+        init_animation(panel_objs, roof_obj, roof_quads, member_objs, node_objs)
         log.info("=== Visualization Completed ===")
     except Exception as e:
         log.error("Error in main()")

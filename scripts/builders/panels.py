@@ -1,25 +1,13 @@
+# パネル・屋根生成ビルダー
+# ノード座標から壁パネル・屋根パネルをBlender上に生成する
+
 import bpy
-import bmesh
-from typing import Dict, List, Tuple
 from mathutils import Vector
-from logging_utils import setup_logging
+from utils.logging_utils import setup_logging
+from config import EPS_XY_MATCH
 
 log = setup_logging()
 
-"""
-panels.py
-
-【役割 / Purpose】
-- ノード座標から「壁パネル」「屋根」オブジェクト（メッシュ）をBlender上に自動生成するビルダー。
-- グリッド認識や階層・外周エッジ検出もここで一括処理。
-
-【設計方針】
-- EPS_XY_MATCH等は必ず定数管理でマジックナンバー排除。
-- 例外やデータ不足時も詳細ログ。
-- 柔軟な拡張（面の属性付与・階層フィルタ等）も対応しやすい。
-"""
-
-# --- 判定しきい値定数（マジックナンバー排除：必要ならconfig.pyからimport） ---
 EPS_XY_MATCH = 1e-3
 
 
@@ -27,14 +15,12 @@ def build_panels(
     nodes: dict[int, Vector], edges: set[tuple[int, int]]
 ) -> list[bpy.types.Object]:
     """
-    ノード座標から外周水平セグメントを自動抽出し、
-    各階層の壁パネルをBlender上に生成する関数
-
+    ノード座標から壁パネルを自動抽出し、Blender上に生成する
     引数:
-        nodes: {nid: Vector}
-        edges: set((a, b), ...)
+        nodes: ノードID→座標Vectorの辞書
+        edges: エッジ（ノードIDペア）の集合
     戻り値:
-        panels: list[Object]
+        パネルのBlenderオブジェクトリスト
     """
     if not nodes:
         log.warning("No nodes supplied to build_panels()")
@@ -50,7 +36,7 @@ def build_panels(
     xmin, xmax = min(xs), max(xs)
     ymin, ymax = min(ys), max(ys)
 
-    panel_ids: list[tuple[int, int, int, int]] = []
+    panel_ids = []
     for lvl, z in enumerate(zs[:-1]):
         z_up = zs[lvl + 1]
         left = sorted(
@@ -86,12 +72,12 @@ def build_panels(
             key=lambda i: nodes[i].x,
         )
 
-        def segs(lst: list[int]) -> list[tuple[int, int]]:
+        def segs(lst):
             return [(lst[i], lst[i + 1]) for i in range(len(lst) - 1)]
 
         for a, b in segs(left) + segs(front) + segs(right) + segs(back):
 
-            def find_at(x: float, y: float, zval: float) -> int | None:
+            def find_at(x, y, zval):
                 for nid2, pos2 in nodes.items():
                     if (
                         abs(pos2.z - zval) < EPS_XY_MATCH
@@ -107,8 +93,9 @@ def build_panels(
             d = find_at(x2, y2, z_up)
             if c and d:
                 panel_ids.append((a, b, c, d))
+                log.debug(f"Panel quad: {a}-{b}-{c}-{d}")
 
-    panels: list[bpy.types.Object] = []
+    panels = []
     for a, b, c, d in panel_ids:
         try:
             mesh = bpy.data.meshes.new(f"Panel_{a}_{b}")
@@ -116,6 +103,7 @@ def build_panels(
             bpy.context.collection.objects.link(obj)
             obj["panel_ids"] = (a, b, c, d)
             panels.append(obj)
+            log.debug(f"Created Panel_{a}_{b}: panel_ids={(a, b, c, d)}")
         except Exception as e:
             log.error(f"Failed to create panel ({a}, {b}, {c}, {d}): {e}")
     return panels
@@ -126,11 +114,10 @@ def build_roof(
 ) -> tuple[bpy.types.Object | None, list[tuple[int, int, int, int]]]:
     """
     最上階ノードから屋根パネル群を生成し、Blenderオブジェクトとして返す
-
     引数:
-        nodes: {nid: Vector}
+        nodes: ノードID→座標Vectorの辞書
     戻り値:
-        (roof_obj, quads): (屋根Object, ルーフ面ノードIDリスト)
+        (屋根オブジェクト, 屋根パネルIDタプルリスト)
     """
     zs = sorted({v.z for v in nodes.values()})
     if not zs:
@@ -141,7 +128,7 @@ def build_roof(
     xs = sorted({v.x for v in tops.values()})
     ys = sorted({v.y for v in tops.values()})
 
-    def fid(x: float, y: float) -> int | None:
+    def fid(x, y):
         return next(
             (
                 n
@@ -151,7 +138,7 @@ def build_roof(
             None,
         )
 
-    quads: list[tuple[int, int, int, int]] = []
+    quads = []
     for i in range(len(xs) - 1):
         for j in range(len(ys) - 1):
             bl = fid(xs[i], ys[j])
@@ -160,12 +147,14 @@ def build_roof(
             tl = fid(xs[i], ys[j + 1])
             if None not in (bl, br, tr, tl):
                 quads.append((bl, br, tr, tl))
+                log.debug(f"Roof quad: {bl}-{br}-{tr}-{tl}")
 
     try:
         mesh = bpy.data.meshes.new("RoofMesh")
         obj = bpy.data.objects.new("Roof", mesh)
         bpy.context.collection.objects.link(obj)
         obj["roof_quads"] = quads
+        log.debug(f"Created Roof: {obj.name}, quads={quads}")
         return obj, quads
     except Exception as e:
         log.error(f"Failed to create roof mesh: {e}")

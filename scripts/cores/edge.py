@@ -1,28 +1,17 @@
-from __future__ import annotations
+# エッジ（部材：梁・柱等）クラス
+# 2つのノード間の部材の基底クラス。種別ID・種別ラベル・関連パネルを保持する
+
 from typing import Optional, List, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from cores.node import Node
     from cores.panel import Panel
 
-"""
-edge.py
-
-【役割 / Purpose】
-- 構造グラフの「エッジ（部材：柱・梁など）」情報を表現するコアクラス。
-- 両端ノード・種別ID・ラベル・所属パネルリスト等を管理。
-- 生成時に両端ノードへ自分自身を自動登録（双方向参照）。
-
-【設計方針】
-- kind_id/kind_labelはself.strの #番号・ラベルをそのまま保持。
-- add_panel()で自身が所属するPanelも記録。
-- 反対側ノード取得APIも用意。
-"""
-
 
 class Edge:
     """
-    エッジ（部材：梁・柱等）のコアクラス
+    エッジ（部材：梁・柱等）の基底クラス
+    ノードA・ノードB・種別ID・種別ラベル・関連パネルを保持する
     """
 
     def __init__(
@@ -32,33 +21,45 @@ class Edge:
         kind_id: Optional[int] = None,
         kind_label: Optional[str] = None,
     ):
-        self.id = tuple(sorted([node_a.id, node_b.id]))  # (小さい方, 大きい方)で一意化
-        self.node_a = node_a  # 一端ノード
-        self.node_b = node_b  # 他端ノード
-        self.kind_id = kind_id  # 部材種別ID（#42など）
-        self.kind_label = kind_label  # 種別ラベル
-        self.panels: List["Panel"] = []  # このエッジが含まれるPanelリスト
-
-        # 両端ノードへこのエッジを登録（双方向リンク）
+        """
+        エッジを初期化する
+        引数:
+            node_a: 接続ノードA（Node型）
+            node_b: 接続ノードB（Node型）
+            kind_id: 部材種別ID（任意、整数）
+            kind_label: 部材種別ラベル（任意、文字列）
+        戻り値:
+            なし
+        """
+        self.id = tuple(sorted([node_a.id, node_b.id]))
+        self.node_a = node_a
+        self.node_b = node_b
+        self.kind_id = kind_id
+        self.kind_label = kind_label
+        self.panels: List["Panel"] = []
         self.node_a.add_edge(self)
         self.node_b.add_edge(self)
 
-    def __repr__(self):
-        return (
-            f"Edge(id={self.id}, kind_id={self.kind_id}, kind_label={self.kind_label}, "
-            f"nodes=({self.node_a.id}, {self.node_b.id}), panels={len(self.panels)})"
-        )
-
-    def add_panel(self, panel: "Panel"):
+    def add_panel(self, panel: "Panel") -> None:
         """
-        このエッジが所属するパネルを追加（重複防止）
+        関連するパネルをエッジのリストに追加する
+        引数:
+            panel: パネルインスタンス
+        戻り値:
+            なし
         """
         if panel not in self.panels:
             self.panels.append(panel)
 
     def get_other_node(self, node: "Node") -> "Node":
         """
-        このエッジの一方のノードを渡すと、もう一方のノードを返す
+        指定したノードと反対側のノードを返す
+        引数:
+            node: 片側ノード（Node型）
+        戻り値:
+            もう一方のノード（Node型）
+        例外:
+            指定ノードがこのエッジに含まれない場合はValueError
         """
         if node == self.node_a:
             return self.node_b
@@ -66,3 +67,16 @@ class Edge:
             return self.node_a
         else:
             raise ValueError("Edge does not connect to given node")
+
+    def __repr__(self) -> str:
+        """
+        エッジの情報を文字列として返す
+        引数:
+            なし
+        戻り値:
+            エッジ情報の文字列
+        """
+        return (
+            f"{self.__class__.__name__}(id={self.id}, kind_id={self.kind_id}, kind_label={self.kind_label}, "
+            f"nodes=({self.node_a.id}, {self.node_b.id}), panels={len(self.panels)})"
+        )
