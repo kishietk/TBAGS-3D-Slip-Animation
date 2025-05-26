@@ -2,7 +2,7 @@ import csv
 from collections import defaultdict
 from typing import Dict
 from mathutils import Vector
-from logging_utils import setup_logging
+from utils.logging_utils import setup_logging
 from config import ANIM_CSV, VALID_NODE_IDS, ANIM_FPS, DISP_SCALE
 
 """

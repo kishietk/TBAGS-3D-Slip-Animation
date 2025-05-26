@@ -1,7 +1,6 @@
-from __future__ import annotations
 from typing import Dict, List, Optional, Set
 from mathutils import Vector
-from logging_utils import setup_logging
+from utils.logging_utils import setup_logging
 from config import (
     NODE_CSV,
     EDGES_FILE,
@@ -12,20 +11,6 @@ from cores.edge import Edge
 from cores.panel import Panel
 from loaders.edge_loader import load_edges_from_str
 import csv
-
-"""
-manager.py
-
-【役割 / Purpose】
-- 構造全体（ノード・エッジ・パネル）を一元管理・API化するクラス。
-- データ読込→構造体構築→相互リンク→パネル自動生成まで行う。
-- 「梁だけ抽出」等の便利APIも提供。
-
-【設計方針】
-- CSV直読の独自ノードローダ（クラス内関数）も用意。
-- パネル自動生成は座標グリッド・階層検出で面生成。
-- 型ヒント・詳細コメント徹底。
-"""
 
 log = setup_logging()
 
@@ -163,3 +148,19 @@ class CoreManager:
             f"Edges: {len(self.edges)}\n"
             f"Panels: {len(self.panels)}"
         )
+
+    def classify_edges(self):
+        """エッジリストを柱・梁の2つに分類（IDリストはconfig参照）"""
+        from config import COLUMNS_KIND_IDS, BEAMS_KIND_IDS
+
+        column_edges = [
+            (e.node_a.id, e.node_b.id)
+            for e in self.edges
+            if e.kind_id in COLUMNS_KIND_IDS
+        ]
+        beam_edges = [
+            (e.node_a.id, e.node_b.id)
+            for e in self.edges
+            if e.kind_id in BEAMS_KIND_IDS
+        ]
+        return column_edges, beam_edges

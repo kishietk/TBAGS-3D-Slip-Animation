@@ -1,6 +1,6 @@
 import bpy
 from mathutils import Vector
-from logging_utils import setup_logging
+from utils.logging_utils import setup_logging
 
 log = setup_logging()
 
@@ -40,7 +40,7 @@ def build_columns(
                 obj.rotation_quaternion = [1, 0, 0, 0]
             obj.scale = (thickness, thickness, length)
 
-            log.info(
+            log.debug(
                 f"Column_{a}_{b}: from {tuple(p1)} to {tuple(p2)}, length={length}"
             )
 

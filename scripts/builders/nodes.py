@@ -1,6 +1,6 @@
 import bpy
 from mathutils import Vector
-from logging_utils import setup_logging
+from utils.logging_utils import setup_logging
 from config import NODE_LABEL_SIZE, NODE_LABEL_OFFSET
 
 log = setup_logging()
@@ -22,16 +22,13 @@ def build_nodes(
             o = bpy.context.object
             o.name = f"Node_{nid}"
             objs[nid] = o
-            log.info(f"Node_{nid}: pos={tuple(pos)}, radius={radius}")
+            log.debug(f"Node_{nid}: pos={tuple(pos)}, radius={radius}")
 
             # アニメーションデータがあればキーフレーム登録
             if anim_data and nid in anim_data:
                 for frame, offset in anim_data[nid].items():
                     o.location = pos + offset
                     o.keyframe_insert(data_path="location", frame=frame)
-                log.info(
-                    f"Node_{nid}: animation keys set (frames={list(anim_data[nid].keys())})"
-                )
         except Exception as e:
             log.error(f"Failed to create node sphere for ID {nid}: {e}")
     return objs
@@ -61,6 +58,6 @@ def create_node_labels(nodes: dict[int, Vector], radius: float) -> None:
             text_obj.rotation_euler = (radians(90), 0, 0)
             text_obj.parent = node_obj
             text_obj.location = Vector(NODE_LABEL_OFFSET)
-            log.info(f"Label_{nid}: attached to Node_{nid}, offset={NODE_LABEL_OFFSET}")
+            log.debug(f"Label_{nid}: attached to Node_{nid}, offset={NODE_LABEL_OFFSET}")
         except Exception as e:
             log.error(f"Failed to create label for node {nid}: {e}")

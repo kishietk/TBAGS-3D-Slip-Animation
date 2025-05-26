@@ -2,7 +2,7 @@ import csv
 from typing import Dict
 from mathutils import Vector
 from config import NODE_CSV, VALID_NODE_IDS
-from logging_utils import setup_logging
+from utils.logging_utils import setup_logging
 
 """
 node_loader.py
@@ -84,6 +84,6 @@ def load_nodes(path: str = NODE_CSV) -> dict[int, Vector]:
                 nodes[nid] = Vector((x, y, z))
     except Exception as e:
         log.critical(f"[{path}] CRITICAL: Failed to read node CSV ({e})")
-        raise  # fail-fast設計
+        raise
     log.info(f"Loaded {len(nodes)} nodes from {path}")
     return nodes

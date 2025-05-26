@@ -1,5 +1,5 @@
 import bpy
-from logging_utils import setup_logging
+from utils.logging_utils import setup_logging
 from config import WALL_IMG, ROOF_IMG, WALL_ALPHA, ROOF_ALPHA
 
 log = setup_logging()
@@ -149,31 +149,31 @@ def apply_all_materials(
         for o in panel_objs:
             o.data.materials.clear()
             o.data.materials.append(mat_wall)
-            log.info(f"Panel {o.name}: Material set to WallMat")
+            log.debug(f"Panel {o.name}: Material set to WallMat")
 
         if roof_obj:
             roof_obj.data.materials.clear()
             roof_obj.data.materials.append(mat_roof)
-            log.info(f"Roof {roof_obj.name}: Material set to RoofMat")
+            log.debug(f"Roof {roof_obj.name}: Material set to RoofMat")
 
         for obj, a, b in member_objs:
             if obj.name.startswith("Column_"):
                 obj.data.materials.clear()
                 obj.data.materials.append(mat_col)
-                log.info(f"Column {obj.name}: Material set to ColumnMat")
+                log.debug(f"Column {obj.name}: Material set to ColumnMat")
             elif obj.name.startswith("Beam_"):
                 obj.data.materials.clear()
                 obj.data.materials.append(mat_beam)
-                log.info(f"Beam {obj.name}: Material set to BeamMat")
+                log.debug(f"Beam {obj.name}: Material set to BeamMat")
             else:
                 obj.data.materials.clear()
                 obj.data.materials.append(mat_beam)
-                log.info(f"Member {obj.name}: Material set to BeamMat (default)")
+                log.debug(f"Member {obj.name}: Material set to BeamMat (default)")
 
         for o in node_objs.values():
             o.data.materials.clear()
             o.data.materials.append(mat_node)
-            log.info(f"Node {o.name}: Material set to NodeMat")
+            log.debug(f"Node {o.name}: Material set to NodeMat")
 
         log.info("Materials applied successfully.")
     except Exception as e:

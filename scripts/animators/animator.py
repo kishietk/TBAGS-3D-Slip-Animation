@@ -14,7 +14,7 @@ import bpy
 import bmesh
 from typing import List, Tuple
 from mathutils import Vector, Quaternion
-from logging_utils import setup_logging
+from utils.logging_utils import setup_logging
 from config import (
     EPS_AXIS,
     PANEL_OBJ_PREFIX,

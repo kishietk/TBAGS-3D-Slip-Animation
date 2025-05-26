@@ -1,6 +1,6 @@
 import bpy
 from mathutils import Vector
-from logging_utils import setup_logging
+from utils.logging_utils import setup_logging
 
 log = setup_logging()
 
@@ -85,7 +85,7 @@ def build_panels(
             d = find_at(x2, y2, z_up)
             if c and d:
                 panel_ids.append((a, b, c, d))
-                log.info(f"Panel quad: {a}-{b}-{c}-{d}")
+                log.debug(f"Panel quad: {a}-{b}-{c}-{d}")
 
     panels = []
     for a, b, c, d in panel_ids:
@@ -95,7 +95,7 @@ def build_panels(
             bpy.context.collection.objects.link(obj)
             obj["panel_ids"] = (a, b, c, d)
             panels.append(obj)
-            log.info(f"Created Panel_{a}_{b}: panel_ids={(a, b, c, d)}")
+            log.debug(f"Created Panel_{a}_{b}: panel_ids={(a, b, c, d)}")
         except Exception as e:
             log.error(f"Failed to create panel ({a}, {b}, {c}, {d}): {e}")
     return panels
@@ -135,14 +135,14 @@ def build_roof(
             tl = fid(xs[i], ys[j + 1])
             if None not in (bl, br, tr, tl):
                 quads.append((bl, br, tr, tl))
-                log.info(f"Roof quad: {bl}-{br}-{tr}-{tl}")
+                log.debug(f"Roof quad: {bl}-{br}-{tr}-{tl}")
 
     try:
         mesh = bpy.data.meshes.new("RoofMesh")
         obj = bpy.data.objects.new("Roof", mesh)
         bpy.context.collection.objects.link(obj)
         obj["roof_quads"] = quads
-        log.info(f"Created Roof: {obj.name}, quads={quads}")
+        log.debug(f"Created Roof: {obj.name}, quads={quads}")
         return obj, quads
     except Exception as e:
         log.error(f"Failed to create roof mesh: {e}")
