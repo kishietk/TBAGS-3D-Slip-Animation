@@ -1,7 +1,10 @@
+# エッジデータローダ
+# テキストデータからエッジ・梁・柱インスタンスを生成する
+
 import re
 from typing import List, Dict, Optional
 from utils.logging_utils import setup_logging
-from config import EDGES_FILE, EBEAM_KIND_LABELS, COLUMNS_KIND_IDS, BEAMS_KIND_IDS
+from config import EBEAM_KIND_LABELS, COLUMNS_KIND_IDS, BEAMS_KIND_IDS
 from cores.node import Node
 from cores.edge import Edge
 from cores.beam import Beam
@@ -15,6 +18,15 @@ def load_edges_from_str(
     node_map: Dict[int, Node],
     valid_kind_ids: Optional[List[int]] = None,
 ) -> List[Edge]:
+    """
+    エッジ定義テキストからエッジ・梁・柱インスタンスを生成する
+    引数:
+        path: エッジ定義ファイルパス
+        node_map: ノードID→Nodeインスタンスの辞書
+        valid_kind_ids: 有効な部材種別IDリスト（省略可）
+    戻り値:
+        Edge/Beam/Columnインスタンスのリスト
+    """
     edges: List[Edge] = []
     current_kind_id: Optional[int] = None
     current_kind_label: Optional[str] = None
@@ -59,13 +71,11 @@ def load_edges_from_str(
                     abnormal_skip_count += 1
                     continue
 
-                # ---- ここが重要 ----
                 if (
                     node_a_id in node_map
                     and node_b_id in node_map
                     and (valid_kind_ids is None or current_kind_id in valid_kind_ids)
                 ):
-                    # 種別IDでBeam/Column/Edgeを切り分け
                     if current_kind_id in COLUMNS_KIND_IDS:
                         edge = Column(
                             node_a=node_map[node_a_id],

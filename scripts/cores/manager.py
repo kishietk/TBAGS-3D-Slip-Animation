@@ -1,11 +1,11 @@
+# CoreManagerクラス
+# ノード・エッジ・パネルの生成・管理を行う
+
 from typing import Dict, List, Optional, Set
 from mathutils import Vector
 from utils.logging_utils import setup_logging
-from config import (
-    NODE_CSV,
-    EDGES_FILE,
-    VALID_NODE_IDS,
-)
+from config import NODE_CSV, EDGES_FILE, VALID_NODE_IDS, EPS_XY_MATCH
+
 from cores.node import Node
 from cores.edge import Edge
 from cores.panel import Panel
@@ -17,7 +17,8 @@ log = setup_logging()
 
 class CoreManager:
     """
-    Node/Edge/Panel全体生成・API・フィルタ管理クラス
+    ノード・エッジ・パネル全体を管理するクラス
+    データのロード・自動生成・フィルタ・集計APIを提供する
     """
 
     def __init__(
@@ -27,6 +28,16 @@ class CoreManager:
         valid_node_ids: Optional[Set[int]] = None,
         valid_kind_ids: Optional[List[int]] = None,
     ):
+        """
+        CoreManagerを初期化する
+        引数:
+            node_csv: ノード座標CSVファイルパス
+            edge_str: エッジ定義ファイルパス
+            valid_node_ids: 有効なノードID集合（省略時は設定値を使用）
+            valid_kind_ids: 有効な部材種別IDリスト（省略可）
+        戻り値:
+            なし
+        """
         self.node_csv = node_csv
         self.edge_str = edge_str
         self.valid_node_ids = valid_node_ids or VALID_NODE_IDS
@@ -40,7 +51,11 @@ class CoreManager:
 
     def _build_all(self):
         """
-        ノード・エッジ・パネル全体を一括生成
+        ノード・エッジ・パネル全体を一括生成する
+        引数:
+            なし
+        戻り値:
+            なし
         """
         log.info("CoreManager: Loading nodes...")
         self.nodes = self._load_nodes(self.node_csv, self.valid_node_ids)
@@ -57,7 +72,12 @@ class CoreManager:
 
     def _load_nodes(self, path: str, valid_ids: Set[int]) -> Dict[int, Node]:
         """
-        ノード座標CSVをNodeインスタンス辞書に変換（loaderとほぼ同じ実装）
+        ノード座標CSVを読み込む
+        引数:
+            path: ノード座標CSVファイルパス
+            valid_ids: 有効なノードID集合
+        戻り値:
+            ノードID→Nodeインスタンスの辞書
         """
         node_map: Dict[int, Node] = {}
         try:
@@ -84,7 +104,11 @@ class CoreManager:
 
     def _build_panels(self, node_map: Dict[int, Node]) -> List[Panel]:
         """
-        ノード群からグリッド検出・階層判定で自動的にPanelリスト生成
+        ノード群からパネルを自動生成する
+        引数:
+            node_map: ノードID→Nodeインスタンスの辞書
+        戻り値:
+            Panelインスタンスのリスト
         """
         panels: List[Panel] = []
         zs = sorted({n.pos.z for n in node_map.values()})
@@ -97,9 +121,9 @@ class CoreManager:
         def fid(x, y, z):
             for n in nodes.values():
                 if (
-                    abs(n.pos.x - x) < 1e-3
-                    and abs(n.pos.y - y) < 1e-3
-                    and abs(n.pos.z - z) < 1e-3
+                    abs(n.pos.x - x) < EPS_XY_MATCH
+                    and abs(n.pos.y - y) < EPS_XY_MATCH
+                    and abs(n.pos.z - z) < EPS_XY_MATCH
                 ):
                     return n
             return None
@@ -119,7 +143,11 @@ class CoreManager:
 
     def get_nodes(self, ids: Optional[List[int]] = None) -> List[Node]:
         """
-        ノードリスト取得（ID指定でフィルタも可）
+        ノードリストを取得する
+        引数:
+            ids: 取得するノードIDリスト（省略時は全ノード）
+        戻り値:
+            Nodeインスタンスのリスト
         """
         if ids is None:
             return list(self.nodes.values())
@@ -127,7 +155,11 @@ class CoreManager:
 
     def get_edges(self, kind_ids: Optional[List[int]] = None) -> List[Edge]:
         """
-        エッジリスト取得（部材種別IDでフィルタ可）
+        エッジリストを取得する
+        引数:
+            kind_ids: 部材種別IDリスト（省略時は全エッジ）
+        戻り値:
+            Edgeインスタンスのリスト
         """
         if kind_ids is None:
             return self.edges
@@ -135,13 +167,21 @@ class CoreManager:
 
     def get_panels(self) -> List[Panel]:
         """
-        パネルリスト取得
+        パネルリストを取得する
+        引数:
+            なし
+        戻り値:
+            Panelインスタンスのリスト
         """
         return self.panels
 
     def summary(self) -> str:
         """
-        サマリ文字列出力
+        データの件数サマリを取得する
+        引数:
+            なし
+        戻り値:
+            サマリ文字列
         """
         return (
             f"Nodes: {len(self.nodes)}\n"
@@ -150,7 +190,13 @@ class CoreManager:
         )
 
     def classify_edges(self):
-        """エッジリストを柱・梁の2つに分類（IDリストはconfig参照）"""
+        """
+        エッジリストを柱・梁に分類する
+        引数:
+            なし
+        戻り値:
+            (柱エッジIDペアリスト, 梁エッジIDペアリスト)
+        """
         from config import COLUMNS_KIND_IDS, BEAMS_KIND_IDS
 
         column_edges = [

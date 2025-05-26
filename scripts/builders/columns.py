@@ -1,3 +1,6 @@
+# 柱生成ビルダー
+# ノード座標とエッジ情報から柱（Cylinderオブジェクト）を生成する
+
 import bpy
 from mathutils import Vector
 from utils.logging_utils import setup_logging
@@ -11,8 +14,13 @@ def build_columns(
     thickness: float,
 ) -> list[tuple[bpy.types.Object, int, int]]:
     """
-    柱（columns）をシンプルなシリンダーで生成
-    戻り値は (obj, a, b)
+    柱（columns）をシリンダーで生成する
+    引数:
+        nodes: ノードID→座標Vectorの辞書
+        edges: 柱を構成するノードIDペアの集合
+        thickness: シリンダーの半径
+    戻り値:
+        (柱オブジェクト, ノードAのID, ノードBのID)のタプルリスト
     """
     objs = []
     up = Vector((0, 0, 1))

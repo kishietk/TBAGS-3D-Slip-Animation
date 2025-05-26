@@ -1,3 +1,6 @@
+# アニメーションデータローダ
+# ノードごとのフレーム毎変位データを辞書形式で読み込む
+
 import csv
 from collections import defaultdict
 from typing import Dict
@@ -5,36 +8,21 @@ from mathutils import Vector
 from utils.logging_utils import setup_logging
 from config import ANIM_CSV, VALID_NODE_IDS, ANIM_FPS, DISP_SCALE
 
-"""
-animation_loader.py
-
-【役割 / Purpose】
-- animation.csv（ノードごとのフレーム毎変位データ）を「ノードID→{フレーム: 変位Vector}」の辞書に変換するローダ関数。
-- どの列がどのノード/成分かは(TYPE)/(CMP)/(ID)ヘッダーで柔軟に認識。
-- すべての異常・例外は詳細ログ。
-
-【設計方針】
-- 定数/ヘッダー名/しきい値はconfig.pyからimportし、ハードコーディング禁止。
-- データ不備・パース失敗は即例外または詳細ログ。
-- 型ヒント・詳細運用コメントつき。
-"""
-
 log = setup_logging()
 
-# ---- ヘッダー判定用 ----
 TYPE_HEADER = "(TYPE)"
 CMP_HEADER = "(CMP)"
 ID_HEADER = "(ID)"
 
 
-def load_animation_data(path: str = ANIM_CSV) -> dict[int, dict[int, Vector]]:
+def load_animation_data(path: str = ANIM_CSV) -> Dict[int, Dict[int, Vector]]:
     """
-    アニメーションCSVをパースし、ノードIDごと・フレームごとの変位量辞書を返す
-
+    アニメーションCSVを読み込み、ノードID→{フレーム: 変位Vector}の辞書を返す
     引数:
-        path: アニメーションCSVパス（デフォルトはconfig.pyのANIM_CSV）
+        path: アニメーションCSVファイルパス（省略時は設定値）
     戻り値:
-        { node_id: { frame: Vector(dx, dy, dz), ... }, ... }
+        ノードIDをキー、各フレームの変位Vector辞書を値とする辞書
+        例: { node_id: { frame: Vector(dx, dy, dz), ... }, ... }
     """
     log.info(f"Reading animation data from: {path}")
     rows = []
@@ -44,12 +32,11 @@ def load_animation_data(path: str = ANIM_CSV) -> dict[int, dict[int, Vector]]:
             rows = list(reader)
     except Exception as e:
         log.critical(f"[{path}] CRITICAL: Failed to open/read animation CSV ({e})")
-        raise  # fail-fast
+        raise
 
     type_row = None
     cmp_row = None
     id_row = None
-    # ヘッダー3種を自動検出
     for i, row in enumerate(rows):
         if not row:
             continue
@@ -73,8 +60,7 @@ def load_animation_data(path: str = ANIM_CSV) -> dict[int, dict[int, Vector]]:
         log.critical(f"[{path}] No data rows found after header in animation CSV.")
         raise RuntimeError("No data rows in animation CSV")
 
-    # DISPカラムをノードID・成分idxでマッピング
-    col_map: dict[int, tuple[int, int]] = {}
+    col_map: Dict[int, tuple[int, int]] = {}
     for j in range(1, len(id_row)):
         typ = type_row[j].strip().upper() if j < len(type_row) else ""
         if typ != "DISP":
@@ -105,7 +91,7 @@ def load_animation_data(path: str = ANIM_CSV) -> dict[int, dict[int, Vector]]:
 
     log.info(f"→ Found {len(col_map)} DISP columns for valid nodes")
 
-    anim_data: dict[int, dict[int, Vector]] = defaultdict(
+    anim_data: Dict[int, Dict[int, Vector]] = defaultdict(
         lambda: defaultdict(lambda: Vector((0.0, 0.0, 0.0)))
     )
     for lineno, row in enumerate(rows[data_start:], start=data_start + 1):
@@ -135,7 +121,7 @@ def load_animation_data(path: str = ANIM_CSV) -> dict[int, dict[int, Vector]]:
                 continue
             anim_data[nid][frame][comp_idx] = disp
 
-    result: dict[int, dict[int, Vector]] = {}
+    result: Dict[int, Dict[int, Vector]] = {}
     for nid, frames in anim_data.items():
         result[nid] = {}
         for frame, vec in frames.items():

@@ -1,6 +1,10 @@
+# パネル・屋根生成ビルダー
+# ノード座標から壁パネル・屋根パネルをBlender上に生成する
+
 import bpy
 from mathutils import Vector
 from utils.logging_utils import setup_logging
+from config import EPS_XY_MATCH
 
 log = setup_logging()
 
@@ -11,8 +15,12 @@ def build_panels(
     nodes: dict[int, Vector], edges: set[tuple[int, int]]
 ) -> list[bpy.types.Object]:
     """
-    ノード座標から外周水平セグメントを自動抽出し、
-    各階層の壁パネルをBlender上に生成
+    ノード座標から壁パネルを自動抽出し、Blender上に生成する
+    引数:
+        nodes: ノードID→座標Vectorの辞書
+        edges: エッジ（ノードIDペア）の集合
+    戻り値:
+        パネルのBlenderオブジェクトリスト
     """
     if not nodes:
         log.warning("No nodes supplied to build_panels()")
@@ -106,6 +114,10 @@ def build_roof(
 ) -> tuple[bpy.types.Object | None, list[tuple[int, int, int, int]]]:
     """
     最上階ノードから屋根パネル群を生成し、Blenderオブジェクトとして返す
+    引数:
+        nodes: ノードID→座標Vectorの辞書
+    戻り値:
+        (屋根オブジェクト, 屋根パネルIDタプルリスト)
     """
     zs = sorted({v.z for v in nodes.values()})
     if not zs:

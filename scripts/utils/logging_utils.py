@@ -1,66 +1,27 @@
 import logging
-import os
 
-"""
-logging_utils.py
-
-【役割 / Purpose】
-- プロジェクト全体で統一的に使える「ロギング（ログ出力）」ユーティリティ関数の提供。
-- Blender内外どちらで動かしても、ファイル・コンソールの両方に詳細なログを残せるよう設計。
-
-【運用ガイドライン】
-- loggerは「viz」名で一意に作成・再利用。
-- Blenderで.blendファイルが保存されていれば同じ場所に、未保存ならドキュメントフォルダにログ出力。
-- 標準でINFOレベル出力（引数で変更可能）。
-"""
-
-# Blender外でimport時の対応
 try:
-    import bpy
+    from config import LOG_LEVEL
 except ImportError:
-    bpy = None
+    LOG_LEVEL = "INFO"
 
 
-def setup_logging(log_level=logging.INFO, log_file_name="blender_log.txt"):
+def setup_logging(name: str = "main") -> logging.Logger:
     """
-    標準ロギング設定を行う関数。
-    - log_level: ログ出力レベル（INFO/DEBUG/ERRORなど）
-    - log_file_name: 出力ログファイル名（blendファイルと同じフォルダ or ~/Documents）
-    戻り値: logging.Loggerインスタンス
+    ロガーをセットアップし返す
+    引数:
+        name: ロガー名（省略時は'main'）
+    戻り値:
+        ロガーインスタンス
     """
-    logger = logging.getLogger("viz")  # プロジェクト固有ロガー
-
-    # すでに設定済みなら再利用（レベルだけ更新）
-    if logger.handlers:
-        logger.setLevel(log_level)
-        for h in logger.handlers:
-            h.setLevel(log_level)
-        return logger
-
-    logger.setLevel(log_level)
-
-    # ログ出力先（blend保存済みなら同じフォルダ、未保存ならドキュメント）
-    if bpy and bpy.data.is_saved:
-        base_dir = os.path.dirname(bpy.data.filepath)
-    else:
-        base_dir = os.path.expanduser("~/Documents")
-    os.makedirs(base_dir, exist_ok=True)
-    log_path = os.path.join(base_dir, log_file_name)
-
-    # ファイルハンドラ
-    fh = logging.FileHandler(log_path, mode="w", encoding="utf-8")
-    fh.setLevel(log_level)
-    fh.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
-
-    # コンソール出力
-    ch = logging.StreamHandler()
-    ch.setLevel(log_level)
-    ch.setFormatter(logging.Formatter("[%(levelname)s] %(message)s"))
-
-    logger.addHandler(fh)
-    logger.addHandler(ch)
-
-    logger.info(
-        f"Logger initialized at level {logging.getLevelName(log_level)}. Log file: {log_path}"
-    )
+    logger = logging.getLogger(name)
+    if not logger.handlers:
+        handler = logging.StreamHandler()
+        formatter = logging.Formatter(
+            "[%(levelname)s] %(asctime)s %(name)s: %(message)s", "%Y-%m-%d %H:%M:%S"
+        )
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
+    # configのLOG_LEVELから設定
+    logger.setLevel(getattr(logging, LOG_LEVEL.upper(), logging.INFO))
     return logger

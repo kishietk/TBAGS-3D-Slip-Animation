@@ -1,3 +1,6 @@
+# マテリアル適用ビルダー
+# オブジェクトごとに適切なマテリアルを生成・適用する
+
 import bpy
 from utils.logging_utils import setup_logging
 from config import WALL_IMG, ROOF_IMG, WALL_ALPHA, ROOF_ALPHA
@@ -7,7 +10,13 @@ log = setup_logging()
 
 def make_texture_mat(name: str, img_path: str, alpha: float) -> bpy.types.Material:
     """
-    画像テクスチャ＋透明度を持つマテリアルを生成（壁・屋根用）
+    テクスチャ画像・透明度を持つマテリアルを生成する
+    引数:
+        name: マテリアル名
+        img_path: テクスチャ画像ファイルパス
+        alpha: 透明度（0.0～1.0）
+    戻り値:
+        生成したBlenderマテリアル
     """
     try:
         mat = bpy.data.materials.get(name) or bpy.data.materials.new(name)
@@ -38,7 +47,11 @@ def make_texture_mat(name: str, img_path: str, alpha: float) -> bpy.types.Materi
 
 def make_column_mat() -> bpy.types.Material:
     """
-    柱用マテリアル（波・ノイズ混ぜた木目調）を生成
+    柱用マテリアル（木目調）を生成する
+    引数:
+        なし
+    戻り値:
+        生成したBlenderマテリアル
     """
     try:
         name = "ColumnMat"
@@ -71,7 +84,11 @@ def make_column_mat() -> bpy.types.Material:
 
 def make_beam_mat() -> bpy.types.Material:
     """
-    梁用マテリアル（ノイズ+グラデーション金属調）を生成
+    梁用マテリアル（金属調）を生成する
+    引数:
+        なし
+    戻り値:
+        生成したBlenderマテリアル
     """
     try:
         name = "BeamMat"
@@ -104,7 +121,11 @@ def make_beam_mat() -> bpy.types.Material:
 
 def make_node_mat() -> bpy.types.Material:
     """
-    ノード球用マテリアル（シンプルなオレンジ色）を生成
+    ノード球用マテリアル（オレンジ色）を生成する
+    引数:
+        なし
+    戻り値:
+        生成したBlenderマテリアル
     """
     try:
         name = "NodeMat"
@@ -132,11 +153,14 @@ def apply_all_materials(
     member_objs: list[tuple[bpy.types.Object, int, int]],
 ) -> None:
     """
-    全オブジェクト（ノード球・壁パネル・屋根・柱・梁）にマテリアルを一括適用
-    node_objs: {nid: Object}
-    panel_objs: [Object, ...]
-    roof_obj: Object
-    member_objs: [(Object, a, b), ...]
+    ノード球・壁パネル・屋根・柱・梁にマテリアルを一括適用する
+    引数:
+        node_objs: ノードID→Blenderオブジェクトの辞書
+        panel_objs: パネルオブジェクトのリスト
+        roof_obj: 屋根オブジェクト
+        member_objs: (オブジェクト, ノードAのID, ノードBのID)のリスト
+    戻り値:
+        なし
     """
     log.info("=== Applying all materials ===")
     try:
