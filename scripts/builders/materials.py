@@ -1,6 +1,3 @@
-# マテリアル適用ビルダー
-# オブジェクトごとに適切なマテリアルを生成・適用する
-
 import bpy
 from utils.logging_utils import setup_logging
 from config import WALL_IMG, ROOF_IMG, WALL_ALPHA, ROOF_ALPHA
@@ -48,10 +45,6 @@ def make_texture_mat(name: str, img_path: str, alpha: float) -> bpy.types.Materi
 def make_column_mat() -> bpy.types.Material:
     """
     柱用マテリアル（木目調）を生成する
-    引数:
-        なし
-    戻り値:
-        生成したBlenderマテリアル
     """
     try:
         name = "ColumnMat"
@@ -85,10 +78,6 @@ def make_column_mat() -> bpy.types.Material:
 def make_beam_mat() -> bpy.types.Material:
     """
     梁用マテリアル（金属調）を生成する
-    引数:
-        なし
-    戻り値:
-        生成したBlenderマテリアル
     """
     try:
         name = "BeamMat"
@@ -122,10 +111,6 @@ def make_beam_mat() -> bpy.types.Material:
 def make_node_mat() -> bpy.types.Material:
     """
     ノード球用マテリアル（オレンジ色）を生成する
-    引数:
-        なし
-    戻り値:
-        生成したBlenderマテリアル
     """
     try:
         name = "NodeMat"
@@ -153,14 +138,8 @@ def apply_all_materials(
     member_objs: list[tuple[bpy.types.Object, int, int]],
 ) -> None:
     """
-    ノード球・壁パネル・屋根・柱・梁にマテリアルを一括適用する
-    引数:
-        node_objs: ノードID→Blenderオブジェクトの辞書
-        panel_objs: パネルオブジェクトのリスト
-        roof_obj: 屋根オブジェクト
-        member_objs: (オブジェクト, ノードAのID, ノードBのID)のリスト
-    戻り値:
-        なし
+    ノード球・壁パネル・屋根・柱・梁にマテリアルを一括適用し、
+    各種オブジェクトに適用した数を詳細ログに出力する
     """
     log.info("=== Applying all materials ===")
     try:
@@ -170,24 +149,34 @@ def apply_all_materials(
         mat_beam = make_beam_mat()
         mat_node = make_node_mat()
 
+        panel_count = 0
+        roof_count = 0
+        column_count = 0
+        beam_count = 0
+        node_count = 0
+
         for o in panel_objs:
             o.data.materials.clear()
             o.data.materials.append(mat_wall)
+            panel_count += 1
             log.debug(f"Panel {o.name}: Material set to WallMat")
 
         if roof_obj:
             roof_obj.data.materials.clear()
             roof_obj.data.materials.append(mat_roof)
+            roof_count += 1
             log.debug(f"Roof {roof_obj.name}: Material set to RoofMat")
 
         for obj, a, b in member_objs:
             if obj.name.startswith("Column_"):
                 obj.data.materials.clear()
                 obj.data.materials.append(mat_col)
+                column_count += 1
                 log.debug(f"Column {obj.name}: Material set to ColumnMat")
             elif obj.name.startswith("Beam_"):
                 obj.data.materials.clear()
                 obj.data.materials.append(mat_beam)
+                beam_count += 1
                 log.debug(f"Beam {obj.name}: Material set to BeamMat")
             else:
                 obj.data.materials.clear()
@@ -197,9 +186,13 @@ def apply_all_materials(
         for o in node_objs.values():
             o.data.materials.clear()
             o.data.materials.append(mat_node)
+            node_count += 1
             log.debug(f"Node {o.name}: Material set to NodeMat")
 
-        log.info("Materials applied successfully.")
+        log.info(
+            f"Materials applied successfully. Panels: {panel_count}, Roofs: {roof_count}, "
+            f"Columns: {column_count}, Beams: {beam_count}, Nodes: {node_count}"
+        )
     except Exception as e:
         log.error(f"Failed to apply all materials: {e}")
         raise
