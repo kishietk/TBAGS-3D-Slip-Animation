@@ -1,33 +1,13 @@
 import bpy
-from typing import Dict, List, Tuple
 from logging_utils import setup_logging
 from config import WALL_IMG, ROOF_IMG, WALL_ALPHA, ROOF_ALPHA
 
 log = setup_logging()
 
-"""
-materials.py
-
-【役割 / Purpose】
-- 壁・屋根・柱・梁・ノード球それぞれに最適なBlenderマテリアルを自動生成・適用。
-- 画像パスや透明度等はすべてconfig.pyから一元管理。直接値やパスを直書きしない！
-
-【設計方針】
-- 例外時は「どの材料・何のオブジェクトで失敗したか」を詳細ログ。
-- オブジェクト名や種別に応じて自動で正しいマテリアルを割り当てる。
-"""
-
 
 def make_texture_mat(name: str, img_path: str, alpha: float) -> bpy.types.Material:
     """
     画像テクスチャ＋透明度を持つマテリアルを生成（壁・屋根用）
-
-    引数:
-        name: マテリアル名
-        img_path: テクスチャ画像パス
-        alpha: 透明度
-    戻り値:
-        Blenderマテリアル
     """
     try:
         mat = bpy.data.materials.get(name) or bpy.data.materials.new(name)
@@ -153,12 +133,10 @@ def apply_all_materials(
 ) -> None:
     """
     全オブジェクト（ノード球・壁パネル・屋根・柱・梁）にマテリアルを一括適用
-
-    引数:
-        node_objs: {nid: Object}
-        panel_objs: [Object, ...]
-        roof_obj: Object
-        member_objs: [(Object, a, b), ...]
+    node_objs: {nid: Object}
+    panel_objs: [Object, ...]
+    roof_obj: Object
+    member_objs: [(Object, a, b), ...]
     """
     log.info("=== Applying all materials ===")
     try:
@@ -171,24 +149,31 @@ def apply_all_materials(
         for o in panel_objs:
             o.data.materials.clear()
             o.data.materials.append(mat_wall)
+            log.info(f"Panel {o.name}: Material set to WallMat")
 
         if roof_obj:
             roof_obj.data.materials.clear()
             roof_obj.data.materials.append(mat_roof)
+            log.info(f"Roof {roof_obj.name}: Material set to RoofMat")
 
         for obj, a, b in member_objs:
-            if obj.name.startswith("Column_") or (
-                obj.name.startswith("Member_") and "Column" in obj.name
-            ):
+            if obj.name.startswith("Column_"):
                 obj.data.materials.clear()
                 obj.data.materials.append(mat_col)
+                log.info(f"Column {obj.name}: Material set to ColumnMat")
+            elif obj.name.startswith("Beam_"):
+                obj.data.materials.clear()
+                obj.data.materials.append(mat_beam)
+                log.info(f"Beam {obj.name}: Material set to BeamMat")
             else:
                 obj.data.materials.clear()
                 obj.data.materials.append(mat_beam)
+                log.info(f"Member {obj.name}: Material set to BeamMat (default)")
 
         for o in node_objs.values():
             o.data.materials.clear()
             o.data.materials.append(mat_node)
+            log.info(f"Node {o.name}: Material set to NodeMat")
 
         log.info("Materials applied successfully.")
     except Exception as e:
