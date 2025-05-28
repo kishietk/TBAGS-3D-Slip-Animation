@@ -12,20 +12,28 @@ if TYPE_CHECKING:
 class Node:
     """
     構造グラフのノードを表現するクラス
-    ノードID、座標、階層属性、関連エッジ・パネルのリストを保持する
+    ノードID、座標、階層属性、kind_id、関連エッジ・パネルのリストを保持する
     """
 
-    def __init__(self, id: int, pos: Vector, floor: Optional[str] = None):
+    def __init__(
+        self,
+        id: int,
+        pos: Vector,
+        floor: Optional[str] = None,
+        kind_id: Optional[int] = None,  # 追加
+    ):
         """
         ノードを初期化する
         引数:
             id: ノードID（整数）
             pos: ノード座標（Vector型）
             floor: 階層属性（任意、str型）
+            kind_id: ノードの種類（int型, 任意, セクション番号や用途分類）
         """
         self.id = id
         self.pos = pos
         self.floor = floor
+        self.kind_id = kind_id  # 追加
         self.edges: List["Edge"] = []
         self.panels: List["Panel"] = []
 

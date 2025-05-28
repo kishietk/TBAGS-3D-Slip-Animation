@@ -23,7 +23,7 @@ MODULES = [
     "cores.panel",
     "cores.beam",
     "cores.column",
-    "cores.manager",
+    "cores.CoreManager",
     "builders.nodes",
     "builders.panels",
     "builders.materials",
@@ -49,7 +49,7 @@ for m in MODULES:
 import bpy
 from utils.logging_utils import setup_logging
 from utils.scene_utils import clear_scene
-from cores.manager import CoreManager
+from cores.CoreManager import CoreManager
 from loaders.animation_loader import load_animation_data
 from builders.scene_factory import create_blender_objects
 from builders.materials import apply_all_materials
@@ -72,12 +72,29 @@ def main():
         clear_scene()
         # コアデータ生成・取得
         cm = CoreManager()
+        log.info(f"After init: node count = {len(cm.nodes)}")
+        log.info(f"After init: edge count = {len(cm.edges)}")
+        log.info(f"After init: panel count = {len(cm.panels)}")
+        # ノード詳細（例：最初の5つ）
+        for n in list(cm.get_nodes())[:5]:
+            log.info(
+                f"Node: id={n.id}, pos={tuple(n.pos)}, kind_id={getattr(n, 'kind_id', None)}"
+            )
+        # パネル情報も一部表示（例：最初の3つ）
+        for p in list(cm.get_panels())[:3]:
+            log.info(f"Panel: node_ids={[node.id for node in p.nodes]}")
+
+        # コアデータ
         nodes = cm.get_nodes()
+        panels = cm.get_panels()
         column_edges, beam_edges = cm.classify_edges()
         anim_data = load_animation_data()
-        # Blenderオブジェクト生成
+
+        # Blenderオブジェクト生成（コアPanelからパネル作成！）
         node_objs, panel_objs, roof_obj, roof_quads, member_objs = (
-            create_blender_objects(nodes, column_edges, beam_edges, anim_data)
+            create_blender_objects(
+                nodes, column_edges, beam_edges, anim_data, panels=panels
+            )
         )
         # マテリアル適用
         apply_all_materials(node_objs, panel_objs, roof_obj, member_objs)

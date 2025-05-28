@@ -23,18 +23,6 @@ def on_frame(
     member_objs: list[tuple[bpy.types.Object, int, int]],
     node_objs: dict[int, bpy.types.Object],
 ) -> None:
-    """
-    フレームごとに壁パネル・屋根・柱梁を最新ノード位置に追従させる
-    引数:
-        scene: Blenderのシーン
-        panel_objs: 壁パネルオブジェクトのリスト
-        roof_obj: 屋根オブジェクト
-        roof_quads: 屋根パネルIDタプルリスト
-        member_objs: (オブジェクト, ノードAのID, ノードBのID)のリスト
-        node_objs: ノードID→Blenderオブジェクトの辞書
-    戻り値:
-        なし
-    """
     up = Vector((0, 0, 1))
 
     # パネル再構築
@@ -45,7 +33,7 @@ def on_frame(
             ids = obj.get("panel_ids")
             if not ids or len(ids) != 4:
                 continue
-            a, b, c, d = ids
+            a, b, d, c = ids  # ← [a, b, d, c]の順で取得
             verts = [
                 node_objs[a].location,
                 node_objs[b].location,

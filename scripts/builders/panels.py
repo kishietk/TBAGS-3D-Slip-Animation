@@ -1,5 +1,5 @@
 # パネル・屋根生成ビルダー
-# ノード座標から壁パネル・屋根パネルをBlender上に生成する
+# Panelコアデータから壁パネル・屋根パネルをBlender上に生成する
 
 import bpy
 from mathutils import Vector
@@ -8,110 +8,61 @@ from config import EPS_XY_MATCH
 
 log = setup_logging()
 
-EPS_XY_MATCH = 1e-3
 
-
-def build_panels(
-    nodes: dict[int, Vector], edges: set[tuple[int, int]]
-) -> list[bpy.types.Object]:
+def build_blender_panels(panels: list) -> list:  # List[Panel]
     """
-    ノード座標から壁パネルを自動抽出し、Blender上に生成する
+    コアPanelリストからBlender上に壁パネルを生成する
     引数:
-        nodes: ノードID→座標Vectorの辞書
-        edges: エッジ（ノードIDペア）の集合
+        panels: Panelインスタンスのリスト
     戻り値:
         パネルのBlenderオブジェクトリスト
     """
-    if not nodes:
-        log.warning("No nodes supplied to build_panels()")
+    if not panels:
+        log.warning("No Panel data supplied to build_blender_panels()")
         return []
 
-    xs = [v.x for v in nodes.values()]
-    ys = [v.y for v in nodes.values()]
-    zs = sorted({v.z for v in nodes.values()})
-    if len(zs) < 2:
-        log.warning("Insufficient Z levels for panel generation")
-        return []
-
-    xmin, xmax = min(xs), max(xs)
-    ymin, ymax = min(ys), max(ys)
-
-    panel_ids = []
-    for lvl, z in enumerate(zs[:-1]):
-        z_up = zs[lvl + 1]
-        left = sorted(
-            [
-                nid
-                for nid, pos in nodes.items()
-                if abs(pos.x - xmin) < EPS_XY_MATCH and abs(pos.z - z) < EPS_XY_MATCH
-            ],
-            key=lambda i: nodes[i].y,
-        )
-        right = sorted(
-            [
-                nid
-                for nid, pos in nodes.items()
-                if abs(pos.x - xmax) < EPS_XY_MATCH and abs(pos.z - z) < EPS_XY_MATCH
-            ],
-            key=lambda i: nodes[i].y,
-        )
-        front = sorted(
-            [
-                nid
-                for nid, pos in nodes.items()
-                if abs(pos.y - ymin) < EPS_XY_MATCH and abs(pos.z - z) < EPS_XY_MATCH
-            ],
-            key=lambda i: nodes[i].x,
-        )
-        back = sorted(
-            [
-                nid
-                for nid, pos in nodes.items()
-                if abs(pos.y - ymax) < EPS_XY_MATCH and abs(pos.z - z) < EPS_XY_MATCH
-            ],
-            key=lambda i: nodes[i].x,
-        )
-
-        def segs(lst):
-            return [(lst[i], lst[i + 1]) for i in range(len(lst) - 1)]
-
-        for a, b in segs(left) + segs(front) + segs(right) + segs(back):
-
-            def find_at(x, y, zval):
-                for nid2, pos2 in nodes.items():
-                    if (
-                        abs(pos2.z - zval) < EPS_XY_MATCH
-                        and abs(pos2.x - x) < EPS_XY_MATCH
-                        and abs(pos2.y - y) < EPS_XY_MATCH
-                    ):
-                        return nid2
-                return None
-
-            x1, y1 = nodes[a].x, nodes[a].y
-            x2, y2 = nodes[b].x, nodes[b].y
-            c = find_at(x1, y1, z_up)
-            d = find_at(x2, y2, z_up)
-            if c and d:
-                panel_ids.append((a, b, c, d))
-                log.debug(f"Panel quad: {a}-{b}-{c}-{d}")
-
-    panels = []
-    for a, b, c, d in panel_ids:
+    blender_objs = []
+    for panel in panels:
         try:
-            mesh = bpy.data.meshes.new(f"Panel_{a}_{b}")
-            obj = bpy.data.objects.new(f"Panel_{a}_{b}", mesh)
+            verts = [n.pos for n in panel.nodes]
+            if len(verts) != 4:
+                log.warning(
+                    f"Panel {panel.id}: 4ノード以外のPanelはBlender生成不可 (nodes={len(verts)})"
+                )
+                continue
+
+            mesh = bpy.data.meshes.new(f"Panel_{panel.id}")
+            obj = bpy.data.objects.new(f"Panel_{panel.id}", mesh)
             bpy.context.collection.objects.link(obj)
-            obj["panel_ids"] = (a, b, c, d)
-            panels.append(obj)
-            log.debug(f"Created Panel_{a}_{b}: panel_ids={(a, b, c, d)}")
+
+            verts_bl = [tuple(v) for v in verts]
+            faces = [(0, 1, 2, 3)]  # この順で作成
+
+            mesh.from_pydata(verts_bl, [], faces)
+            mesh.update()
+
+            obj["panel_ids"] = [n.id for n in panel.nodes]  # [a, b, d, c]の順
+            obj["panel_kind"] = panel.kind
+            if hasattr(panel, "floor"):
+                obj["panel_floor"] = panel.floor
+            blender_objs.append(obj)
+            log.debug(
+                f"Created Panel_{panel.id}: panel_ids={[n.id for n in panel.nodes]}"
+            )
         except Exception as e:
-            log.error(f"Failed to create panel ({a}, {b}, {c}, {d}): {e}")
-    return panels
+            log.error(f"Failed to create panel ({panel}): {e}")
+    log.info(
+        f"build_blender_panels: {len(blender_objs)} Blender panels created from core data"
+    )
+    return blender_objs
+
+
+# build_roofは変更不要
 
 
 def build_roof(
     nodes: dict[int, Vector],
-) -> tuple[bpy.types.Object | None, list[tuple[int, int, int, int]]]:
+) -> tuple:
     """
     最上階ノードから屋根パネル群を生成し、Blenderオブジェクトとして返す
     引数:
@@ -153,6 +104,10 @@ def build_roof(
         mesh = bpy.data.meshes.new("RoofMesh")
         obj = bpy.data.objects.new("Roof", mesh)
         bpy.context.collection.objects.link(obj)
+        # 頂点座標リストを作成
+        verts = [tops[nid] for nid in tops]
+        # facesは作成済みquadリストを利用（順番が一致していれば）
+        mesh.update()
         obj["roof_quads"] = quads
         log.debug(f"Created Roof: {obj.name}, quads={quads}")
         return obj, quads
