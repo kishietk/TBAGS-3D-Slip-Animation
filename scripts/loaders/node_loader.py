@@ -14,40 +14,54 @@ class NodeData(NamedTuple):
 
 def load_nodes(path: str = NODE_CSV) -> Dict[int, NodeData]:
     """
-    self.strから指定IDのノード座標・kind_id（セクション番号）辞書を生成
-    戻り値:
-        ノードIDをキー、NodeData（pos, kind_id）を値とする辞書
+    ファイル内コメント・セクション見出しから
+    kind_id（区分）を柔軟に自動割当するノード辞書生成関数
     """
     log.info(f"Reading node data from: {path}")
     nodes: Dict[int, NodeData] = {}
 
     section_pattern = re.compile(r"#\s*(\d+)")
     valid_sections = set(NODE_SECTION_NUMBERS)
-    current_section = None
+    current_kind_id = None
+    tbag_section_active = False
 
     try:
         with open(path, encoding="utf-8", errors="ignore") as f:
             for row_idx, line in enumerate(f, start=1):
                 line_strip = line.strip()
-                # セクション開始検出
+                # セクション見出し（例: #1, #2, ...）検出
                 m_section = section_pattern.match(line_strip)
                 if m_section:
                     sec = int(m_section.group(1))
-                    if sec in valid_sections:
-                        current_section = sec
-                        log.debug(f"[{path}] Section #{sec} entered at row {row_idx}")
+                    if sec == 1:
+                        current_kind_id = 1
+                        tbag_section_active = False
+                        log.debug(f"[{path}] Section #1 entered at row {row_idx}")
+                    elif sec == 2:
+                        current_kind_id = 2
+                        tbag_section_active = False
+                        log.debug(f"[{path}] Section #2 entered at row {row_idx}")
                     else:
-                        current_section = None
+                        current_kind_id = sec if sec in valid_sections else None
+                        tbag_section_active = False
+                        log.debug(f"[{path}] Section #{sec} entered at row {row_idx}")
                     continue
 
+                # TBAG区間開始コメント検出
+                if "#Top of Upper level T-BAGS connected to Columns" in line_strip:
+                    tbag_section_active = True
+                    log.debug(f"[{path}] TBAG section started at row {row_idx}")
+                    continue
+
+                # 空行・コメント行・無効セクションはスキップ
                 if (
-                    current_section is None
+                    current_kind_id is None
                     or not line_strip
                     or line_strip.startswith("#")
                 ):
                     continue
 
-                # ノード行の検出（例: 201  3D  0.900  0.900  3.200）
+                # ノード行検出
                 m_node = re.match(
                     r"(\d+)\s+\S+\s+([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)", line_strip
                 )
@@ -64,10 +78,14 @@ def load_nodes(path: str = NODE_CSV) -> Dict[int, NodeData]:
                             float(m_node.group(3)),
                             float(m_node.group(4)),
                         )
-                        # kind_id = 現在のセクション番号
-                        nodes[nid] = NodeData(Vector((x, y, z)), current_section)
+                        # 柔軟なkind_id割当
+                        if tbag_section_active:
+                            kind_id = 0
+                        else:
+                            kind_id = current_kind_id
+                        nodes[nid] = NodeData(Vector((x, y, z)), kind_id)
                         log.info(
-                            f"Added node {nid}: ({x}, {y}, {z}), kind_id={current_section}"
+                            f"Added node {nid}: ({x}, {y}, {z}), kind_id={kind_id}"
                         )
                     except Exception as e:
                         log.error(

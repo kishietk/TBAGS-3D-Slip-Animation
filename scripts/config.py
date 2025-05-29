@@ -79,9 +79,11 @@ PANEL_OBJ_PREFIX = "Panel_"
 MEMBER_OBJ_PREFIX = "Member_"
 COLUMN_OBJ_PREFIX = "Column_"
 LABEL_OBJ_PREFIX = "Label_"
+SANDBAG_OBJ_PREFIX = "Sandbag_"
 ROOF_OBJ_NAME = "Roof"
 ROOF_MESH_NAME = "RoofMesh"
 UV_MAP_NAME = "UVMap"  # UVマップ名（Blender用）
+
 
 # ==========================
 # 6. 幾何・数値パラメータ設定
@@ -97,8 +99,8 @@ CYLINDER_VERTS = 8
 EPS_XY_MATCH = 1e-3
 # ベクトル（軸）比較許容誤差
 EPS_AXIS = 1e-6
-# サンドバッグノードの半径（m）
-SANDBAG_CUBE_SIZE = (2.0, 2.0, 1.0)
+# サンドバッグのサイズ（m）
+SANDBAG_CUBE_SIZE = Vector((2.0, 2.0, 1.0))
 
 
 # ==========================
@@ -165,11 +167,11 @@ COLUMNS_KIND_IDS = [53, 55]
 # 梁として扱う部材種別IDリスト
 BEAMS_KIND_IDS = [42, 43, 44, 45, 46, 48, 49, 50, 51]
 # 梁・柱を構成するノードのkind_idリスト
-EDGE_NODE_KIND_IDS = [1]
+EDGE_NODE_KIND_IDS = [0, 1]
 # 壁ノードのkind_idリスト
-WALL_NODE_KIND_IDS = [1, 2, 3, 4]
+WALL_NODE_KIND_IDS = [0, 1, 2, 3, 4]
 # サンドバッグを構成するノードのkind_idリスト
-SANDBAG_NODE_KIND_IDS = [2, 6, 10]
+SANDBAG_NODE_KIND_IDS = [0, 2, 6, 10]
 
 # ==========================
 # 11. ログ設定
@@ -177,29 +179,3 @@ SANDBAG_NODE_KIND_IDS = [2, 6, 10]
 
 # ログレベル（"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"）
 LOG_LEVEL = "INFO"
-
-# =======================
-# 12. ホットリロード対象モジュールリスト
-# =======================
-
-HOTRELOAD_MODULES = [
-    "config",
-    "utils.logging_utils",
-    "utils.scene_utils",
-    "loaders.node_loader",
-    "loaders.edge_loader",
-    "loaders.animation_loader",
-    "cores.node",
-    "cores.edge",
-    "cores.panel",
-    "cores.beam",
-    "cores.column",
-    "cores.CoreManager",
-    "builders.nodes",
-    "builders.panels",
-    "builders.materials",
-    "builders.columns",
-    "builders.beams",
-    "builders.scene_factory",
-    "animators.animator",
-]
