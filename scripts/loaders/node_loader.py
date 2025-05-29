@@ -35,7 +35,7 @@ def load_nodes(path: str = NODE_CSV) -> Dict[int, NodeData]:
                     sec = int(m_section.group(1))
                     if sec in valid_sections:
                         current_section = sec
-                        log.info(f"[{path}] Section #{sec} entered at row {row_idx}")
+                        log.debug(f"[{path}] Section #{sec} entered at row {row_idx}")
                     else:
                         current_section = None
                     continue

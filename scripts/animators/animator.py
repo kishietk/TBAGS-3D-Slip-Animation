@@ -22,8 +22,29 @@ def on_frame(
     roof_quads: list[tuple[int, int, int, int]],
     member_objs: list[tuple[bpy.types.Object, int, int]],
     node_objs: dict[int, bpy.types.Object],
-) -> None:
-    up = Vector((0, 0, 1))
+    sandbag_objs: dict[int, bpy.types.Object],
+    anim_data: dict[int, dict[int, Vector]],
+    sandbag_anim_data: dict[int, dict[int, Vector]],
+    base_node_pos: dict[int, Vector],
+    base_sandbag_pos: dict[int, Vector],
+):
+    # --- ノード球 ---
+    for nid, obj in node_objs.items():
+        if nid not in base_node_pos:
+            continue
+        base_pos = base_node_pos[nid]
+        disp = anim_data.get(nid, {}).get(scene.frame_current, Vector((0, 0, 0)))
+        obj.location = base_pos + disp
+
+    # --- サンドバッグ ---
+    for nid, obj in sandbag_objs.items():
+        if nid not in base_sandbag_pos:
+            continue
+        base_pos = base_sandbag_pos[nid]
+        disp = sandbag_anim_data.get(nid, {}).get(
+            scene.frame_current, Vector((0, 0, 0))
+        )
+        obj.location = base_pos + disp
 
     # パネル再構築
     for obj in panel_objs:
@@ -82,6 +103,7 @@ def on_frame(
             log.error(f"Failed to update roof: {e}")
 
     # 柱・梁再配置
+    up = Vector((0, 0, 1))
     for obj, a, b in member_objs:
         try:
             if obj is None:
@@ -114,6 +136,11 @@ def init_animation(
     roof_quads: list[tuple[int, int, int, int]],
     member_objs: list[tuple[bpy.types.Object, int, int]],
     node_objs: dict[int, bpy.types.Object],
+    sandbag_objs: dict[int, bpy.types.Object],
+    anim_data: dict[int, dict[int, Vector]],
+    sandbag_anim_data: dict[int, dict[int, Vector]],
+    base_node_pos: dict[int, Vector],
+    base_sandbag_pos: dict[int, Vector],
 ) -> None:
     """
     Blenderのフレームチェンジ時にon_frameを呼ぶイベントを登録する
@@ -123,6 +150,11 @@ def init_animation(
         roof_quads: 屋根パネルIDタプルリスト
         member_objs: (オブジェクト, ノードAのID, ノードBのID)のリスト
         node_objs: ノードID→Blenderオブジェクトの辞書
+        sandbag_objs: サンドバッグID→Blenderオブジェクトの辞書
+        anim_data: ノードID→{フレーム: 変位Vector}
+        sandbag_anim_data: サンドバッグID→{フレーム: 変位Vector}
+        base_node_pos: ノードID→初期位置Vector
+        base_sandbag_pos: サンドバッグID→初期位置Vector
     戻り値:
         なし
     """
@@ -130,7 +162,8 @@ def init_animation(
         bpy.app.handlers.frame_change_pre.clear()
         panel_names = [o.name for o in panel_objs if o]
         member_info = [(o.name, a, b) for (o, a, b) in member_objs if o]
-        node_name_map = {nid: f"{NODE_OBJ_PREFIX}{nid}" for nid in node_objs}
+        node_name_map = {nid: obj.name for nid, obj in node_objs.items()}
+        sandbag_name_map = {nid: obj.name for nid, obj in sandbag_objs.items()}
         roof_name = roof_obj.name if roof_obj else None
 
         def _viz_on_frame(scene: bpy.types.Scene):
@@ -141,8 +174,24 @@ def init_animation(
                     nid: bpy.data.objects.get(name)
                     for nid, name in node_name_map.items()
                 }
+                sandbags = {
+                    nid: bpy.data.objects.get(name)
+                    for nid, name in sandbag_name_map.items()
+                }
                 roof = bpy.data.objects.get(roof_name) if roof_name else None
-                on_frame(scene, panels, roof, roof_quads, members, nodes)
+                on_frame(
+                    scene,
+                    panels,
+                    roof,
+                    roof_quads,
+                    members,
+                    nodes,
+                    sandbags,
+                    anim_data,
+                    sandbag_anim_data,
+                    base_node_pos,
+                    base_sandbag_pos,
+                )
             except Exception as e:
                 log.error(f"Error in frame_change handler: {e}")
 

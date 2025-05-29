@@ -1,51 +1,79 @@
+# config.py
+"""
+プロジェクト全体で使用する全定数・設定値・パス管理モジュール
+
+・全ての“マジックナンバー/マジックストリング”はここで一元管理
+・環境依存/切り替え項目/ファイルパス/識別IDもここで管理
+・Blender外部環境依存がある場合は、将来.envやjson等で外部管理も可
+"""
+
 import os
+from mathutils import Vector
 
-# ========================
+# =======================
 # 1. ディレクトリ・パス設定
-# ========================
+# =======================
 
-# プロジェクトの基準ディレクトリ
+# プロジェクトルートディレクトリ（このファイルの場所基準）
 PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# データファイルディレクトリ
 DATA_DIR = os.path.normpath(os.path.join(PROJECT_DIR, "../data"))
+# テクスチャ画像ディレクトリ
 TEXTURE_DIR = os.path.normpath(os.path.join(PROJECT_DIR, "../textures"))
 
-# ===============================
-# 2. データファイル・画像ファイル
-# ===============================
+# =======================
+# 2. データファイルパス定義
+# =======================
 
-# ノード座標CSVファイル
+# ノード定義データ（CSV/STRファイル）
 NODE_CSV = os.path.join(DATA_DIR, "self.str")
-# エッジ定義STRファイル
+# エッジ定義データ（STRファイル）
 EDGES_FILE = os.path.join(DATA_DIR, "self.str")
-# アニメーションCSVファイル
+# アニメーションデータ（CSVファイル）
 ANIM_CSV = os.path.join(DATA_DIR, "animation.csv")
-# 壁・屋根テクスチャ画像
+
+# =======================
+# 3. 画像・テクスチャファイル
+# =======================
+
+# 壁用テクスチャ画像ファイルパス
 WALL_IMG = os.path.join(TEXTURE_DIR, "wall_texture.png")
+# 屋根用テクスチャ画像ファイルパス
 ROOF_IMG = os.path.join(TEXTURE_DIR, "roof_texture.png")
 
-# ========================
-# 3. ノードID管理
-# ========================
+# =======================
+# 4. ノードID・階層設定
+# =======================
 
-# #1～#10 をノード座標セクションとして扱う
-NODE_SECTION_NUMBERS = list(range(1, 11))  # [1,2,...,10]
+# self.strの「#1～#10」等、ノード座標定義セクション番号リスト
+NODE_SECTION_NUMBERS = list(range(1, 11))  # 1～10
 
-# 各階層ごとのノードIDセット
-NODE_IDS_2F = set(range(201, 209))
-NODE_IDS_3F = set(range(301, 309))
-NODE_IDS_4F = set(range(401, 409))
-NODE_IDS_SB1 = {1143, 1148, 1153, 1158, 1243, 1248, 1253, 1258}
-NODE_IDS_SB2 = {2354,2359,2366}
-NODE_IDS_SB3 = {51143, 51148, 51153, 51158, 51243, 51248, 51253, 51258}
-NODE_IDS_SB4 = {52354, 52359, 52366}
-# 有効なノードIDの集合
-VALID_NODE_IDS = NODE_IDS_2F | NODE_IDS_3F | NODE_IDS_4F | NODE_IDS_SB1 | NODE_IDS_SB2 | NODE_IDS_SB3
+# 各階層ごとの有効ノードIDセット
+NODE_IDS_2F = set(range(201, 209))  # 2階
+NODE_IDS_3F = set(range(301, 309))  # 3階
+NODE_IDS_4F = set(range(401, 409))  # 4階
+NODE_IDS_SB1 = {1143, 1148, 1153, 1158, 1243, 1248, 1253, 1258}  # サンドバッグ1
+NODE_IDS_SB2 = {2354, 2359, 2366}  # サンドバッグ2
+NODE_IDS_SB3 = {51143, 51148, 51153, 51158, 51243, 51248, 51253, 51258}  # サンドバッグ3
+NODE_IDS_SB4 = {52354, 52359, 52366}  # サンドバッグ4
 
-# ============================
-# 4. Blenderオブジェクト命名
-# ============================
+# プロジェクトで有効な全ノードIDの集合
+VALID_NODE_IDS = (
+    NODE_IDS_2F
+    | NODE_IDS_3F
+    | NODE_IDS_4F
+    | NODE_IDS_SB1
+    | NODE_IDS_SB2
+    | NODE_IDS_SB3
+    | NODE_IDS_SB4
+)
 
-# ノード・パネル・部材・柱・ラベル・屋根の命名プレフィックス
+# ==========================
+# 5. Blenderオブジェクト命名
+# ==========================
+
+# ノード・部材・パネル・柱・ラベル・屋根用命名プレフィックス/名前
 NODE_OBJ_PREFIX = "Node_"
 PANEL_OBJ_PREFIX = "Panel_"
 MEMBER_OBJ_PREFIX = "Member_"
@@ -53,51 +81,68 @@ COLUMN_OBJ_PREFIX = "Column_"
 LABEL_OBJ_PREFIX = "Label_"
 ROOF_OBJ_NAME = "Roof"
 ROOF_MESH_NAME = "RoofMesh"
-UV_MAP_NAME = "UVMap"
+UV_MAP_NAME = "UVMap"  # UVマップ名（Blender用）
 
-# =======================
-# 5. 幾何・数値パラメータ
-# =======================
+# ==========================
+# 6. 幾何・数値パラメータ設定
+# ==========================
 
-# 球・柱・梁の半径や形状・比較誤差
-SPHERE_RADIUS = 0.5  # ノード球半径
-MEMBER_THICK = 0.4  # 柱・梁半径
-CYLINDER_VERTS = 4  # 柱・梁シリンダー分割数（未使用。推奨:16程度）
-EPS_XY_MATCH = 0.1  # 位置比較誤差（XY座標）
-EPS_AXIS = 1e-6  # ベクトル比較誤差（軸）
+# ノード球の半径（m単位）
+SPHERE_RADIUS = 0.24
+# 柱・梁の半径（m単位）
+MEMBER_THICK = 0.4
+# 柱・梁のシリンダー分割数（※現状未使用。推奨:16以上）
+CYLINDER_VERTS = 8
+# XY座標比較許容誤差（パネル自動生成などで使用）
+EPS_XY_MATCH = 1e-3
+# ベクトル（軸）比較許容誤差
+EPS_AXIS = 1e-6
+# サンドバッグノードの半径（m）
+SANDBAG_CUBE_SIZE = (2.0, 2.0, 1.0)
 
-# ========================
-# 6. ラベル・アニメーション
-# ========================
 
-NODE_LABEL_SIZE = 0.4  # ラベル文字サイズ
-NODE_LABEL_OFFSET = (0.8, -0.5, 0.5)  # ラベル相対位置
-ANIM_FPS = 60  # アニメーションFPS
-ANIM_SECONDS = 30  # アニメーション秒数
+# ==========================
+# 7. ラベル・アニメーション設定
+# ==========================
+
+# ノードIDラベルの文字サイズ
+LABEL_SIZE = 0.3
+
+# ノードIDラベルのオフセット位置 (X, Y, Z)
+LABEL_OFFSET = Vector((0.8, -0.5, 0.5))
+
+# アニメーションのFPS（フレーム/秒）
+ANIM_FPS = 60
+# アニメーション総秒数
+ANIM_SECONDS = 30
+# アニメーションの全フレーム数
 ANIM_TOTAL_FRAMES = ANIM_FPS * ANIM_SECONDS
-DISP_SCALE = 10  # 変位スケール
+# 変位量スケール（CSV値→Blender表示スケール調整用）
+DISP_SCALE = 20
 
-# ======================
-# 7. マテリアル透明度
-# ======================
+# ==========================
+# 8. マテリアル透明度（0:完全透明、1:不透明）
+# ==========================
 
-WALL_ALPHA = 0.4
+# 壁用マテリアルの透明度
+WALL_ALPHA = 0.8
+# 屋根用マテリアルの透明度
 ROOF_ALPHA = 0.6
 
 # ==========================
-# 8. CSV/STRヘッダー管理
+# 9. データCSV/STRヘッダー管理
 # ==========================
 
-# アニメーション・エッジデータのCSV/STRヘッダ
+# アニメーション・エッジデータ等で使うヘッダー
 TYPE_HEADER = "(TYPE)"
 CMP_HEADER = "(CMP)"
 ID_HEADER = "(ID)"
 
-# =======================
-# 9. EBEAM3D部材種別管理
-# =======================
+# ==========================
+# 10. EBEAM3D部材種別管理
+# ==========================
 
-# 部材種別ID→ラベル
+# EBEAM3D部材種別ID → ラベル
 EBEAM_KIND_LABELS = {
     42: "frame_beam_x_and_y",
     43: "top_of_upper_level_sandbag_connecting_beam_y_direction",
@@ -119,11 +164,42 @@ EBEAM_KIND_LABELS = {
 COLUMNS_KIND_IDS = [53, 55]
 # 梁として扱う部材種別IDリスト
 BEAMS_KIND_IDS = [42, 43, 44, 45, 46, 48, 49, 50, 51]
-
+# 梁・柱を構成するノードのkind_idリスト
+EDGE_NODE_KIND_IDS = [1]
 # 壁ノードのkind_idリスト
-WALL_NODE_KIND_IDS = [1, 2, 3, 4]  
+WALL_NODE_KIND_IDS = [1, 2, 3, 4]
+# サンドバッグを構成するノードのkind_idリスト
+SANDBAG_NODE_KIND_IDS = [2, 6, 10]
 
-# ========================
-# 10. ログ設定
-# ========================
-LOG_LEVEL = "INFO"  # "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL" のいずれか
+# ==========================
+# 11. ログ設定
+# ==========================
+
+# ログレベル（"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"）
+LOG_LEVEL = "INFO"
+
+# =======================
+# 12. ホットリロード対象モジュールリスト
+# =======================
+
+HOTRELOAD_MODULES = [
+    "config",
+    "utils.logging_utils",
+    "utils.scene_utils",
+    "loaders.node_loader",
+    "loaders.edge_loader",
+    "loaders.animation_loader",
+    "cores.node",
+    "cores.edge",
+    "cores.panel",
+    "cores.beam",
+    "cores.column",
+    "cores.CoreManager",
+    "builders.nodes",
+    "builders.panels",
+    "builders.materials",
+    "builders.columns",
+    "builders.beams",
+    "builders.scene_factory",
+    "animators.animator",
+]

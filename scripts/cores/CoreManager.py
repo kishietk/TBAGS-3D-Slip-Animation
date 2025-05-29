@@ -7,10 +7,12 @@ from config import (
     VALID_NODE_IDS,
     EPS_XY_MATCH,
     WALL_NODE_KIND_IDS,
+    SANDBAG_NODE_KIND_IDS,
 )
 from loaders.node_loader import load_nodes, NodeData
 from loaders.edge_loader import load_edges_from_str
 from cores.node import Node
+from cores.sandbag import SandbagNode  # ← 必須
 from cores.edge import Edge
 from cores.panel import Panel
 
@@ -36,7 +38,7 @@ class CoreManager:
             else WALL_NODE_KIND_IDS
         )
 
-        self.nodes: Dict[int, Node] = {}
+        self.nodes: Dict[int, Node | SandbagNode] = {}  # ← 型ヒントを拡張
         self.edges: List[Edge] = []
         self.panels: List[Panel] = []
 
@@ -56,28 +58,36 @@ class CoreManager:
         log.info(
             f"CoreManager build completed: {len(self.nodes)} nodes, {len(self.edges)} edges, {len(self.panels)} panels"
         )
-        for i, p in enumerate(self.panels[:5]):
-            log.info(f"[Panel Sample {i+1}] {p}")
 
-    def _load_nodes(self, path: str, valid_ids: Set[int]) -> Dict[int, Node]:
-        node_map: Dict[int, Node] = {}
+    def _load_nodes(
+        self, path: str, valid_ids: Set[int]
+    ) -> Dict[int, Node | SandbagNode]:
+        node_map: Dict[int, Node | SandbagNode] = {}
         try:
             nodes_data_dict = load_nodes(path)
             for nid, node_data in nodes_data_dict.items():
                 if nid not in valid_ids:
                     log.warning(f"Node ID {nid} not in valid_node_ids; skipping.")
                     continue
-                node_map[nid] = Node(nid, node_data.pos, kind_id=node_data.kind_id)
+                # kind_idを見てSandbagNode/Nodeを選択
+                if node_data.kind_id in SANDBAG_NODE_KIND_IDS:
+                    node_map[nid] = SandbagNode(
+                        nid, node_data.pos, kind_id=node_data.kind_id
+                    )
+                else:
+                    node_map[nid] = Node(nid, node_data.pos, kind_id=node_data.kind_id)
                 log.debug(
-                    f"Loaded Node {nid}: {node_data.pos}, kind_id={node_data.kind_id}"
+                    f"Loaded Node {nid}: {node_data.pos}, kind_id={node_data.kind_id}, type={type(node_map[nid]).__name__}"
                 )
         except Exception as e:
             log.critical(f"Failed to read node STR {path} ({e})")
             raise
         return node_map
 
+    # あとは従来通り。nodesの中にNode/SandbagNodeが混在するイメージです
+
     def _build_panels(
-        self, node_map: Dict[int, Node], panel_node_kind_ids: List[int]
+        self, node_map: Dict[int, Node | SandbagNode], panel_node_kind_ids: List[int]
     ) -> List[Panel]:
         panels: List[Panel] = []
         wall_nodes = [n for n in node_map.values() if n.kind_id in panel_node_kind_ids]
@@ -154,7 +164,7 @@ class CoreManager:
             log.warning("No panels were generated.")
         return panels
 
-    def get_nodes(self, ids: Optional[List[int]] = None) -> List[Node]:
+    def get_nodes(self, ids: Optional[List[int]] = None):
         if ids is None:
             return list(self.nodes.values())
         return [self.nodes[i] for i in ids if i in self.nodes]
