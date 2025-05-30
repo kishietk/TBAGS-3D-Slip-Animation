@@ -1,0 +1,115 @@
+@startuml
+' Blender構造可視化システムの主要スクリプト・ファイル関係図
+' ※クラス記法＆コメント付きで、役割と関係が分かるように
+
+' --------------------------
+' LOADERS (外部データ読み込み)
+' --------------------------
+package loaders {
+    class node_loader_py as "node_loader.py" <<loader>> {
+        ' ノードデータ（座標・kind等）をファイルから読み込む
+    }
+    class edge_loader_py as "edge_loader.py" <<loader>> {
+        ' エッジデータ（部材ペア・種別等）をファイルから読み込む
+    }
+    class animation_loader_py as "animation_loader.py" <<loader>> {
+        ' 各ノードのアニメーション変位データをCSVから読み込む
+    }
+}
+
+' --------------------------
+' CORES (コアデータ構造管理)
+' --------------------------
+package cores {
+    class CoreManager_py as "CoreManager.py" <<manager>> {
+        ' システム全体のデータ生成・統括管理（ノード・エッジ・パネル）
+    }
+    class node_py as "node.py" <<core>> {
+        ' 一般ノード（ID, 座標, 種別, 関連エッジ/パネル）
+    }
+    class sandbag_py as "sandbag.py" <<core>> {
+        ' サンドバッグ専用ノード（特殊kind）
+    }
+    class edge_py as "edge.py" <<core>> {
+        ' エッジ基底（梁・柱など部材）
+    }
+    class beam_py as "beam.py" <<core>> {
+        ' 梁部材（Edge継承）
+    }
+    class column_py as "column.py" <<core>> {
+        ' 柱部材（Edge継承）
+    }
+    class panel_py as "panel.py" <<core>> {
+        ' 4ノード面（壁・屋根）
+    }
+}
+
+' --------------------------
+' BUILDERS (Blender生成処理)
+' --------------------------
+package builders {
+    class scene_factory_py as "scene_factory.py" <<factory>> {
+        ' コアデータ→Blenderオブジェクト一括生成の統合
+    }
+    class nodes_py as "nodes.py" <<builder>> {
+        ' ノード球体オブジェクト生成
+    }
+    class sandbags_py as "sandbags.py" <<builder>> {
+        ' サンドバッグ立方体生成
+    }
+    class panels_py as "panels.py" <<builder>> {
+        ' 壁・屋根パネル生成
+    }
+    class beams_py as "beams.py" <<builder>> {
+        ' 梁Cylinder生成
+    }
+    class columns_py as "columns.py" <<builder>> {
+        ' 柱Cylinder生成
+    }
+    class labels_py as "labels.py" <<builder>> {
+        ' ラベル生成
+    }
+    class materials_py as "materials.py" <<builder>> {
+        ' マテリアル生成・割り当て
+    }
+}
+
+' --------------------------
+' ANIMATORS (アニメーション制御)
+' --------------------------
+package animators {
+    class animator_py as "animator.py" <<animator>> {
+        ' フレーム毎のBlenderシーン再配置・変位反映
+    }
+}
+
+' 依存線（主要なimport/参照関係のみ）
+
+' ---- CORES ----
+CoreManager_py --> node_loader_py : ' ノードデータ取得
+CoreManager_py --> edge_loader_py : ' エッジデータ取得
+CoreManager_py --> node_py : ' ノード生成
+CoreManager_py --> sandbag_py : ' サンドバッグ生成
+CoreManager_py --> edge_py : ' エッジ生成
+CoreManager_py --> panel_py : ' パネル生成
+
+edge_py --> node_py : ' ノードとエッジの関係
+beam_py --> edge_py : ' 梁はエッジ継承
+column_py --> edge_py : ' 柱はエッジ継承
+panel_py --> node_py : ' パネルはノード参照
+panel_py --> edge_py : ' パネルはエッジ参照
+
+' ---- BUILDERS ----
+scene_factory_py --> nodes_py : ' ノード球体生成呼び出し
+scene_factory_py --> sandbags_py : ' サンドバッグ生成呼び出し
+scene_factory_py --> panels_py : ' 壁・屋根生成呼び出し
+scene_factory_py --> beams_py : ' 梁生成呼び出し
+scene_factory_py --> columns_py : ' 柱生成呼び出し
+scene_factory_py --> labels_py : ' ラベル生成呼び出し
+scene_factory_py --> materials_py : ' マテリアル割当
+
+nodes_py --> node_py : ' ノード情報利用
+nodes_py --> labels_py : ' ラベル生成呼び出し
+sandbags_py --> node_py : ' ノード情報利用
+sandbags_py --> labels_py : ' ラベル生成呼び出し
+@enduml
