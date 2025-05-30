@@ -84,8 +84,8 @@ def load_nodes(path: str = NODE_CSV) -> Dict[int, NodeData]:
                         else:
                             kind_id = current_kind_id
                         nodes[nid] = NodeData(Vector((x, y, z)), kind_id)
-                        log.debug(
-                            f"Added node {nid}: ({x}, {y}, {z}), kind_id={kind_id}"
+                        log.info(
+                            f"Added node : ID = {nid}, #{kind_id}"
                         )
                     except Exception as e:
                         log.error(

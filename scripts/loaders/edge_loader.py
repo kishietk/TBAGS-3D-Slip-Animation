@@ -119,6 +119,9 @@ def load_edges(
                             kind_label=current_kind_label,
                         )
                     )
+                    log.info(
+                        f"Added edge: ({node_a_id}, {node_b_id}), #{current_kind_id}"
+                    )
                 elif (node_a_id in node_map) != (node_b_id in node_map):
                     log.debug(
                         f"Skipped edge line {line_num}: nodes=({nums}), kind_id={current_kind_id}, "
