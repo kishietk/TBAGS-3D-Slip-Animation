@@ -146,9 +146,8 @@ def make_sandbag_mat() -> bpy.types.Material:
         bsdf = nt.nodes.new(type="ShaderNodeBsdfPrincipled")
         out = nt.nodes.new(type="ShaderNodeOutputMaterial")
         nt.links.new(bsdf.outputs["BSDF"], out.inputs["Surface"])
-        # サンドバッグは赤系、金属光沢少なめ
-        bsdf.inputs["Base Color"].default_value = (0.85, 0.1, 0.15, 1)  # 赤
-        bsdf.inputs["Metallic"].default_value = 0.2
+        bsdf.inputs["Base Color"].default_value = (0.25, 0.61, 0.30, 1) 
+        bsdf.inputs["Metallic"].default_value = 0.7
         bsdf.inputs["Roughness"].default_value = 0.7
         log.debug("Sandbag material created")
         return mat

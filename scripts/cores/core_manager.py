@@ -1,18 +1,8 @@
-from typing import Dict, List, Optional, Set
-from mathutils import Vector
+from typing import Dict, List, Optional
 from utils.logging_utils import setup_logging
-from config import (
-    NODE_CSV,
-    EDGES_FILE,
-    VALID_NODE_IDS,
-    EPS_XY_MATCH,
-    WALL_NODE_KIND_IDS,
-    SANDBAG_NODE_KIND_IDS,
-)
-from loaders.node_loader import load_nodes, NodeData
-from loaders.edge_loader import load_edges_from_str
+from config import SANDBAG_NODE_KIND_IDS, EPS_XY_MATCH, WALL_NODE_KIND_IDS
 from cores.node import Node
-from cores.sandbag import SandbagNode  # ← 必須
+from cores.sandbag import SandbagNode
 from cores.edge import Edge
 from cores.panel import Panel
 
@@ -22,36 +12,28 @@ log = setup_logging()
 class CoreManager:
     def __init__(
         self,
-        node_csv: str = NODE_CSV,
-        edge_str: str = EDGES_FILE,
-        valid_node_ids: Optional[Set[int]] = None,
-        valid_kind_ids: Optional[List[int]] = None,
+        nodes_data: Dict[int, dict],  # LoaderManagerから渡されるrawデータ(dict)
+        edges_data: List[dict],  # LoaderManagerから渡されるrawデータ(list)
         panel_node_kind_ids: Optional[List[int]] = None,
     ):
-        self.node_csv = node_csv
-        self.edge_str = edge_str
-        self.valid_node_ids = valid_node_ids or VALID_NODE_IDS
-        self.valid_kind_ids = valid_kind_ids
         self.panel_node_kind_ids = (
             panel_node_kind_ids
             if panel_node_kind_ids is not None
             else WALL_NODE_KIND_IDS
         )
-
-        self.nodes: Dict[int, Node | SandbagNode] = {}  # ← 型ヒントを拡張
+        self.nodes: Dict[int, Node | SandbagNode] = {}
         self.edges: List[Edge] = []
         self.panels: List[Panel] = []
+        self._build_all(nodes_data, edges_data)
 
-        self._build_all()
+    def _build_all(self, nodes_data, edges_data):
+        log.info("CoreManager: Building nodes (from data)...")
+        self.nodes = self._build_nodes(nodes_data)
+        log.info(f"CoreManager: {len(self.nodes)} nodes built.")
 
-    def _build_all(self):
-        log.info("CoreManager: Loading nodes...")
-        self.nodes = self._load_nodes(self.node_csv, self.valid_node_ids)
-        log.info(f"CoreManager: Loaded {len(self.nodes)} nodes.")
-
-        log.info("CoreManager: Loading edges...")
-        self.edges = load_edges_from_str(self.edge_str, self.nodes, self.valid_kind_ids)
-        log.info(f"CoreManager: Loaded {len(self.edges)} edges.")
+        log.info("CoreManager: Building edges (from data)...")
+        self.edges = self._build_edges(edges_data, self.nodes)
+        log.info(f"CoreManager: {len(self.edges)} edges built.")
 
         log.info("CoreManager: Building panels...")
         self.panels = self._build_panels(self.nodes, self.panel_node_kind_ids)
@@ -59,32 +41,35 @@ class CoreManager:
             f"CoreManager build completed: {len(self.nodes)} nodes, {len(self.edges)} edges, {len(self.panels)} panels"
         )
 
-    def _load_nodes(
-        self, path: str, valid_ids: Set[int]
+    def _build_nodes(
+        self, nodes_data: Dict[int, dict]
     ) -> Dict[int, Node | SandbagNode]:
         node_map: Dict[int, Node | SandbagNode] = {}
-        try:
-            nodes_data_dict = load_nodes(path)
-            for nid, node_data in nodes_data_dict.items():
-                if nid not in valid_ids:
-                    log.warning(f"Node ID {nid} not in valid_node_ids; skipping.")
-                    continue
-                # kind_idを見てSandbagNode/Nodeを選択
-                if node_data.kind_id in SANDBAG_NODE_KIND_IDS:
-                    node_map[nid] = SandbagNode(
-                        nid, node_data.pos, kind_id=node_data.kind_id
-                    )
-                else:
-                    node_map[nid] = Node(nid, node_data.pos, kind_id=node_data.kind_id)
-                log.debug(
-                    f"Loaded Node {nid}: {node_data.pos}, kind_id={node_data.kind_id}, type={type(node_map[nid]).__name__}"
-                )
-        except Exception as e:
-            log.critical(f"Failed to read node STR {path} ({e})")
-            raise
+        for nid, data in nodes_data.items():
+            kind_id = data.get("kind_id")
+            pos = data["pos"]
+            if kind_id is not None and kind_id in SANDBAG_NODE_KIND_IDS:
+                node_map[nid] = SandbagNode(nid, pos, kind_id=kind_id)
+            else:
+                node_map[nid] = Node(nid, pos, kind_id=kind_id)
+            log.debug(
+                f"Loaded Node {nid}: {pos}, kind_id={kind_id}, type={type(node_map[nid]).__name__}"
+            )
         return node_map
 
-    # あとは従来通り。nodesの中にNode/SandbagNodeが混在するイメージです
+    def _build_edges(
+        self, edges_data: List[dict], node_map: Dict[int, Node | SandbagNode]
+    ) -> List[Edge]:
+        edges: List[Edge] = []
+        for e in edges_data:
+            node_a = node_map.get(e["node_a"])
+            node_b = node_map.get(e["node_b"])
+            kind_id = e.get("kind_id")
+            kind_label = e.get("kind_label")
+            if node_a and node_b:
+                # 必要ならここでBeam/Column/Edgeに分岐
+                edges.append(Edge(node_a, node_b, kind_id, kind_label))
+        return edges
 
     def _build_panels(
         self, node_map: Dict[int, Node | SandbagNode], panel_node_kind_ids: List[int]

@@ -51,7 +51,11 @@ def create_blender_objects(
     normal_nodes = {}
     for n in nodes.values() if isinstance(nodes, dict) else nodes:
         kind_id = getattr(n, "kind_id", None)
-        if kind_id in SANDBAG_NODE_KIND_IDS:
+        # kind_id=0はサンドバッグでもあるし、柱・梁にもなる
+        if kind_id == 0:
+            sandbag_nodes[n.id] = n
+            normal_nodes[n.id] = n  # ★両方に入れる
+        elif kind_id in SANDBAG_NODE_KIND_IDS:
             sandbag_nodes[n.id] = n
         else:
             normal_nodes[n.id] = n
