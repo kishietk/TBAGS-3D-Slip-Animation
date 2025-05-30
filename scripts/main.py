@@ -1,5 +1,6 @@
 """
 Blender構造可視化スクリプトのエントリーポイント
+（LoaderManager/ CoreManager分離設計・2025最新化例）
 """
 
 import sys
@@ -9,6 +10,7 @@ import os
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 if CURRENT_DIR not in sys.path:
     sys.path.insert(0, CURRENT_DIR)
+
 
 def main():
     from utils.logging_utils import setup_logging
@@ -23,18 +25,21 @@ def main():
 
         clear_scene()
 
-        # 2. コアデータ生成
-        from cores.CoreManager import CoreManager
+        # 2. データロード（LoaderManager）
+        from loaders.loader_manager import LoaderManager
 
-        cm = CoreManager()
+        loader = LoaderManager()  # パスはconfigデフォルト
+        nodes_data = loader.load_nodes()
+        edges_data = loader.load_edges(nodes_data)
+        anim_data = loader.load_animation()
+
+        # 3. コアデータ構築（CoreManager）
+        from cores.core_manager import CoreManager
+
+        cm = CoreManager(nodes_data, edges_data)
         log.info(
             f"Nodes: {len(cm.nodes)} / Edges: {len(cm.edges)} / Panels: {len(cm.panels)}"
         )
-
-        # 3. アニメーションデータ読込
-        from loaders.animation_loader import load_animation_data
-
-        anim_data = load_animation_data()
 
         # 4. Blenderオブジェクト生成
         from builders.scene_factory import create_blender_objects
