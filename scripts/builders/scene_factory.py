@@ -46,15 +46,23 @@ def create_blender_objects(
     """
 
     # 1. kind_idで通常ノード/サンドバッグノードに分離
+    # sandbag_nodes = {}
+    # normal_nodes = {}
+    # for n in nodes.values() if isinstance(nodes, dict) else nodes:
+    #     kind_id = getattr(n, "kind_id", None)
+    #     # kind_id=0はサンドバッグでもあるし、柱・梁にもなる
+    #     if kind_id == 0:
+    #         sandbag_nodes[n.id] = n
+    #         normal_nodes[n.id] = n  # ★両方に入れる
+    #     elif kind_id in SANDBAG_NODE_KIND_IDS:
+    #         sandbag_nodes[n.id] = n
+    #     else:
+    #         normal_nodes[n.id] = n
     sandbag_nodes = {}
     normal_nodes = {}
     for n in nodes.values() if isinstance(nodes, dict) else nodes:
         kind_id = getattr(n, "kind_id", None)
-        # kind_id=0はサンドバッグでもあるし、柱・梁にもなる
-        if kind_id == 0:
-            sandbag_nodes[n.id] = n
-            normal_nodes[n.id] = n  # ★両方に入れる
-        elif kind_id in SANDBAG_NODE_KIND_IDS:
+        if kind_id == 0 or kind_id in SANDBAG_NODE_KIND_IDS:
             sandbag_nodes[n.id] = n
         else:
             normal_nodes[n.id] = n

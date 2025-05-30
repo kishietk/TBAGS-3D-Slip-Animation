@@ -50,21 +50,37 @@ class coreConstructer:
             f"CoreManager build completed: {len(self.nodes)} nodes, {len(self.edges)} edges, {len(self.panels)} panels"
         )
 
-    def _construct_core_nodes(
-        self, nodes_data: Dict[int, NodeData]
-    ) -> Dict[int, Node | SandbagNode]:
+    # def _construct_core_nodes(
+    #     self, nodes_data: Dict[int, NodeData]
+    # ) -> Dict[int, Node | SandbagNode]:
+    #     node_map: Dict[int, Node | SandbagNode] = {}
+    #     for nid, data in nodes_data.items():
+    #         kind_id = data.kind_id
+    #         pos = data.pos
+    #         if kind_id is not None and kind_id in SANDBAG_NODE_KIND_IDS:
+    #             node_map[nid] = SandbagNode(nid, pos, kind_id=kind_id)
+    #         else:
+    #             node_map[nid] = Node(nid, pos, kind_id=kind_id)
+    #         log.debug(
+    #             f"Loaded Node {nid}: {pos}, kind_id={kind_id}, type={type(node_map[nid]).__name__}"
+    #         )
+    #     return node_map
+
+    def _construct_core_nodes(self, nodes_data: Dict[int, NodeData]) -> Dict[int, Node | SandbagNode]:
         node_map: Dict[int, Node | SandbagNode] = {}
         for nid, data in nodes_data.items():
             kind_id = data.kind_id
             pos = data.pos
-            if kind_id is not None and kind_id in SANDBAG_NODE_KIND_IDS:
+            # kind_id=0はSB兼柱としてSandbagNodeのみ登録
+            if kind_id == 0 or (kind_id is not None and kind_id in SANDBAG_NODE_KIND_IDS):
                 node_map[nid] = SandbagNode(nid, pos, kind_id=kind_id)
             else:
                 node_map[nid] = Node(nid, pos, kind_id=kind_id)
-            log.debug(
+            log.info(
                 f"Loaded Node {nid}: {pos}, kind_id={kind_id}, type={type(node_map[nid]).__name__}"
             )
         return node_map
+
 
     def _construct_core_edges(
         self, edges_data: List[EdgeData], node_map: Dict[int, Node | SandbagNode]

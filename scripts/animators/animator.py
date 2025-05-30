@@ -28,6 +28,9 @@ def on_frame(
     base_node_pos: dict[int, Vector],
     base_sandbag_pos: dict[int, Vector],
 ):
+    # --- Blender Object辞書を統合 ---
+    all_node_objs = {**node_objs, **sandbag_objs}
+
     # --- ノード球 ---
     for nid, obj in node_objs.items():
         if nid not in base_node_pos:
@@ -46,7 +49,7 @@ def on_frame(
         )
         obj.location = base_pos + disp
 
-    # パネル再構築
+    # --- パネル再構築 ---
     for obj in panel_objs:
         try:
             if obj is None:
@@ -54,12 +57,12 @@ def on_frame(
             ids = obj.get("panel_ids")
             if not ids or len(ids) != 4:
                 continue
-            a, b, d, c = ids  # ← [a, b, d, c]の順で取得
+            a, b, d, c = ids  # [a, b, d, c]の順
             verts = [
-                node_objs[a].location,
-                node_objs[b].location,
-                node_objs[d].location,
-                node_objs[c].location,
+                all_node_objs[a].location,
+                all_node_objs[b].location,
+                all_node_objs[d].location,
+                all_node_objs[c].location,
             ]
             mesh = obj.data
             mesh.clear_geometry()
@@ -74,7 +77,7 @@ def on_frame(
         except Exception as e:
             log.error(f"Failed to update panel {getattr(obj, 'name', '?')}: {e}")
 
-    # 屋根再構築
+    # --- 屋根再構築 ---
     if roof_obj is not None and roof_quads:
         try:
             mesh = roof_obj.data
@@ -85,7 +88,7 @@ def on_frame(
             for quad in roof_quads:
                 for nid in quad:
                     if nid not in vert_map:
-                        vert_map[nid] = bm.verts.new(node_objs[nid].location)
+                        vert_map[nid] = bm.verts.new(all_node_objs[nid].location)
             for bl, br, tr, tl in roof_quads:
                 face = bm.faces.new(
                     [
@@ -102,14 +105,14 @@ def on_frame(
         except Exception as e:
             log.error(f"Failed to update roof: {e}")
 
-    # 柱・梁再配置
+    # --- 柱・梁再配置 ---
     up = Vector((0, 0, 1))
     for obj, a, b in member_objs:
         try:
             if obj is None:
                 continue
-            p1 = node_objs[a].location
-            p2 = node_objs[b].location
+            p1 = all_node_objs[a].location
+            p2 = all_node_objs[b].location
             vec = p2 - p1
             mid = (p1 + p2) * 0.5
             length = vec.length
