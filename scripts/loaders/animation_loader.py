@@ -24,6 +24,7 @@ def load_animation_data(path: str = ANIM_CSV) -> Dict[int, Dict[int, Vector]]:
         ノードIDをキー、各フレームの変位Vector辞書を値とする辞書
         例: { node_id: { frame: Vector(dx, dy, dz), ... }, ... }
     """
+    log.info("=================[アニメーション情報を読み取り]=========================")
     log.info(f"Reading animation data from: {path}")
     rows = []
     try:

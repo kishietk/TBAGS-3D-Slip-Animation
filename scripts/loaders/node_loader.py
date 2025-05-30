@@ -17,7 +17,7 @@ def load_nodes(path: str = NODE_CSV) -> Dict[int, NodeData]:
     ファイル内コメント・セクション見出しから
     kind_id（区分）を柔軟に自動割当するノード辞書生成関数
     """
-    log.info(f"Reading node data from: {path}")
+    log.info("=================[ノード情報を読み取り]=========================")
     nodes: Dict[int, NodeData] = {}
 
     section_pattern = re.compile(r"#\s*(\d+)")
@@ -84,7 +84,7 @@ def load_nodes(path: str = NODE_CSV) -> Dict[int, NodeData]:
                         else:
                             kind_id = current_kind_id
                         nodes[nid] = NodeData(Vector((x, y, z)), kind_id)
-                        log.info(
+                        log.debug(
                             f"Added node {nid}: ({x}, {y}, {z}), kind_id={kind_id}"
                         )
                     except Exception as e:

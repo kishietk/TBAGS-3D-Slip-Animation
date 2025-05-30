@@ -1,6 +1,6 @@
 """
 Blender構造可視化スクリプトのエントリーポイント
-（LoaderManager/ CoreManager分離設計・2025最新化例）
+（LoaderManager/coreConstructer分離設計・2025最新化例）
 """
 
 import sys
@@ -14,7 +14,6 @@ if CURRENT_DIR not in sys.path:
 
 def main():
     from utils.logging_utils import setup_logging
-    from config import SANDBAG_NODE_KIND_IDS
 
     log = setup_logging("main")
     log.info("=== Start Visualization ===")
@@ -29,33 +28,31 @@ def main():
         from loaders.loader_manager import LoaderManager
 
         loader = LoaderManager()  # パスはconfigデフォルト
-        nodes_data = loader.load_nodes()
-        edges_data = loader.load_edges(nodes_data)
-        anim_data = loader.load_animation()
+        nodes_data = loader.load_nodes()  # Dict[int, NodeData]
+        edges_data = loader.load_edges(nodes_data)  # List[EdgeData]
+        anim_data = loader.load_animation()  # Dict[int, Dict[int, Vector]]
 
-        # 3. コアデータ構築（CoreManager）
-        from cores.core_manager import CoreManager
-
-        cm = CoreManager(nodes_data, edges_data)
-        log.info(
-            f"Nodes: {len(cm.nodes)} / Edges: {len(cm.edges)} / Panels: {len(cm.panels)}"
-        )
+        # 3. コアデータ構築（coreConstructer）
+        from cores.coreConstructer import coreConstructer
+        cc = coreConstructer(nodes_data, edges_data)
+        log.info(f"SUMMARY:[[{cc.summary()}]]")
 
         # 4. Blenderオブジェクト生成
         from builders.scene_factory import create_blender_objects
 
         node_objs, sandbag_objs, panel_objs, roof_obj, roof_quads, member_objs = (
             create_blender_objects(
-                nodes=cm.get_nodes(),
-                column_edges=cm.classify_edges()[0],
-                beam_edges=cm.classify_edges()[1],
-                anim_data=anim_data,
-                panels=cm.get_panels(),
+                nodes=cc.get_nodes(),
+                column_edges=cc.get_columns(),
+                beam_edges=cc.get_beams(),
+                panels=cc.get_panels(),
             )
         )
 
         # --- サンドバッグとノードでIDを分割 ---
-        nodes = cm.get_nodes()
+        from config import SANDBAG_NODE_KIND_IDS
+
+        nodes = cc.get_nodes()
         base_node_pos = {
             n.id: n.pos
             for n in nodes

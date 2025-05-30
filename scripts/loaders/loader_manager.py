@@ -1,8 +1,8 @@
 from typing import Dict, List
 from mathutils import Vector
 from config import NODE_CSV, EDGES_FILE, ANIM_CSV
-from loaders.node_loader import load_nodes
-from loaders.edge_loader import load_edges_from_str
+from loaders.node_loader import load_nodes, NodeData
+from loaders.edge_loader import load_edges, EdgeData
 from loaders.animation_loader import load_animation_data
 from utils.logging_utils import setup_logging
 
@@ -20,57 +20,36 @@ class LoaderManager:
         self.edge_path = edge_path
         self.anim_path = anim_path
 
-    def load_nodes(self) -> Dict[int, dict]:
+    def load_nodes(self) -> Dict[int, NodeData]:
         """
-        ノードデータを辞書形式で返す。
+        ノードデータ（NodeData型）の辞書を返す
         - key: ノードID
-        - value: { 'pos': Vector, 'kind_id': int }
+        - value: NodeData (NamedTuple: pos, kind_id)
         """
         try:
             node_data_dict = load_nodes(self.node_path)
-            result = {
-                nid: {"pos": v.pos, "kind_id": v.kind_id}
-                for nid, v in node_data_dict.items()
-            }
-            log.info(f"LoaderManager: Loaded {len(result)} nodes from {self.node_path}")
-            return result
+            log.info(
+                f"LoaderManager: Loaded {len(node_data_dict)} nodes from {self.node_path}"
+            )
+            return node_data_dict
         except Exception as e:
             log.critical(f"LoaderManager: Failed to load nodes ({e})")
             raise
 
-    def load_edges(self, node_map: Dict[int, dict]) -> List[dict]:
+    def load_edges(self, node_map: Dict[int, "NodeData"]) -> List["EdgeData"]:
         """
-        エッジデータをリスト形式で返す。
-        - 各要素: { 'node_a': int, 'node_b': int, 'kind_id': int, 'kind_label': str }
+        エッジデータ（EdgeData型）のリストを返す
+        - 各要素: EdgeData (NamedTuple: node_a, node_b, kind_id, kind_label)
         """
         try:
-            # ダミーNodeインスタンスでload_edges_from_strを利用しても良いが、
-            # 必要に応じてnode_mapをラップする形で適合させる
-            from cores.node import Node
-
-            temp_node_objs = {
-                nid: Node(nid, data["pos"], kind_id=data["kind_id"])
-                for nid, data in node_map.items()
-            }
-            edges = load_edges_from_str(self.edge_path, temp_node_objs)
-            # 必要な情報だけ抽出
-            result = []
-            for e in edges:
-                result.append(
-                    {
-                        "node_a": e.node_a.id,
-                        "node_b": e.node_b.id,
-                        "kind_id": getattr(e, "kind_id", None),
-                        "kind_label": getattr(e, "kind_label", None),
-                    }
-                )
-            log.info(f"LoaderManager: Loaded {len(result)} edges from {self.edge_path}")
-            return result
+            edges = load_edges(self.edge_path, node_map)
+            log.info(f"LoaderManager: Loaded {len(edges)} edges from {self.edge_path}")
+            return edges
         except Exception as e:
             log.critical(f"LoaderManager: Failed to load edges ({e})")
             raise
 
-    def load_animation(self) -> Dict[int, Dict[int, "Vector"]]:
+    def load_animation(self) -> Dict[int, Dict[int, Vector]]:
         """
         アニメーションデータをロード。
         戻り値: {ノードID: {フレーム番号: Vector}}

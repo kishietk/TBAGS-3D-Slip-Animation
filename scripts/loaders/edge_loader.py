@@ -1,47 +1,50 @@
-# edge_loader.py
 """
 エッジデータローダ
-STRファイル等のテキストデータから、エッジ（Edge/Beam/Column）インスタンスを生成
+STRファイル等のテキストデータから、エッジ定義（データ構造）リストを生成
 
 - 許容ノードkind_idリスト（EDGE_NODE_KIND_IDS）によるフィルタ機能付き
-- 正しくないノード種別のペアはエッジ生成しない
+- データ層では部材クラス生成せず、EdgeData（NamedTuple）リストのみ返す
 """
 
 import re
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, NamedTuple
 from utils.logging_utils import setup_logging
+from loaders.node_loader import NodeData
+
 from config import (
     EBEAM_KIND_LABELS,
-    COLUMNS_KIND_IDS,
-    BEAMS_KIND_IDS,
     EDGE_NODE_KIND_IDS,
 )
-from cores.node import Node
-from cores.edge import Edge
-from cores.beam import Beam
-from cores.column import Column
 
 log = setup_logging()
 
 
-def load_edges_from_str(
+class EdgeData(NamedTuple):
+    node_a: int
+    node_b: int
+    kind_id: int
+    kind_label: str
+
+
+def load_edges(
     path: str,
-    node_map: Dict[int, Node],
+    node_map: Dict[int, "NodeData"],
     valid_kind_ids: Optional[List[int]] = None,
-) -> List[Edge]:
+) -> List[EdgeData]:
     """
-    エッジ定義テキストからエッジ・梁・柱インスタンスを生成
-    許可されたkind_idのノード間のみエッジ生成
+    エッジ定義テキストからエッジ情報データ（EdgeData）を生成
+    許可されたkind_idのノード間のみエッジ定義として返す
 
     引数:
         path: エッジ定義ファイルパス
-        node_map: ノードID→Nodeインスタンスの辞書
+        node_map: ノードID→NodeDataインスタンスの辞書（kind_id必須）
         valid_kind_ids: 有効な部材種別IDリスト（省略可）
 
     戻り値:
-        Edge/Beam/Columnインスタンスのリスト
+        EdgeDataインスタンスのリスト
     """
-    edges: List[Edge] = []
+    log.info("=================[エッジ情報を読み取り]=========================")
+    edges: List[EdgeData] = []
     current_kind_id: Optional[int] = None
     current_kind_label: Optional[str] = None
     in_ebeam3d = False
@@ -107,32 +110,15 @@ def load_edges_from_str(
                             f"kind_id not in EDGE_NODE_KIND_IDS ({kind_a}, {kind_b})"
                         )
                         continue
-                    # --- 各種部材クラスでインスタンス化 ---
-                    if current_kind_id in COLUMNS_KIND_IDS:
-                        edge = Column(
-                            node_a=node_map[node_a_id],
-                            node_b=node_map[node_b_id],
+                    # --- ここではEdgeDataのみ返す ---
+                    edges.append(
+                        EdgeData(
+                            node_a=node_a_id,
+                            node_b=node_b_id,
                             kind_id=current_kind_id,
                             kind_label=current_kind_label,
                         )
-                    elif current_kind_id in BEAMS_KIND_IDS:
-                        edge = Beam(
-                            node_a=node_map[node_a_id],
-                            node_b=node_map[node_b_id],
-                            kind_id=current_kind_id,
-                            kind_label=current_kind_label,
-                        )
-                    else:
-                        edge = Edge(
-                            node_a=node_map[node_a_id],
-                            node_b=node_map[node_b_id],
-                            kind_id=current_kind_id,
-                            kind_label=current_kind_label,
-                        )
-                    log.debug(
-                        f"Build Edge: nodes=({node_a_id}, {node_b_id}), kind_id={current_kind_id}, label={current_kind_label}"
                     )
-                    edges.append(edge)
                 elif (node_a_id in node_map) != (node_b_id in node_map):
                     log.debug(
                         f"Skipped edge line {line_num}: nodes=({nums}), kind_id={current_kind_id}, "

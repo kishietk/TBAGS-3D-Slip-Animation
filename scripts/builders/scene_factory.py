@@ -19,7 +19,6 @@ def create_blender_objects(
     nodes,  # List[Node/SandbagNode]またはDict[int, Node/SandbagNode]
     column_edges,
     beam_edges,
-    anim_data,  # ※静的生成なので使わない。将来拡張用に残しても良い
     panels=None,
     sandbag_cube_size=SANDBAG_CUBE_SIZE,
     node_sphere_radius=SPHERE_RADIUS,
