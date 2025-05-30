@@ -1,3 +1,9 @@
+"""
+ロギングユーティリティ
+- プロジェクト全体で使うlogging.Loggerのセットアップ関数を提供
+- LOG_LEVELはconfigから読み込み、環境によってINFO等に切替
+"""
+
 import logging
 
 try:
@@ -8,11 +14,14 @@ except ImportError:
 
 def setup_logging(name: str = "main") -> logging.Logger:
     """
-    ロガーをセットアップし返す
+    指定名のロガー(logging.Logger)をセットアップし返す。
+
     引数:
-        name: ロガー名（省略時は'main'）
+        name (str): ロガー名（省略時'main'）
     戻り値:
-        ロガーインスタンス
+        logging.Logger: ロガーインスタンス
+    例外:
+        なし（但しロギング設定に失敗すると標準logging挙動）
     """
     logger = logging.getLogger(name)
     if not logger.handlers:

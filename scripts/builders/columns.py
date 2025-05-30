@@ -1,5 +1,9 @@
-# 柱生成ビルダー
-# ノード座標とエッジ情報から柱（Cylinderオブジェクト）を生成する
+"""
+柱（Column）生成ビルダー（builders/columns.py）
+
+- ノード座標とエッジ情報からBlender上に柱（Cylinder）を一括生成
+- 回転・長さ自動計算。親子/アニメは持たない
+"""
 
 import bpy
 from mathutils import Vector
@@ -14,13 +18,19 @@ def build_columns(
     thickness: float,
 ) -> list[tuple[bpy.types.Object, int, int]]:
     """
-    柱（columns）をシリンダーで生成する
-    引数:
-        nodes: ノードID→座標Vectorの辞書
-        edges: 柱を構成するノードIDペアの集合
-        thickness: シリンダーの半径
-    戻り値:
-        (柱オブジェクト, ノードAのID, ノードBのID)のタプルリスト
+    ノード座標とエッジ情報から柱（Cylinderオブジェクト）を生成する
+
+    Args:
+        nodes (dict[int, Vector]): ノードID→座標Vectorの辞書
+        edges (set[tuple[int, int]]): 柱となるノードIDペア集合
+        thickness (float): 柱シリンダーの半径
+
+    Returns:
+        list[tuple[bpy.types.Object, int, int]]: (柱Object, ノードA ID, ノードB ID)タプルリスト
+
+    Note:
+        - 中心座標・回転は自動計算
+        - Blender側でスケール補正
     """
     objs = []
     up = Vector((0, 0, 1))

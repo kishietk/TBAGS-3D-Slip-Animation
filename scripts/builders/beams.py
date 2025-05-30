@@ -1,5 +1,9 @@
-# 梁生成ビルダー
-# ノード座標とエッジ情報から梁（Cylinderオブジェクト）を生成する
+"""
+梁（Beam）生成ビルダー（builders/beams.py）
+
+- ノード座標とエッジ情報からBlender上に梁（Cylinder）を一括生成
+- 柱ビルダーと構造同一・回転自動計算
+"""
 
 import bpy
 from mathutils import Vector
@@ -14,13 +18,18 @@ def build_beams(
     thickness: float,
 ) -> list[tuple[bpy.types.Object, int, int]]:
     """
-    梁（beams）をシリンダーで生成する
-    引数:
-        nodes: ノードID→座標Vectorの辞書
-        edges: 梁を構成するノードIDペアの集合
-        thickness: シリンダーの半径
-    戻り値:
-        (梁オブジェクト, ノードAのID, ノードBのID)のタプルリスト
+    ノード座標とエッジ情報から梁（Cylinderオブジェクト）を生成する
+
+    Args:
+        nodes (dict[int, Vector]): ノードID→座標Vectorの辞書
+        edges (set[tuple[int, int]]): 梁となるノードIDペア集合
+        thickness (float): 梁シリンダーの半径
+
+    Returns:
+        list[tuple[bpy.types.Object, int, int]]: (梁Object, ノードA ID, ノードB ID)タプルリスト
+
+    Note:
+        - 柱ビルダー（build_columns）とシグネチャ共通化
     """
     objs = []
     up = Vector((0, 0, 1))

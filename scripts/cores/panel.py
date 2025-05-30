@@ -1,17 +1,26 @@
-# パネル（Panel）クラス
-# 4つのノードで構成される面（壁や屋根）を表現する
+"""
+パネル（Panel）コアクラス
+- 4ノードで構成される面（壁・屋根等）の属性・参照情報を管理
+- Edge/Nodeの双方向リンクによるグラフ構造把握
+
+【設計方針】
+- nodes: List[Node]（必ず4点）、edges: List[Edge]
+- kind: str型種別("wall"/"roof"等)
+- floor: 階層ラベル、attributes: 任意の追加辞書
+"""
 
 from typing import List, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from cores.node import Node
-    from cores.edge import Edge
+    from cores.Node import Node
+    from cores.Edge import Edge
 
 
 class Panel:
     """
-    パネル（壁・屋根等の面）のコアクラス
-    4ノード・エッジリスト・種別・階層・属性を管理する
+    パネル（壁・屋根等の面）コアクラス
+    - 4ノード・エッジ・種別・階層・属性を包括
+    - 構造グラフ全体で面/屋根を表現
     """
 
     def __init__(
@@ -21,26 +30,26 @@ class Panel:
         kind: str = "wall",
         floor: Optional[str] = None,
         attributes: Optional[dict] = None,
-    ):
+    ) -> None:
         """
-        Panelインスタンスを初期化する
-        引数:
-            nodes: 構成ノードリスト（4個、Node型）
-            edges: 構成エッジリスト（任意、Edge型）
-            kind: 種別ラベル（例: "wall", "roof" など）
-            floor: 階層属性（任意、str型）
-            attributes: 任意の属性辞書
-        戻り値:
-            なし
+        Panelインスタンス初期化
+        Args:
+            nodes (List[Node]): 4つのノード
+            edges (Optional[List[Edge]]): 構成エッジ
+            kind (str): 種別（"wall"/"roof"等）
+            floor (Optional[str]): 階層
+            attributes (Optional[dict]): 任意追加属性
+        Returns:
+            None
         """
-        self.id = "_".join(str(n.id) for n in sorted(nodes, key=lambda n: n.id))
-        self.nodes = nodes
-        self.edges = edges if edges is not None else []
-        self.kind = kind
-        self.floor = floor
-        self.attributes = attributes if attributes is not None else {}
+        self.id: str = "_".join(str(n.id) for n in sorted(nodes, key=lambda n: n.id))
+        self.nodes: List["Node"] = nodes
+        self.edges: List["Edge"] = edges if edges is not None else []
+        self.kind: str = kind
+        self.floor: Optional[str] = floor
+        self.attributes: dict = attributes if attributes is not None else {}
 
-        # ノードとエッジにこのパネルを双方向登録する
+        # ノード・エッジにこのパネルを相互登録
         for n in self.nodes:
             n.add_panel(self)
         for e in self.edges:
@@ -48,11 +57,9 @@ class Panel:
 
     def __repr__(self) -> str:
         """
-        パネルの情報を文字列として返す
-        引数:
-            なし
-        戻り値:
-            パネル情報の文字列
+        パネル情報を可読文字列で返す
+        Returns:
+            str: パネル情報
         """
         return (
             f"Panel(id={self.id}, kind={self.kind}, floor={self.floor}, "

@@ -1,4 +1,13 @@
+"""
+Blenderオブジェクト用マテリアル生成・一括適用モジュール
+
+- 壁、屋根、柱、梁、ノード球、サンドバッグ（立方体）ごとの専用マテリアル生成
+- apply_all_materialsで一括割り当て
+- モジュール設計思想：シーンビルドやアニメータから独立して「材料生成・割り当て責任のみ」を持つ
+"""
+
 import bpy
+from typing import Dict, List, Tuple, Optional
 from utils.logging_utils import setup_logging
 from config import WALL_IMG, ROOF_IMG, WALL_ALPHA, ROOF_ALPHA
 
@@ -7,13 +16,18 @@ log = setup_logging()
 
 def make_texture_mat(name: str, img_path: str, alpha: float) -> bpy.types.Material:
     """
-    テクスチャ画像・透明度を持つマテリアルを生成する
-    引数:
-        name: マテリアル名
-        img_path: テクスチャ画像ファイルパス
-        alpha: 透明度（0.0～1.0）
-    戻り値:
-        生成したBlenderマテリアル
+    テクスチャ画像・透明度付きマテリアル生成
+
+    Args:
+        name (str): マテリアル名
+        img_path (str): テクスチャ画像ファイルパス
+        alpha (float): 透明度（0:完全透明, 1:不透明）
+
+    Returns:
+        bpy.types.Material: 作成されたマテリアル
+
+    Raises:
+        Exception: Blenderマテリアル生成に失敗時
     """
     try:
         mat = bpy.data.materials.get(name) or bpy.data.materials.new(name)
@@ -44,7 +58,13 @@ def make_texture_mat(name: str, img_path: str, alpha: float) -> bpy.types.Materi
 
 def make_column_mat() -> bpy.types.Material:
     """
-    柱用マテリアル（木目調）を生成する
+    柱用マテリアル（木目調）生成
+
+    Returns:
+        bpy.types.Material: 作成されたマテリアル
+
+    Raises:
+        Exception: Blenderマテリアル生成に失敗時
     """
     try:
         name = "ColumnMat"
@@ -77,7 +97,13 @@ def make_column_mat() -> bpy.types.Material:
 
 def make_beam_mat() -> bpy.types.Material:
     """
-    梁用マテリアル（金属調）を生成する
+    梁用マテリアル（金属調）生成
+
+    Returns:
+        bpy.types.Material: 作成されたマテリアル
+
+    Raises:
+        Exception: Blenderマテリアル生成に失敗時
     """
     try:
         name = "BeamMat"
@@ -110,7 +136,13 @@ def make_beam_mat() -> bpy.types.Material:
 
 def make_node_mat() -> bpy.types.Material:
     """
-    ノード球用マテリアル（オレンジ色）を生成する
+    ノード球用マテリアル（オレンジ色）生成
+
+    Returns:
+        bpy.types.Material: 作成されたマテリアル
+
+    Raises:
+        Exception: Blenderマテリアル生成に失敗時
     """
     try:
         name = "NodeMat"
@@ -131,15 +163,57 @@ def make_node_mat() -> bpy.types.Material:
         raise
 
 
+def make_sandbag_mat() -> bpy.types.Material:
+    """
+    サンドバッグ用マテリアル（緑色系）生成
+
+    Returns:
+        bpy.types.Material: 作成されたマテリアル
+
+    Raises:
+        Exception: Blenderマテリアル生成に失敗時
+    """
+    try:
+        name = "SandbagMat"
+        mat = bpy.data.materials.get(name) or bpy.data.materials.new(name)
+        mat.use_nodes = True
+        nt = mat.node_tree
+        nt.nodes.clear()
+        bsdf = nt.nodes.new(type="ShaderNodeBsdfPrincipled")
+        out = nt.nodes.new(type="ShaderNodeOutputMaterial")
+        nt.links.new(bsdf.outputs["BSDF"], out.inputs["Surface"])
+        bsdf.inputs["Base Color"].default_value = (0.25, 0.61, 0.30, 1)
+        bsdf.inputs["Metallic"].default_value = 0.7
+        bsdf.inputs["Roughness"].default_value = 0.7
+        log.debug("Sandbag material created")
+        return mat
+    except Exception as e:
+        log.error(f"Failed to create sandbag material: {e}")
+        raise
+
+
 def apply_all_materials(
-    node_objs: dict[int, bpy.types.Object],
-    panel_objs: list[bpy.types.Object],
-    roof_obj: bpy.types.Object,
-    member_objs: list[tuple[bpy.types.Object, int, int]],
+    node_objs: Dict[int, bpy.types.Object],
+    sandbag_objs: Dict[int, bpy.types.Object],
+    panel_objs: List[bpy.types.Object],
+    roof_obj: Optional[bpy.types.Object],
+    member_objs: List[Tuple[bpy.types.Object, int, int]],
 ) -> None:
     """
-    ノード球・壁パネル・屋根・柱・梁にマテリアルを一括適用し、
-    各種オブジェクトに適用した数を詳細ログに出力する
+    ノード球・サンドバッグ立方体・壁パネル・屋根・柱・梁にマテリアルを一括適用
+
+    Args:
+        node_objs (Dict[int, bpy.types.Object]): ノード球オブジェクト
+        sandbag_objs (Dict[int, bpy.types.Object]): サンドバッグオブジェクト
+        panel_objs (List[bpy.types.Object]): パネルオブジェクトリスト
+        roof_obj (Optional[bpy.types.Object]): 屋根オブジェクト
+        member_objs (List[Tuple[bpy.types.Object, int, int]]): 柱・梁のBlenderオブジェクト（オブジェクト, ノードA, ノードB）
+
+    Returns:
+        None
+
+    Raises:
+        Exception: 適用中にエラー発生時
     """
     log.info("=== Applying all materials ===")
     try:
@@ -148,50 +222,55 @@ def apply_all_materials(
         mat_col = make_column_mat()
         mat_beam = make_beam_mat()
         mat_node = make_node_mat()
+        mat_sandbag = make_sandbag_mat()
 
+        # パネル
         panel_count = 0
-        roof_count = 0
-        column_count = 0
-        beam_count = 0
-        node_count = 0
-
         for o in panel_objs:
             o.data.materials.clear()
             o.data.materials.append(mat_wall)
             panel_count += 1
-            log.debug(f"Panel {o.name}: Material set to WallMat")
 
+        # 屋根
+        roof_count = 0
         if roof_obj:
             roof_obj.data.materials.clear()
             roof_obj.data.materials.append(mat_roof)
             roof_count += 1
-            log.debug(f"Roof {roof_obj.name}: Material set to RoofMat")
 
+        # 柱・梁
+        column_count = 0
+        beam_count = 0
         for obj, a, b in member_objs:
             if obj.name.startswith("Column_"):
                 obj.data.materials.clear()
                 obj.data.materials.append(mat_col)
                 column_count += 1
-                log.debug(f"Column {obj.name}: Material set to ColumnMat")
             elif obj.name.startswith("Beam_"):
                 obj.data.materials.clear()
                 obj.data.materials.append(mat_beam)
                 beam_count += 1
-                log.debug(f"Beam {obj.name}: Material set to BeamMat")
             else:
                 obj.data.materials.clear()
                 obj.data.materials.append(mat_beam)
-                log.debug(f"Member {obj.name}: Material set to BeamMat (default)")
 
+        # ノード球
+        node_count = 0
         for o in node_objs.values():
             o.data.materials.clear()
             o.data.materials.append(mat_node)
             node_count += 1
-            log.debug(f"Node {o.name}: Material set to NodeMat")
+
+        # サンドバッグ
+        sandbag_count = 0
+        for o in sandbag_objs.values():
+            o.data.materials.clear()
+            o.data.materials.append(mat_sandbag)
+            sandbag_count += 1
 
         log.info(
-            f"Materials applied successfully. Panels: {panel_count}, Roofs: {roof_count}, "
-            f"Columns: {column_count}, Beams: {beam_count}, Nodes: {node_count}"
+            f"Materials applied. Panels: {panel_count}, Roofs: {roof_count}, "
+            f"Columns: {column_count}, Beams: {beam_count}, Nodes: {node_count}, Sandbags: {sandbag_count}"
         )
     except Exception as e:
         log.error(f"Failed to apply all materials: {e}")

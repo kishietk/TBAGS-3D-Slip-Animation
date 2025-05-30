@@ -1,78 +1,92 @@
-# ノード球およびラベル生成ビルダー
-# Blender上にノード球・IDラベルを生成する
+"""
+ノード球Blenderオブジェクトの生成ビルダー
+- ノードIDと座標を受け、Blender上に静的な球体のみ生成
+- アニメーション・キーフレーム処理は一切持たない（責任分離）
+"""
 
 import bpy
 from mathutils import Vector
+from typing import Dict
 from utils.logging_utils import setup_logging
-from config import NODE_LABEL_SIZE, NODE_LABEL_OFFSET
+from cores.Node import Node
+from builders.labels import create_label
+from config import LABEL_SIZE, LABEL_OFFSET
 
 log = setup_logging()
 
 
 def build_nodes(
-    nodes: dict[int, Vector],
+    nodes: Dict[int, Node],  # Node型または {pos, kind_id}を持つdict型
     radius: float,
-    anim_data: dict[int, dict[int, Vector]] | None = None,
-) -> dict[int, bpy.types.Object]:
+) -> Dict[int, bpy.types.Object]:
     """
-    ノード座標からノード球をBlender上に生成する
-    必要に応じてアニメーション（変位量）もキーフレーム登録する
-    引数:
-        nodes: ノードID→座標Vectorの辞書
-        radius: 球体の半径
-        anim_data: ノードごと・フレームごとの変位量辞書（省略可）
-    戻り値:
-        ノードID→Blenderオブジェクトの辞書
+    ノード座標からBlender球体（ノード球）を静的に生成する
+    ※アニメーション処理はここでは行わない
+
+    Args:
+        nodes (Dict[int, Node]): ノードID→Nodeインスタンス または (pos, kind_id) を持つdict
+        radius (float): 球体半径
+    Returns:
+        Dict[int, bpy.types.Object]: ノードID→Blenderオブジェクトの辞書
     """
-    objs: dict[int, bpy.types.Object] = {}
-    for nid, pos in nodes.items():
+    objs: Dict[int, bpy.types.Object] = {}
+    for nid, node in nodes.items():
+        # Node型かdict/tupleか判定し、安全に座標(Vector)を取り出す
+        if hasattr(node, "pos"):
+            pos = node.pos
+        elif isinstance(node, (list, tuple)):
+            pos = node[0]
+        elif isinstance(node, dict) and "pos" in node:
+            pos = node["pos"]
+        else:
+            log.error(f"Node {nid}: Could not extract position! Skipping.")
+            continue
+
+        # Vector型でなければ変換
+        if not isinstance(pos, Vector):
+            try:
+                pos = Vector(pos)
+            except Exception as e:
+                log.error(f"Node {nid}: Invalid position value {pos}: {e}")
+                continue
+
         try:
             bpy.ops.mesh.primitive_uv_sphere_add(radius=radius, location=pos)
-            o = bpy.context.object
-            o.name = f"Node_{nid}"
-            objs[nid] = o
-            log.debug(f"Node_{nid}: pos={tuple(pos)}, radius={radius}")
-
-            if anim_data and nid in anim_data:
-                for frame, offset in anim_data[nid].items():
-                    o.location = pos + offset
-                    o.keyframe_insert(data_path="location", frame=frame)
+            obj = bpy.context.object
+            obj.name = f"Node_{nid}"
+            objs[nid] = obj
+            log.debug(f"Node sphere {nid} created at {tuple(pos)} (radius={radius})")
         except Exception as e:
             log.error(f"Failed to create node sphere for ID {nid}: {e}")
     return objs
 
 
-def create_node_labels(nodes: dict[int, Vector], radius: float) -> None:
+def create_node_labels(
+    nodes: Dict[int, Vector],
+    abs_size: float = LABEL_SIZE,
+    offset: Vector = LABEL_OFFSET,
+) -> None:
     """
-    各ノード球にIDラベル（Textオブジェクト）を追加する
-    ノード球の子オブジェクトとしてラベルを付与する
-    引数:
-        nodes: ノードID→座標Vectorの辞書
-        radius: 球体の半径
-    戻り値:
-        なし
-    """
-    from math import radians
+    ノード球体にノードIDラベルを付与
 
+    Args:
+        nodes (Dict[int, Vector]): ノードID→座標
+        abs_size (float): ラベル文字サイズ
+        offset (Vector): ラベル配置オフセット
+    Returns:
+        None
+    """
     for nid, pos in nodes.items():
         node_name = f"Node_{nid}"
-        if node_name not in bpy.data.objects:
+        obj = bpy.data.objects.get(node_name)
+        if not obj:
             log.warning(f"Node object '{node_name}' not found for label creation")
             continue
-        node_obj = bpy.data.objects[node_name]
-        try:
-            bpy.ops.object.text_add()
-            text_obj = bpy.context.object
-            text_obj.name = f"Label_{nid}"
-            text_obj.data.body = str(nid)
-            text_obj.data.size = NODE_LABEL_SIZE
-            text_obj.data.align_x = "CENTER"
-            text_obj.data.align_y = "CENTER"
-            text_obj.rotation_euler = (radians(90), 0, 0)
-            text_obj.parent = node_obj
-            text_obj.location = Vector(NODE_LABEL_OFFSET)
-            log.debug(
-                f"Label_{nid}: attached to Node_{nid}, offset={NODE_LABEL_OFFSET}"
-            )
-        except Exception as e:
-            log.error(f"Failed to create label for node {nid}: {e}")
+        create_label(
+            obj,
+            str(nid),
+            abs_size=abs_size,
+            offset=offset,
+            name_prefix="Label",
+            use_constraint=True,
+        )
