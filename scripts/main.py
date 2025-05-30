@@ -1,18 +1,29 @@
 """
-Blender構造可視化スクリプトのエントリーポイント
-（LoaderManager/coreConstructer分離設計・2025最新化例）
+[特徴・設計方針]
+- ノード（Node/SandbagNode）種別を型で厳密に分離・一意管理
+- 主要データフロー（シーン初期化→データロード→コア構築→Blenderオブジェクト生成→マテリアル適用→アニメーションイベント登録）を整理
+- config.pyで特殊ノード種別やパス・定数を一元管理
+- モジュール・関数の型ヒント、ドキュメントを明記
 """
 
 import sys
 import os
 
 # プロジェクトルートをimportパスに追加
-CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+CURRENT_DIR: str = os.path.dirname(os.path.abspath(__file__))
 if CURRENT_DIR not in sys.path:
     sys.path.insert(0, CURRENT_DIR)
 
 
-def main():
+def main() -> None:
+    """
+    Blender可視化プロジェクトのエントリーポイント
+    - シーン初期化からアニメーション登録までの一連フローを管理
+    - ログ出力で進捗・例外を可視化
+
+    Raises:
+        すべての例外はcatchし標準エラー出力&ログ記録
+    """
     from utils.logging_utils import setup_logging
 
     log = setup_logging("main")
@@ -25,7 +36,7 @@ def main():
         clear_scene()
 
         # 2. データロード（LoaderManager）
-        from loaders.loader_manager import LoaderManager
+        from loaders.loaderManager import LoaderManager
 
         loader = LoaderManager()  # パスはconfigデフォルト
         nodes_data = loader.load_nodes()  # Dict[int, NodeData]
@@ -34,14 +45,15 @@ def main():
 
         # 3. コアデータ構築（coreConstructer）
         from cores.coreConstructer import coreConstructer
+
         cc = coreConstructer(nodes_data, edges_data)
         log.info(f"SUMMARY:[[{cc.summary()}]]")
 
         # 4. Blenderオブジェクト生成
-        from builders.scene_factory import create_blender_objects
+        from builders.sceneBuilder import build_blender_objects
 
         node_objs, sandbag_objs, panel_objs, roof_obj, roof_quads, member_objs = (
-            create_blender_objects(
+            build_blender_objects(
                 nodes=cc.get_nodes(),
                 column_edges=cc.get_columns(),
                 beam_edges=cc.get_beams(),
@@ -96,7 +108,6 @@ def main():
             base_node_pos,
             base_sandbag_pos,
         )
-
         log.info("=== Visualization Completed ===")
 
     except Exception as e:

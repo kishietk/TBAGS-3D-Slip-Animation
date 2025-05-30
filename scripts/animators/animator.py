@@ -1,14 +1,22 @@
-# アニメーション制御モジュール
-# フレーム毎に壁パネル・屋根・柱梁をノード位置に自動追従させる
+"""
+アニメーション制御モジュール
+- Blenderフレームごとにパネル・屋根・柱梁・サンドバッグをノード変位に自動追従
+- on_frame(): 各オブジェクトの位置・形状を全自動更新
+- init_animation(): Blenderのフレーム変更イベントにハンドラを登録
+
+【設計ポイント】
+- panel_objs/roof_obj/member_objs等、Blender Objectリストを直接制御
+- ノード位置/変位はanim_data/sandbag_anim_data/base_posから計算
+- panel/roof/member更新はbmeshで都度再生成
+"""
 
 import bpy
 import bmesh
-from typing import List, Tuple
+from typing import List, Tuple, Dict, Optional
 from mathutils import Vector, Quaternion
 from utils.logging_utils import setup_logging
 from config import (
     EPS_AXIS,
-    NODE_OBJ_PREFIX,
     UV_MAP_NAME,
 )
 
@@ -17,21 +25,37 @@ log = setup_logging()
 
 def on_frame(
     scene: bpy.types.Scene,
-    panel_objs: list[bpy.types.Object],
-    roof_obj: bpy.types.Object | None,
-    roof_quads: list[tuple[int, int, int, int]],
-    member_objs: list[tuple[bpy.types.Object, int, int]],
-    node_objs: dict[int, bpy.types.Object],
-    sandbag_objs: dict[int, bpy.types.Object],
-    anim_data: dict[int, dict[int, Vector]],
-    sandbag_anim_data: dict[int, dict[int, Vector]],
-    base_node_pos: dict[int, Vector],
-    base_sandbag_pos: dict[int, Vector],
-):
-    # --- Blender Object辞書を統合 ---
+    panel_objs: List[bpy.types.Object],
+    roof_obj: Optional[bpy.types.Object],
+    roof_quads: List[Tuple[int, int, int, int]],
+    member_objs: List[Tuple[bpy.types.Object, int, int]],
+    node_objs: Dict[int, bpy.types.Object],
+    sandbag_objs: Dict[int, bpy.types.Object],
+    anim_data: Dict[int, Dict[int, Vector]],
+    sandbag_anim_data: Dict[int, Dict[int, Vector]],
+    base_node_pos: Dict[int, Vector],
+    base_sandbag_pos: Dict[int, Vector],
+) -> None:
+    """
+    1フレーム毎に各Blenderオブジェクトの座標・形状を自動で更新する
+    Args:
+        scene: Blenderシーン
+        panel_objs: パネルObjectリスト
+        roof_obj: 屋根ObjectまたはNone
+        roof_quads: 屋根を構成するノードID 4つ組リスト
+        member_objs: (Object, ノードA, ノードB)のリスト
+        node_objs: ノードID→Blender Object
+        sandbag_objs: サンドバッグID→Blender Object
+        anim_data: ノードID→{フレーム: 変位Vector}
+        sandbag_anim_data: サンドバッグID→{フレーム: 変位Vector}
+        base_node_pos: ノードID→初期位置Vector
+        base_sandbag_pos: サンドバッグID→初期位置Vector
+    Returns:
+        None
+    """
     all_node_objs = {**node_objs, **sandbag_objs}
 
-    # --- ノード球 ---
+    # ノード球更新
     for nid, obj in node_objs.items():
         if nid not in base_node_pos:
             continue
@@ -39,7 +63,7 @@ def on_frame(
         disp = anim_data.get(nid, {}).get(scene.frame_current, Vector((0, 0, 0)))
         obj.location = base_pos + disp
 
-    # --- サンドバッグ ---
+    # サンドバッグ更新
     for nid, obj in sandbag_objs.items():
         if nid not in base_sandbag_pos:
             continue
@@ -49,7 +73,7 @@ def on_frame(
         )
         obj.location = base_pos + disp
 
-    # --- パネル再構築 ---
+    # パネル再構築（4ノードで面生成＋UV）
     for obj in panel_objs:
         try:
             if obj is None:
@@ -77,14 +101,14 @@ def on_frame(
         except Exception as e:
             log.error(f"Failed to update panel {getattr(obj, 'name', '?')}: {e}")
 
-    # --- 屋根再構築 ---
+    # 屋根再構築（roof_quadsが空でなければbmesh生成）
     if roof_obj is not None and roof_quads:
         try:
             mesh = roof_obj.data
             mesh.clear_geometry()
             bm = bmesh.new()
             uv_layer = bm.loops.layers.uv.new(UV_MAP_NAME)
-            vert_map: dict[int, bmesh.types.BMVert] = {}
+            vert_map: Dict[int, bmesh.types.BMVert] = {}
             for quad in roof_quads:
                 for nid in quad:
                     if nid not in vert_map:
@@ -105,7 +129,7 @@ def on_frame(
         except Exception as e:
             log.error(f"Failed to update roof: {e}")
 
-    # --- 柱・梁再配置 ---
+    # 柱・梁再配置（位置・姿勢・長さをノードにフィット）
     up = Vector((0, 0, 1))
     for obj, a, b in member_objs:
         try:
@@ -134,32 +158,32 @@ def on_frame(
 
 
 def init_animation(
-    panel_objs: list[bpy.types.Object],
-    roof_obj: bpy.types.Object | None,
-    roof_quads: list[tuple[int, int, int, int]],
-    member_objs: list[tuple[bpy.types.Object, int, int]],
-    node_objs: dict[int, bpy.types.Object],
-    sandbag_objs: dict[int, bpy.types.Object],
-    anim_data: dict[int, dict[int, Vector]],
-    sandbag_anim_data: dict[int, dict[int, Vector]],
-    base_node_pos: dict[int, Vector],
-    base_sandbag_pos: dict[int, Vector],
+    panel_objs: List[bpy.types.Object],
+    roof_obj: Optional[bpy.types.Object],
+    roof_quads: List[Tuple[int, int, int, int]],
+    member_objs: List[Tuple[bpy.types.Object, int, int]],
+    node_objs: Dict[int, bpy.types.Object],
+    sandbag_objs: Dict[int, bpy.types.Object],
+    anim_data: Dict[int, Dict[int, Vector]],
+    sandbag_anim_data: Dict[int, Dict[int, Vector]],
+    base_node_pos: Dict[int, Vector],
+    base_sandbag_pos: Dict[int, Vector],
 ) -> None:
     """
-    Blenderのフレームチェンジ時にon_frameを呼ぶイベントを登録する
-    引数:
-        panel_objs: 壁パネルオブジェクトのリスト
-        roof_obj: 屋根オブジェクト
-        roof_quads: 屋根パネルIDタプルリスト
-        member_objs: (オブジェクト, ノードAのID, ノードBのID)のリスト
-        node_objs: ノードID→Blenderオブジェクトの辞書
-        sandbag_objs: サンドバッグID→Blenderオブジェクトの辞書
+    Blenderのフレームチェンジ時にon_frame()を自動実行するイベント登録
+    Args:
+        panel_objs: 壁パネルObjectリスト
+        roof_obj: 屋根ObjectまたはNone
+        roof_quads: 屋根を構成するノードID 4つ組リスト
+        member_objs: (Object, ノードA, ノードB)リスト
+        node_objs: ノードID→Blender Object
+        sandbag_objs: サンドバッグID→Blender Object
         anim_data: ノードID→{フレーム: 変位Vector}
         sandbag_anim_data: サンドバッグID→{フレーム: 変位Vector}
         base_node_pos: ノードID→初期位置Vector
         base_sandbag_pos: サンドバッグID→初期位置Vector
-    戻り値:
-        なし
+    Returns:
+        None
     """
     try:
         bpy.app.handlers.frame_change_pre.clear()

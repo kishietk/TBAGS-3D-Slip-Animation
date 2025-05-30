@@ -1,12 +1,17 @@
-# builders/scene_factory.py
 """
 コアデータからBlender用の全オブジェクトを生成する統合ビルダー
 
 - 通常ノード（球体）、サンドバッグノード（立方体）を種別ごとにビルダー分岐
 - すべての生成は「静的オブジェクトのみ」（アニメーション・キーフレームは担当しない）
 - 戻り値はapply_all_materialsやアニメーターでそのまま使える
+
+【設計思想】
+- コアモデル（Node/SandbagNode/Panel...）→Blender用表示オブジェクト群へ一括変換
+- kind_idで通常ノード/サンドバッグ自動仕分け
+- 追加ラベル、屋根、部材生成も一元化
 """
 
+from typing import List, Dict, Tuple, Any, Optional
 from builders.nodes import build_nodes, create_node_labels
 from builders.sandbags import build_sandbags, create_sandbag_labels
 from builders.panels import build_blender_panels, build_roof
@@ -15,28 +20,34 @@ from builders.beams import build_beams
 from config import SANDBAG_NODE_KIND_IDS, SANDBAG_CUBE_SIZE, SPHERE_RADIUS
 
 
-def create_blender_objects(
-    nodes,  # List[Node/SandbagNode]またはDict[int, Node/SandbagNode]
-    column_edges,
-    beam_edges,
-    panels=None,
+def build_blender_objects(
+    nodes: Dict[int, Any] | List[Any],
+    column_edges: List[Tuple[int, int]],
+    beam_edges: List[Tuple[int, int]],
+    panels: Optional[Any] = None,
     sandbag_cube_size=SANDBAG_CUBE_SIZE,
     node_sphere_radius=SPHERE_RADIUS,
-):
+) -> Tuple[
+    Dict[int, Any],
+    Dict[int, Any],
+    List[Any],
+    Any,
+    List[Tuple[int, int, int, int]],
+    List[Any],
+]:
     """
     コアデータからBlender用の全オブジェクトを生成する
     kind_idに応じて通常ノード/サンドバッグノードを分離し別ビルダーへ
 
-    引数:
+    Args:
         nodes: ListまたはDict[int, Node/SandbagNode]
-        column_edges: 柱エッジリスト
-        beam_edges: 梁エッジリスト
-        anim_data: ノードID→{フレーム: 変位Vector}の辞書（ここでは使わない）
-        panels: Panelリスト
+        column_edges: 柱エッジリスト (List[Tuple[int, int]])
+        beam_edges: 梁エッジリスト (List[Tuple[int, int]])
+        panels: Panelリスト（省略可）
         sandbag_cube_size: サンドバッグ立方体一辺の長さ
         node_sphere_radius: 通常ノード球体半径
 
-    戻り値:
+    Returns:
         node_objs: ノード球 {id: BlenderObject}
         sandbag_objs: サンドバッグ立方体 {id: BlenderObject}
         panel_objs: パネルオブジェクトリスト
@@ -46,20 +57,8 @@ def create_blender_objects(
     """
 
     # 1. kind_idで通常ノード/サンドバッグノードに分離
-    # sandbag_nodes = {}
-    # normal_nodes = {}
-    # for n in nodes.values() if isinstance(nodes, dict) else nodes:
-    #     kind_id = getattr(n, "kind_id", None)
-    #     # kind_id=0はサンドバッグでもあるし、柱・梁にもなる
-    #     if kind_id == 0:
-    #         sandbag_nodes[n.id] = n
-    #         normal_nodes[n.id] = n  # ★両方に入れる
-    #     elif kind_id in SANDBAG_NODE_KIND_IDS:
-    #         sandbag_nodes[n.id] = n
-    #     else:
-    #         normal_nodes[n.id] = n
-    sandbag_nodes = {}
-    normal_nodes = {}
+    sandbag_nodes: Dict[int, Any] = {}
+    normal_nodes: Dict[int, Any] = {}
     for n in nodes.values() if isinstance(nodes, dict) else nodes:
         kind_id = getattr(n, "kind_id", None)
         if kind_id == 0 or kind_id in SANDBAG_NODE_KIND_IDS:

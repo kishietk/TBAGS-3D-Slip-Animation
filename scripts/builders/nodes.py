@@ -1,5 +1,3 @@
-# builders/nodes.py
-
 """
 ノード球Blenderオブジェクトの生成ビルダー
 - ノードIDと座標を受け、Blender上に静的な球体のみ生成
@@ -8,8 +6,9 @@
 
 import bpy
 from mathutils import Vector
+from typing import Dict
 from utils.logging_utils import setup_logging
-from cores.node import Node
+from cores.Node import Node
 from builders.labels import create_label
 from config import LABEL_SIZE, LABEL_OFFSET
 
@@ -17,20 +16,20 @@ log = setup_logging()
 
 
 def build_nodes(
-    nodes: dict[int, "Node"],  # Node型または {pos, kind_id}を持つdict型
+    nodes: Dict[int, Node],  # Node型または {pos, kind_id}を持つdict型
     radius: float,
-) -> dict[int, bpy.types.Object]:
+) -> Dict[int, bpy.types.Object]:
     """
     ノード座標からBlender球体（ノード球）を静的に生成する
     ※アニメーション処理はここでは行わない
 
-    引数:
-        nodes: ノードID→Nodeインスタンス または (pos, kind_id) を持つdict
-        radius: 球体半径
-    戻り値:
-        ノードID→Blenderオブジェクトの辞書
+    Args:
+        nodes (Dict[int, Node]): ノードID→Nodeインスタンス または (pos, kind_id) を持つdict
+        radius (float): 球体半径
+    Returns:
+        Dict[int, bpy.types.Object]: ノードID→Blenderオブジェクトの辞書
     """
-    objs: dict[int, bpy.types.Object] = {}
+    objs: Dict[int, bpy.types.Object] = {}
     for nid, node in nodes.items():
         # Node型かdict/tupleか判定し、安全に座標(Vector)を取り出す
         if hasattr(node, "pos"):
@@ -61,11 +60,22 @@ def build_nodes(
             log.error(f"Failed to create node sphere for ID {nid}: {e}")
     return objs
 
+
 def create_node_labels(
-    nodes: dict[int, Vector],
+    nodes: Dict[int, Vector],
     abs_size: float = LABEL_SIZE,
     offset: Vector = LABEL_OFFSET,
-):
+) -> None:
+    """
+    ノード球体にノードIDラベルを付与
+
+    Args:
+        nodes (Dict[int, Vector]): ノードID→座標
+        abs_size (float): ラベル文字サイズ
+        offset (Vector): ラベル配置オフセット
+    Returns:
+        None
+    """
     for nid, pos in nodes.items():
         node_name = f"Node_{nid}"
         obj = bpy.data.objects.get(node_name)
@@ -78,5 +88,5 @@ def create_node_labels(
             abs_size=abs_size,
             offset=offset,
             name_prefix="Label",
-            use_constraint=True
+            use_constraint=True,
         )

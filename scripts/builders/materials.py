@@ -1,12 +1,13 @@
-# builders/materials.py
 """
 Blenderオブジェクト用マテリアル生成・一括適用モジュール
 
 - 壁、屋根、柱、梁、ノード球、サンドバッグ（立方体）ごとの専用マテリアル生成
 - apply_all_materialsで一括割り当て
+- モジュール設計思想：シーンビルドやアニメータから独立して「材料生成・割り当て責任のみ」を持つ
 """
 
 import bpy
+from typing import Dict, List, Tuple, Optional
 from utils.logging_utils import setup_logging
 from config import WALL_IMG, ROOF_IMG, WALL_ALPHA, ROOF_ALPHA
 
@@ -16,6 +17,17 @@ log = setup_logging()
 def make_texture_mat(name: str, img_path: str, alpha: float) -> bpy.types.Material:
     """
     テクスチャ画像・透明度付きマテリアル生成
+
+    Args:
+        name (str): マテリアル名
+        img_path (str): テクスチャ画像ファイルパス
+        alpha (float): 透明度（0:完全透明, 1:不透明）
+
+    Returns:
+        bpy.types.Material: 作成されたマテリアル
+
+    Raises:
+        Exception: Blenderマテリアル生成に失敗時
     """
     try:
         mat = bpy.data.materials.get(name) or bpy.data.materials.new(name)
@@ -47,6 +59,12 @@ def make_texture_mat(name: str, img_path: str, alpha: float) -> bpy.types.Materi
 def make_column_mat() -> bpy.types.Material:
     """
     柱用マテリアル（木目調）生成
+
+    Returns:
+        bpy.types.Material: 作成されたマテリアル
+
+    Raises:
+        Exception: Blenderマテリアル生成に失敗時
     """
     try:
         name = "ColumnMat"
@@ -80,6 +98,12 @@ def make_column_mat() -> bpy.types.Material:
 def make_beam_mat() -> bpy.types.Material:
     """
     梁用マテリアル（金属調）生成
+
+    Returns:
+        bpy.types.Material: 作成されたマテリアル
+
+    Raises:
+        Exception: Blenderマテリアル生成に失敗時
     """
     try:
         name = "BeamMat"
@@ -113,6 +137,12 @@ def make_beam_mat() -> bpy.types.Material:
 def make_node_mat() -> bpy.types.Material:
     """
     ノード球用マテリアル（オレンジ色）生成
+
+    Returns:
+        bpy.types.Material: 作成されたマテリアル
+
+    Raises:
+        Exception: Blenderマテリアル生成に失敗時
     """
     try:
         name = "NodeMat"
@@ -135,7 +165,13 @@ def make_node_mat() -> bpy.types.Material:
 
 def make_sandbag_mat() -> bpy.types.Material:
     """
-    サンドバッグ用マテリアル（赤色系）生成
+    サンドバッグ用マテリアル（緑色系）生成
+
+    Returns:
+        bpy.types.Material: 作成されたマテリアル
+
+    Raises:
+        Exception: Blenderマテリアル生成に失敗時
     """
     try:
         name = "SandbagMat"
@@ -146,7 +182,7 @@ def make_sandbag_mat() -> bpy.types.Material:
         bsdf = nt.nodes.new(type="ShaderNodeBsdfPrincipled")
         out = nt.nodes.new(type="ShaderNodeOutputMaterial")
         nt.links.new(bsdf.outputs["BSDF"], out.inputs["Surface"])
-        bsdf.inputs["Base Color"].default_value = (0.25, 0.61, 0.30, 1) 
+        bsdf.inputs["Base Color"].default_value = (0.25, 0.61, 0.30, 1)
         bsdf.inputs["Metallic"].default_value = 0.7
         bsdf.inputs["Roughness"].default_value = 0.7
         log.debug("Sandbag material created")
@@ -157,14 +193,27 @@ def make_sandbag_mat() -> bpy.types.Material:
 
 
 def apply_all_materials(
-    node_objs: dict[int, bpy.types.Object],
-    sandbag_objs: dict[int, bpy.types.Object],
-    panel_objs: list[bpy.types.Object],
-    roof_obj: bpy.types.Object,
-    member_objs: list[tuple[bpy.types.Object, int, int]],
+    node_objs: Dict[int, bpy.types.Object],
+    sandbag_objs: Dict[int, bpy.types.Object],
+    panel_objs: List[bpy.types.Object],
+    roof_obj: Optional[bpy.types.Object],
+    member_objs: List[Tuple[bpy.types.Object, int, int]],
 ) -> None:
     """
     ノード球・サンドバッグ立方体・壁パネル・屋根・柱・梁にマテリアルを一括適用
+
+    Args:
+        node_objs (Dict[int, bpy.types.Object]): ノード球オブジェクト
+        sandbag_objs (Dict[int, bpy.types.Object]): サンドバッグオブジェクト
+        panel_objs (List[bpy.types.Object]): パネルオブジェクトリスト
+        roof_obj (Optional[bpy.types.Object]): 屋根オブジェクト
+        member_objs (List[Tuple[bpy.types.Object, int, int]]): 柱・梁のBlenderオブジェクト（オブジェクト, ノードA, ノードB）
+
+    Returns:
+        None
+
+    Raises:
+        Exception: 適用中にエラー発生時
     """
     log.info("=== Applying all materials ===")
     try:

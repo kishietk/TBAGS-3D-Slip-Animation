@@ -1,23 +1,30 @@
-# 柱（Column）クラス
-# Edgeクラスを継承し、柱であることを示す属性を追加する
+"""
+柱（Column）コアクラス
+- Edgeクラスを継承し、「柱」専用属性is_columnを付与
+- 梁・柱共通ロジックでも型安全な判別が可能
 
-from cores.edge import Edge
+【設計ポイント】
+- Column: Edgeのサブクラス
+- is_column属性は種別分岐やラベル出力で活躍
+"""
+
+from cores.Edge import Edge
 
 
 class Column(Edge):
     """
-    柱（Column）のコアクラス
-    Edgeクラスを継承し、is_column属性を持つ
+    柱（Column）コアクラス
+    - Edgeクラスを継承し、is_column属性で「柱」判別
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         """
-        Columnインスタンスを初期化する
-        引数:
+        Columnインスタンス初期化
+        Args:
             *args: Edgeクラスの引数
             **kwargs: Edgeクラスのキーワード引数
-        戻り値:
-            なし
+        Returns:
+            None
         """
         super().__init__(*args, **kwargs)
-        self.is_column = True
+        self.is_column: bool = True

@@ -1,5 +1,14 @@
-# アニメーションデータローダ
-# ノードごとのフレーム毎変位データを辞書形式で読み込む
+"""
+アニメーションデータローダ
+- ノードごとのフレーム毎変位データを辞書形式でロード
+- DISP列の自動抽出とスケーリング・ノード/成分単位で厳密管理
+
+【設計・注意点】
+- CSVは(TYPE)(CMP)(ID)ヘッダ3行＋データ本体
+- DISPで始まる列のみを自動判別・col_mapで管理
+- ノードID/成分インデックス等すべて厳密バリデーション
+- 各フレームごとにVector格納、スケール変換
+"""
 
 import csv
 from collections import defaultdict
@@ -17,12 +26,23 @@ ID_HEADER = "(ID)"
 
 def load_animation_data(path: str = ANIM_CSV) -> Dict[int, Dict[int, Vector]]:
     """
-    アニメーションCSVを読み込み、ノードID→{フレーム: 変位Vector}の辞書を返す
-    引数:
-        path: アニメーションCSVファイルパス（省略時は設定値）
-    戻り値:
-        ノードIDをキー、各フレームの変位Vector辞書を値とする辞書
-        例: { node_id: { frame: Vector(dx, dy, dz), ... }, ... }
+    アニメーションCSVを解析し、
+    ノードID→{フレーム: 変位Vector}の2重辞書にして返す
+
+    Args:
+        path (str): アニメーションCSVファイルパス（省略時はconfig値）
+    Returns:
+        Dict[int, Dict[int, Vector]]:
+            ノードID→{フレーム: Vector(dx,dy,dz)}の辞書
+            例: { node_id: { frame: Vector(dx,dy,dz), ... }, ... }
+    Raises:
+        RuntimeError/Exception: ファイル/ヘッダ/データ不正時
+
+    【内部処理詳細】
+    - (TYPE)(CMP)(ID)の3段ヘッダを自動解析
+    - DISP列のみを抽出・有効なノードIDだけcol_mapに格納
+    - CSV各行を時間→フレームへ変換、各値をスケール変換
+    - 不正値・列不足はログ警告してスキップ
     """
     log.info("=================[アニメーション情報を読み取り]=========================")
     log.info(f"Reading animation data from: {path}")
@@ -61,6 +81,7 @@ def load_animation_data(path: str = ANIM_CSV) -> Dict[int, Dict[int, Vector]]:
         log.critical(f"[{path}] No data rows found after header in animation CSV.")
         raise RuntimeError("No data rows in animation CSV")
 
+    # col_map: {カラムindex: (ノードID, XYZインデックス)} を構築
     col_map: Dict[int, tuple[int, int]] = {}
     for j in range(1, len(id_row)):
         typ = type_row[j].strip().upper() if j < len(type_row) else ""
@@ -92,6 +113,7 @@ def load_animation_data(path: str = ANIM_CSV) -> Dict[int, Dict[int, Vector]]:
 
     log.info(f"→ Found {len(col_map)} DISP columns for valid nodes")
 
+    # アニメーションデータ本体の読み込み
     anim_data: Dict[int, Dict[int, Vector]] = defaultdict(
         lambda: defaultdict(lambda: Vector((0.0, 0.0, 0.0)))
     )
@@ -122,6 +144,7 @@ def load_animation_data(path: str = ANIM_CSV) -> Dict[int, Dict[int, Vector]]:
                 continue
             anim_data[nid][frame][comp_idx] = disp
 
+    # defaultdict→通常dictへ変換して返す
     result: Dict[int, Dict[int, Vector]] = {}
     for nid, frames in anim_data.items():
         result[nid] = {}

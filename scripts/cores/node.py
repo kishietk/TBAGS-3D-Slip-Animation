@@ -1,18 +1,28 @@
-# ノード（接点）クラス
-# ノードID、座標、階層、関連エッジ・パネルを保持する
+"""
+ノード（Node）コアクラス
+- 構造グラフ上のノードID・位置・階層属性・種別ID・
+  関連エッジ/パネルリストなどを保持
+- Edge/Panelオブジェクトとの相互参照による構造把握
+
+【設計指針】
+- id: int, pos: Vector, floor: Optional[str], kind_id: Optional[int]
+- add_edge/add_panelで相互リンク構築
+- __repr__は構造・デバッグ用に拡張可能
+"""
 
 from typing import List, Optional, TYPE_CHECKING
 from mathutils import Vector
 
 if TYPE_CHECKING:
-    from cores.edge import Edge
-    from cores.panel import Panel
+    from cores.Edge import Edge
+    from cores.Panel import Panel
 
 
 class Node:
     """
-    構造グラフのノードを表現するクラス
-    ノードID、座標、階層属性、kind_id、関連エッジ・パネルのリストを保持する
+    ノード（接点）コアクラス
+    - ノードID・座標・階層・種別・関連エッジ/パネル保持
+    - 主要グラフ構造ノード基盤
     """
 
     def __init__(
@@ -20,52 +30,52 @@ class Node:
         id: int,
         pos: Vector,
         floor: Optional[str] = None,
-        kind_id: Optional[int] = None,  # 追加
-    ):
+        kind_id: Optional[int] = None,
+    ) -> None:
         """
-        ノードを初期化する
-        引数:
-            id: ノードID（整数）
-            pos: ノード座標（Vector型）
-            floor: 階層属性（任意、str型）
-            kind_id: ノードの種類（int型, 任意, セクション番号や用途分類）
+        ノードを初期化
+        Args:
+            id (int): ノードID
+            pos (Vector): 座標
+            floor (Optional[str]): 階層属性
+            kind_id (Optional[int]): ノード種別
+        Returns:
+            None
         """
-        self.id = id
-        self.pos = pos
-        self.floor = floor
-        self.kind_id = kind_id  # 追加
+        self.id: int = id
+        self.pos: Vector = pos
+        self.floor: Optional[str] = floor
+        self.kind_id: Optional[int] = kind_id
         self.edges: List["Edge"] = []
         self.panels: List["Panel"] = []
 
     def add_edge(self, edge: "Edge") -> None:
         """
-        エッジをこのノードの関連エッジリストに追加する
-        引数:
-            edge: エッジインスタンス
-        戻り値:
-            なし
+        関連エッジリストに追加
+        Args:
+            edge (Edge): 追加するエッジ
+        Returns:
+            None
         """
         if edge not in self.edges:
             self.edges.append(edge)
 
     def add_panel(self, panel: "Panel") -> None:
         """
-        パネルをこのノードの関連パネルリストに追加する
-        引数:
-            panel: パネルインスタンス
-        戻り値:
-            なし
+        関連パネルリストに追加
+        Args:
+            panel (Panel): 追加するパネル
+        Returns:
+            None
         """
         if panel not in self.panels:
             self.panels.append(panel)
 
     def __repr__(self) -> str:
         """
-        ノードの情報を文字列として返す
-        引数:
-            なし
-        戻り値:
-            ノード情報の文字列
+        ノードの情報を可読文字列で返す
+        Returns:
+            str: ノード情報
         """
         return (
             f"Node(id={self.id}, pos={tuple(self.pos)}, floor={self.floor}, "

@@ -1,21 +1,43 @@
+"""
+ノード情報ロードユーティリティ
+- ノード定義ファイル（STR/CSV）をパースして辞書形式で返す
+- kind_idの自動割当、コメント/セクション解析、T-BAG区間の特殊判定も実装
+- VALID_NODE_IDSによりプロジェクトで許可されたIDのみ採用
+"""
+
 import re
 from typing import Dict, NamedTuple
 from mathutils import Vector
 from config import NODE_CSV, NODE_SECTION_NUMBERS, VALID_NODE_IDS
 from utils.logging_utils import setup_logging
 
-log = setup_logging()
+log = setup_logging()  # configのLOG_LEVELから出力レベル設定
 
 
 class NodeData(NamedTuple):
+    """
+    ノード1点の座標・種別kind_idを格納するデータ型
+    属性:
+        pos (Vector): 座標(XYZ)
+        kind_id (int): ノード種別番号
+    """
+
     pos: Vector
     kind_id: int
 
 
 def load_nodes(path: str = NODE_CSV) -> Dict[int, NodeData]:
     """
-    ファイル内コメント・セクション見出しから
-    kind_id（区分）を柔軟に自動割当するノード辞書生成関数
+    ノード定義ファイル(.str/.csv)を読み込み、
+    kind_id（区分）・セクション・TBAG区間判定も含めて
+    ノードID→NodeDataの辞書として返す。
+
+    Args:
+        path (str): 読み込むノードファイルパス
+    Returns:
+        Dict[int, NodeData]: ノードID→NodeDataの辞書
+    Raises:
+        Exception: ファイル読み込み・解析失敗時は例外
     """
     log.info("=================[ノード情報を読み取り]=========================")
     nodes: Dict[int, NodeData] = {}
@@ -78,15 +100,13 @@ def load_nodes(path: str = NODE_CSV) -> Dict[int, NodeData]:
                             float(m_node.group(3)),
                             float(m_node.group(4)),
                         )
-                        # 柔軟なkind_id割当
+                        # TBAG区間中はkind_id=0を強制割当
                         if tbag_section_active:
                             kind_id = 0
                         else:
                             kind_id = current_kind_id
                         nodes[nid] = NodeData(Vector((x, y, z)), kind_id)
-                        log.info(
-                            f"Added node : ID = {nid}, #{kind_id}"
-                        )
+                        log.info(f"Added node : ID = {nid}, #{kind_id}")
                     except Exception as e:
                         log.error(
                             f"[{path}] Failed to parse XYZ at row {row_idx}, node ID {nid}: {line_strip} ({e})"

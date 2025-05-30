@@ -1,3 +1,11 @@
+"""
+ラベル生成ユーティリティ（builders/labels.py）
+
+- 任意Blenderオブジェクトにテキストラベルを追加
+- 親オブジェクトにChildOf制約 or 親子付けで追従
+- アニメーション・スタイル責任は持たない
+"""
+
 import bpy
 from mathutils import Vector
 from utils.logging_utils import setup_logging
@@ -12,9 +20,26 @@ def create_label(
     offset: Vector = Vector((0, 0, 0)),
     name_prefix: str = "Label",
     use_constraint: bool = True,
-):
+) -> bpy.types.Object:
+    """
+    指定Blenderオブジェクトにテキストラベルを追加する
+
+    Args:
+        obj (bpy.types.Object): 親オブジェクト
+        text (str): ラベルテキスト
+        abs_size (float): テキスト絶対サイズ（Blender単位）
+        offset (Vector): 親基準での位置オフセット
+        name_prefix (str): オブジェクト名プリフィクス
+        use_constraint (bool): ChildOf制約で追従（True推奨）
+
+    Returns:
+        bpy.types.Object: 作成されたテキストラベルオブジェクト
+
+    Notes:
+        - use_constraint=Trueの場合、オブジェクトのワールド座標にoffsetを加算して固定
+        - Falseの場合は親子関係（parent）で単純追従
+    """
     from math import radians
-    from mathutils import Vector
 
     if not isinstance(offset, Vector):
         offset = Vector(offset)
