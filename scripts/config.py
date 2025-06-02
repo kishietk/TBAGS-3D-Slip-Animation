@@ -53,21 +53,14 @@ NODE_IDS_SB2: Set[int] = {2354, 2359, 2366, 2372, 2379, 2385, 2391}
 NODE_IDS_SB3: Set[int] = {51143, 51148, 51153, 51158, 51243, 51248, 51253, 51258}
 NODE_IDS_SB4: Set[int] = {52354, 52359, 52366, 52372, 52379, 52385, 52391}
 
-# VALID_NODE_IDS: Set[int] = (
-#     NODE_IDS_2F
-#     | NODE_IDS_3F
-#     | NODE_IDS_4F
-#     | NODE_IDS_SB1
-#     | NODE_IDS_SB2
-#     | NODE_IDS_SB3
-#     | NODE_IDS_SB4
-# )
-
 VALID_NODE_IDS: Set[int] = (
     NODE_IDS_2F
     | NODE_IDS_3F
     | NODE_IDS_4F
     | NODE_IDS_SB1
+    | NODE_IDS_SB2
+    | NODE_IDS_SB3
+    | NODE_IDS_SB4
 )
 
 # =========================

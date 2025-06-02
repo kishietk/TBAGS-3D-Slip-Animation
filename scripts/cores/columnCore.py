@@ -8,7 +8,7 @@
 - is_column属性は種別分岐やラベル出力で活躍
 """
 
-from cores.Edge import Edge
+from cores.edgeCore import Edge
 
 
 class Column(Edge):

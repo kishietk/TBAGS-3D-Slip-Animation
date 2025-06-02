@@ -14,8 +14,8 @@ from typing import List, Optional, TYPE_CHECKING
 from mathutils import Vector
 
 if TYPE_CHECKING:
-    from cores.Edge import Edge
-    from cores.Panel import Panel
+    from cores.edgeCore import Edge
+    from cores.panelCore import Panel
 
 
 class Node:

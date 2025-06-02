@@ -8,7 +8,7 @@ import bpy
 from mathutils import Vector
 from typing import Dict
 from utils.logging_utils import setup_logging
-from cores.Node import Node
+from cores.nodeCore import Node
 from builders.labels import create_label
 from config import LABEL_SIZE, LABEL_OFFSET
 

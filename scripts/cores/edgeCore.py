@@ -12,8 +12,8 @@
 from typing import Optional, List, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from cores.Node import Node
-    from cores.Panel import Panel
+    from cores.nodeCore import Node
+    from cores.panelCore import Panel
 
 
 class Edge:

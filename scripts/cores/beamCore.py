@@ -8,7 +8,7 @@
 - is_beam属性は判定用（型判定やラベル付与に便利）
 """
 
-from cores.Edge import Edge
+from cores.edgeCore import Edge
 
 
 class Beam(Edge):
