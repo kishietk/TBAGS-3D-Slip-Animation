@@ -18,12 +18,12 @@ from config import (
     COLUMNS_KIND_IDS,
     BEAMS_KIND_IDS,
 )
-from cores.Node import Node
-from cores.Sandbag import SandbagNode
-from cores.Edge import Edge
-from cores.Beam import Beam
-from cores.Column import Column
-from cores.Panel import Panel
+from cores.nodeCore import Node
+from cores.sandbagCore import SandbagNode
+from cores.edgeCore import Edge
+from cores.beamCore import Beam
+from cores.columnCore import Column
+from cores.panelCore import Panel
 from loaders.nodeLoader import NodeData
 from loaders.edgeLoader import EdgeData
 from cores.makePanelsList import make_panels_list, PanelData

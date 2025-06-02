@@ -29,7 +29,8 @@ TEXTURE_DIR: str = os.path.normpath(os.path.join(PROJECT_DIR, "../textures"))
 
 NODE_CSV: str = os.path.join(DATA_DIR, "self.str")
 EDGES_FILE: str = os.path.join(DATA_DIR, "self.str")
-ANIM_CSV: str = os.path.join(DATA_DIR, "animation.csv")
+ANIM_CSV: str = os.path.join(DATA_DIR, "animation-kumamoto-with-tbags.csv")
+# ANIM_CSV: str = os.path.join(DATA_DIR, "animation-kumamoto-no-tbags.csv")
 
 # =======================
 # 3. 画像・テクスチャファイル
@@ -96,7 +97,7 @@ LABEL_OFFSET: Vector = Vector((0.8, -0.5, 0.5))
 ANIM_FPS: int = 60
 ANIM_SECONDS: int = 30
 ANIM_TOTAL_FRAMES: int = ANIM_FPS * ANIM_SECONDS
-DISP_SCALE: float = 20
+DISP_SCALE: float = 10
 
 # =========================
 # 8. マテリアル透明度

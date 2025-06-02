@@ -13,8 +13,8 @@ from mathutils import Vector
 from typing import Optional, List, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from cores.Panel import Panel
-    from cores.Edge import Edge
+    from cores.panelCore import Panel
+    from cores.edgeCore import Edge
 
 
 class SandbagNode:
