@@ -29,9 +29,8 @@ TEXTURE_DIR: str = os.path.normpath(os.path.join(PROJECT_DIR, "../textures"))
 
 NODE_CSV: str = os.path.join(DATA_DIR, "self.str")
 EDGES_FILE: str = os.path.join(DATA_DIR, "self.str")
-# ANIM_CSV: str = os.path.join(DATA_DIR, "3story-NO T-BAGS-Steel-Kumamoto.csv")
-ANIM_CSV: str = os.path.join(DATA_DIR, "animation.csv")
-
+ANIM_CSV: str = os.path.join(DATA_DIR, "animation-kumamoto-with-tbags.csv")
+# ANIM_CSV: str = os.path.join(DATA_DIR, "animation-kumamoto-no-tbags.csv")
 
 # =======================
 # 3. 画像・テクスチャファイル
