@@ -33,7 +33,6 @@ def make_texture_mat(name: str, img_path: str, alpha: float) -> bpy.types.Materi
         mat = bpy.data.materials.get(name) or bpy.data.materials.new(name)
         mat.use_nodes = True
         mat.blend_method = "BLEND"
-        mat.shadow_method = "HASHED"
         nt = mat.node_tree
         nt.nodes.clear()
         tex = nt.nodes.new(type="ShaderNodeTexImage")
