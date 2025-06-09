@@ -21,4 +21,5 @@ __pycache__/
 animation-kumamoto-with-tbags.csv
 animation-kumamoto-no-tbags.csv
 node_position.csv
-self.str
+self-no-tbags.str
+self-with-tbags.str

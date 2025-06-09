@@ -27,10 +27,9 @@ TEXTURE_DIR: str = os.path.normpath(os.path.join(PROJECT_DIR, "../textures"))
 # 2. データファイルパス定義
 # =======================
 
-NODE_CSV: str = os.path.join(DATA_DIR, "self.str")
-EDGES_FILE: str = os.path.join(DATA_DIR, "self.str")
+NODE_CSV: str = os.path.join(DATA_DIR, "self-with-tbags.str")
+EDGES_FILE: str = os.path.join(DATA_DIR, "self-with-tbags.str")
 ANIM_CSV: str = os.path.join(DATA_DIR, "animation-kumamoto-with-tbags.csv")
-# ANIM_CSV: str = os.path.join(DATA_DIR, "animation-kumamoto-no-tbags.csv")
 
 # =======================
 # 3. 画像・テクスチャファイル
@@ -49,9 +48,14 @@ NODE_IDS_3F: Set[int] = set(range(301, 309))
 NODE_IDS_4F: Set[int] = set(range(401, 409))
 # kind_id=0は「サンドバッグ兼柱」専用ノード群として管理
 NODE_IDS_SB1: Set[int] = {1143, 1148, 1153, 1158, 1243, 1248, 1253, 1258}
-NODE_IDS_SB2: Set[int] = {2354, 2359, 2366, 2372, 2379, 2385, 2391}
-NODE_IDS_SB3: Set[int] = {51143, 51148, 51153, 51158, 51243, 51248, 51253, 51258}
-NODE_IDS_SB4: Set[int] = {52354, 52359, 52366, 52372, 52379, 52385, 52391}
+NODE_IDS_SB2: Set[int] = {3143, 3148, 3153, 3158, 3243, 3248, 3253, 3258}
+NODE_IDS_SB3: Set[int] = {5143, 5148, 5153, 5158, 5243, 5248, 5253, 5258}
+NODE_IDS_SB4: Set[int] = {11143, 11148, 11153, 11158, 11243, 11248, 11253, 11258}
+
+NODE_IDS_SB5: Set[int] = {2354, 2359, 2366, 2372, 2379, 2385, 2391}
+NODE_IDS_SB6: Set[int] = {4354, 4359, 4366, 4372, 4379, 4385, 4391}
+NODE_IDS_SB7: Set[int] = {6354, 6359, 6366, 6372, 6379, 6385, 6391}
+NODE_IDS_SB8: Set[int] = {12354, 12359, 12366, 12372, 12379, 12385, 12391}
 
 VALID_NODE_IDS: Set[int] = (
     NODE_IDS_2F
@@ -61,6 +65,10 @@ VALID_NODE_IDS: Set[int] = (
     | NODE_IDS_SB2
     | NODE_IDS_SB3
     | NODE_IDS_SB4
+    | NODE_IDS_SB5
+    | NODE_IDS_SB6
+    | NODE_IDS_SB7
+    | NODE_IDS_SB8
 )
 
 # =========================
@@ -86,13 +94,13 @@ MEMBER_THICK: float = 0.4
 CYLINDER_VERTS: int = 8
 EPS_XY_MATCH: float = 1e-3
 EPS_AXIS: float = 1e-6
-SANDBAG_CUBE_SIZE: Vector = Vector((2.0, 2.0, 1.0))
+SANDBAG_CUBE_SIZE: Vector = Vector((3.0, 3.0, 0.05))
 
 # =========================
 # 7. ラベル・アニメーション設定
 # =========================
 
-LABEL_SIZE: float = 0.3
+LABEL_SIZE: float = 0.1
 LABEL_OFFSET: Vector = Vector((0.8, -0.5, 0.5))
 ANIM_FPS: int = 60
 ANIM_SECONDS: int = 30
@@ -137,8 +145,8 @@ EBEAM_KIND_LABELS: Dict[int, str] = {
 COLUMNS_KIND_IDS: List[int] = [53, 55]
 BEAMS_KIND_IDS: List[int] = [42, 43, 44, 45, 46, 48, 49, 50, 51]
 EDGE_NODE_KIND_IDS: List[int] = [0, 1]
-WALL_NODE_KIND_IDS: List[int] = [0, 1, 2, 3, 4]
-SANDBAG_NODE_KIND_IDS: List[int] = [0, 2, 6, 10]  # kind_id=0=SB兼柱, 2/6/10=その他SB
+WALL_NODE_KIND_IDS: List[int] = [0, 1]
+SANDBAG_NODE_KIND_IDS: List[int] = [0, 2, 3, 4, 5, 7, 8, 9]
 
 # =========================
 # 11. ログ設定

@@ -106,5 +106,5 @@ def make_panels_list(
                 )
                 panels.append(panel)
 
-    log.info(f"Loaded {len(panels)} panels")
+    log.info(f"Maked {len(panels)} panel lists")
     return panels

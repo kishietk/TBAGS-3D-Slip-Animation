@@ -91,7 +91,7 @@ class coreConstructer:
                 node_map[nid] = SandbagNode(nid, pos, kind_id=kind_id)
             else:
                 node_map[nid] = Node(nid, pos, kind_id=kind_id)
-            log.info(
+            log.debug(
                 f"Loaded Node {nid}: {pos}, kind_id={kind_id}, type={type(node_map[nid]).__name__}"
             )
         return node_map

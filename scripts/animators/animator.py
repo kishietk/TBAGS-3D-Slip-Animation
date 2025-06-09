@@ -21,6 +21,8 @@ from config import (
 )
 
 log = setup_logging()
+already_warned_no_anim_node = set()
+already_warned_no_anim_sandbag = set()
 
 
 def on_frame(
@@ -55,12 +57,23 @@ def on_frame(
     """
     all_node_objs = {**node_objs, **sandbag_objs}
 
+
+
     # ノード球更新
     for nid, obj in node_objs.items():
         if nid not in base_node_pos:
             continue
         base_pos = base_node_pos[nid]
-        disp = anim_data.get(nid, {}).get(scene.frame_current, Vector((0, 0, 0)))
+        if nid not in anim_data:
+            if nid not in already_warned_no_anim_node:
+                log.info(
+                    f"ノードID={nid} はアニメーションデータ自体がありません（常に変位ゼロ）"
+                )
+                already_warned_no_anim_node.add(nid)
+            disp = Vector((0, 0, 0))
+        else:
+            node_anim = anim_data[nid]
+            disp = node_anim.get(scene.frame_current, Vector((0, 0, 0)))
         obj.location = base_pos + disp
 
     # サンドバッグ更新
@@ -68,9 +81,16 @@ def on_frame(
         if nid not in base_sandbag_pos:
             continue
         base_pos = base_sandbag_pos[nid]
-        disp = sandbag_anim_data.get(nid, {}).get(
-            scene.frame_current, Vector((0, 0, 0))
-        )
+        if nid not in sandbag_anim_data:
+            if nid not in already_warned_no_anim_sandbag:
+                log.info(
+                    f"ノードID={nid} はアニメーションデータ自体がありません（常に変位ゼロ）"
+                )
+                already_warned_no_anim_sandbag.add(nid)
+            disp = Vector((0, 0, 0))
+        else:
+            anim_data_sb = sandbag_anim_data[nid]
+            disp = anim_data_sb.get(scene.frame_current, Vector((0, 0, 0)))
         obj.location = base_pos + disp
 
     # パネル再構築（4ノードで面生成＋UV）
