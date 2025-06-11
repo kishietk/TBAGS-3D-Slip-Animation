@@ -11,10 +11,10 @@ LoaderManager
 
 from typing import Dict, List
 from mathutils import Vector
-from config import NODE_CSV, EDGES_FILE, ANIM_CSV
+from config import NODE_CSV, EDGES_FILE, NODE_ANIM_CSV
 from loaders.nodeLoader import load_nodes, NodeData
 from loaders.edgeLoader import load_edges, EdgeData
-from loaders.animationLoader import load_animation_data
+from loaders.nodeAnimLoader import load_animation_data
 from utils.logging_utils import setup_logging
 
 log = setup_logging()
@@ -31,7 +31,7 @@ class LoaderManager:
         self,
         node_path: str = NODE_CSV,
         edge_path: str = EDGES_FILE,
-        anim_path: str = ANIM_CSV,
+        anim_path: str = NODE_ANIM_CSV,
     ):
         """
         Args:

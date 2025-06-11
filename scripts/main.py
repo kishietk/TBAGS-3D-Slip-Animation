@@ -62,7 +62,7 @@ def main() -> None:
         )
 
         # --- サンドバッグとノードでIDを分割 ---
-        from config import SANDBAG_NODE_KIND_IDS
+        from config import SANDBAG_NODE_KIND_IDS, EARTHQUAKE_ANIM_CSV
 
         nodes = cc.get_nodes()
         base_node_pos = {
@@ -82,6 +82,16 @@ def main() -> None:
             nid: v for nid, v in anim_data.items() if nid in base_node_pos
         }
 
+        # ===【追加】地面（基準面）生成 ===
+        from builders.groundBuilder import build_ground_plane, set_building_parent
+
+        ground_obj = build_ground_plane(size=30.0)
+
+        # ===【追加】建物一式を地面の子にする ===
+        set_building_parent(
+            ground_obj, node_objs, sandbag_objs, panel_objs, roof_obj, member_objs
+        )
+
         # 5. マテリアル適用
         from builders.materials import apply_all_materials
 
@@ -91,6 +101,14 @@ def main() -> None:
             panel_objs=panel_objs,
             roof_obj=roof_obj,
             member_objs=member_objs,
+        )
+
+        # ===【追加】地震基準面アニメCSVロード ===
+        from loaders.earthquakeAnimLoader import load_earthquake_motion_csv
+
+        earthquake_anim_data = load_earthquake_motion_csv(EARTHQUAKE_ANIM_CSV)
+        log.info(
+            f"earthquake_anim_data sample: {list(earthquake_anim_data.items())[:10]}"
         )
 
         # 6. アニメーションイベント登録
@@ -107,6 +125,8 @@ def main() -> None:
             sandbag_anim_data,
             base_node_pos,
             base_sandbag_pos,
+            ground_obj=ground_obj,  # ←地面オブジェクト（必須）
+            earthquake_anim_data=earthquake_anim_data,  # ←地震アニメデータ（必須）
         )
         log.info("=== Visualization Completed ===")
 

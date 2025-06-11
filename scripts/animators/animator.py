@@ -37,9 +37,13 @@ def on_frame(
     sandbag_anim_data: Dict[int, Dict[int, Vector]],
     base_node_pos: Dict[int, Vector],
     base_sandbag_pos: Dict[int, Vector],
+    ground_obj: Optional[bpy.types.Object] = None,
+    earthquake_anim_data: Optional[Dict[int, Vector]] = None,
 ) -> None:
     """
     1フレーム毎に各Blenderオブジェクトの座標・形状を自動で更新する
+    地面(ground_obj)があれば地震アニメーションも反映
+
     Args:
         scene: Blenderシーン
         panel_objs: パネルObjectリスト
@@ -52,12 +56,18 @@ def on_frame(
         sandbag_anim_data: サンドバッグID→{フレーム: 変位Vector}
         base_node_pos: ノードID→初期位置Vector
         base_sandbag_pos: サンドバッグID→初期位置Vector
+        ground_obj: 地面Blenderオブジェクト
+        earthquake_anim_data: {フレーム: Vector(dx,dy,dz)}
     Returns:
         None
     """
+    # === 地面の地震アニメーション ===
+    if ground_obj is not None and earthquake_anim_data is not None:
+        disp = earthquake_anim_data.get(scene.frame_current, Vector((0, 0, 0)))
+        log.debug(f"set ground to {disp} at frame {scene.frame_current}")
+        ground_obj.location = disp
+
     all_node_objs = {**node_objs, **sandbag_objs}
-
-
 
     # ノード球更新
     for nid, obj in node_objs.items():
@@ -66,7 +76,7 @@ def on_frame(
         base_pos = base_node_pos[nid]
         if nid not in anim_data:
             if nid not in already_warned_no_anim_node:
-                log.info(
+                log.debug(
                     f"ノードID={nid} はアニメーションデータ自体がありません（常に変位ゼロ）"
                 )
                 already_warned_no_anim_node.add(nid)
@@ -83,7 +93,7 @@ def on_frame(
         base_pos = base_sandbag_pos[nid]
         if nid not in sandbag_anim_data:
             if nid not in already_warned_no_anim_sandbag:
-                log.info(
+                log.debug(
                     f"ノードID={nid} はアニメーションデータ自体がありません（常に変位ゼロ）"
                 )
                 already_warned_no_anim_sandbag.add(nid)
@@ -188,6 +198,8 @@ def init_animation(
     sandbag_anim_data: Dict[int, Dict[int, Vector]],
     base_node_pos: Dict[int, Vector],
     base_sandbag_pos: Dict[int, Vector],
+    ground_obj: Optional[bpy.types.Object] = None,
+    earthquake_anim_data: Optional[Dict[int, Vector]] = None,
 ) -> None:
     """
     Blenderのフレームチェンジ時にon_frame()を自動実行するイベント登録
@@ -202,6 +214,8 @@ def init_animation(
         sandbag_anim_data: サンドバッグID→{フレーム: 変位Vector}
         base_node_pos: ノードID→初期位置Vector
         base_sandbag_pos: サンドバッグID→初期位置Vector
+        ground_obj: 地面Blender Object
+        earthquake_anim_data: {フレーム: Vector(dx,dy,dz)}
     Returns:
         None
     """
@@ -212,6 +226,7 @@ def init_animation(
         node_name_map = {nid: obj.name for nid, obj in node_objs.items()}
         sandbag_name_map = {nid: obj.name for nid, obj in sandbag_objs.items()}
         roof_name = roof_obj.name if roof_obj else None
+        ground_name = ground_obj.name if ground_obj else None
 
         def _viz_on_frame(scene: bpy.types.Scene):
             try:
@@ -226,6 +241,14 @@ def init_animation(
                     for nid, name in sandbag_name_map.items()
                 }
                 roof = bpy.data.objects.get(roof_name) if roof_name else None
+                ground = bpy.data.objects.get(ground_name) if ground_name else None
+
+                # デバッグログ
+                log.debug(f"frame={scene.frame_current} ground_obj={ground}")
+                if ground:
+                    log.debug(f"ground.location (before): {ground.location}")
+
+                # on_frameは必ず“1回だけ”呼ぶ
                 on_frame(
                     scene,
                     panels,
@@ -238,6 +261,8 @@ def init_animation(
                     sandbag_anim_data,
                     base_node_pos,
                     base_sandbag_pos,
+                    ground_obj=ground,
+                    earthquake_anim_data=earthquake_anim_data,
                 )
             except Exception as e:
                 log.error(f"Error in frame_change handler: {e}")

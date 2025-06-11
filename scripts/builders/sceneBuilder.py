@@ -37,7 +37,7 @@ def build_blender_objects(
 ]:
     """
     コアデータからBlender用の全オブジェクトを生成する
-    kind_idに応じて通常ノード/サンドバッグノードを分離し別ビルダーへ
+    kind_idに応じて通常ノード/サンドバッグノードに分離し別ビルダーへ
 
     Args:
         nodes: ListまたはDict[int, Node/SandbagNode]

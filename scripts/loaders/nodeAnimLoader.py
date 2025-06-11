@@ -15,7 +15,7 @@ from collections import defaultdict
 from typing import Dict
 from mathutils import Vector
 from utils.logging_utils import setup_logging
-from config import ANIM_CSV, VALID_NODE_IDS, ANIM_FPS, DISP_SCALE
+from config import NODE_ANIM_CSV, VALID_NODE_IDS, ANIM_FPS, DISP_SCALE
 
 log = setup_logging()
 
@@ -24,7 +24,7 @@ CMP_HEADER = "(CMP)"
 ID_HEADER = "(ID)"
 
 
-def load_animation_data(path: str = ANIM_CSV) -> Dict[int, Dict[int, Vector]]:
+def load_animation_data(path: str = NODE_ANIM_CSV) -> Dict[int, Dict[int, Vector]]:
     """
     アニメーションCSVを解析し、
     ノードID→{フレーム: 変位Vector}の2重辞書にして返す
