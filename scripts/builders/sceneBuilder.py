@@ -9,6 +9,7 @@
 - コアモデル（Node/SandbagNode/Panel...）→Blender用表示オブジェクト群へ一括変換
 - kind_idで通常ノード/サンドバッグ自動仕分け
 - 追加ラベル、屋根、部材生成も一元化
+- グラウンドも他部材と同等に生成・返却
 """
 
 from typing import List, Dict, Tuple, Any, Optional
@@ -17,6 +18,7 @@ from builders.sandbags import build_sandbags, create_sandbag_labels
 from builders.panels import build_blender_panels, build_roof
 from builders.columns import build_columns
 from builders.beams import build_beams
+from builders.groundBuilder import build_ground_plane
 from configs import SANDBAG_NODE_KIND_IDS, SANDBAG_CUBE_SIZE, SPHERE_RADIUS
 
 
@@ -27,6 +29,7 @@ def build_blender_objects(
     panels: Optional[Any] = None,
     sandbag_cube_size=SANDBAG_CUBE_SIZE,
     node_sphere_radius=SPHERE_RADIUS,
+    include_ground: bool = True,
 ) -> Tuple[
     Dict[int, Any],
     Dict[int, Any],
@@ -34,6 +37,7 @@ def build_blender_objects(
     Any,
     List[Tuple[int, int, int, int]],
     List[Any],
+    Any,  # ground_objを追加で返す
 ]:
     """
     コアデータからBlender用の全オブジェクトを生成する
@@ -46,6 +50,7 @@ def build_blender_objects(
         panels: Panelリスト（省略可）
         sandbag_cube_size: サンドバッグ立方体一辺の長さ
         node_sphere_radius: 通常ノード球体半径
+        include_ground: グラウンドも生成・返却するか
 
     Returns:
         node_objs: ノード球 {id: BlenderObject}
@@ -54,6 +59,7 @@ def build_blender_objects(
         roof_obj: 屋根オブジェクト
         roof_quads: 屋根パネルIDタプルリスト
         member_objs: 柱・梁オブジェクトリスト
+        ground_obj: グラウンドオブジェクト（部材と同列）
     """
 
     # 1. kind_idで通常ノード/サンドバッグノードに分離
@@ -97,4 +103,15 @@ def build_blender_objects(
     beam_objs = build_beams(all_node_positions, set(beam_edges), thickness=0.5)
     member_objs = list(column_objs) + list(beam_objs)
 
-    return node_objs, sandbag_objs, panel_objs, roof_obj, roof_quads, member_objs
+    # 8. グラウンド生成（ただの部材のひとつとして）
+    ground_obj = build_ground_plane() if include_ground else None
+
+    return (
+        node_objs,
+        sandbag_objs,
+        panel_objs,
+        roof_obj,
+        roof_quads,
+        member_objs,
+        ground_obj,  # ←追加
+    )

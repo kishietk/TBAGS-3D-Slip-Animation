@@ -2,100 +2,84 @@
 builders/groundBuilder.py
 
 責務:
-- 地面（Ground）オブジェクトの生成
-- 建物関連オブジェクトを地面の子にまとめる親子付け
-- 他buildersと一貫した設計・例外/ロギング・ドキュメントの充実
+- グラウンドメッシュ（地面）の生成・マテリアル適用だけを担う
+- 他部材と同列の「ただの部材」として扱う
 
-注意:
-- 地面のアニメーションやマテリアル設定の責任は持たない
-- シーン内で"EarthquakeBase"として管理
+使い方:
+    from builders.groundBuilder import build_ground_plane
+    ground_obj = build_ground_plane()
 """
 
 import bpy
 from utils.logging_utils import setup_logging
+from configs import (
+    GROUND_SIZE_X,
+    GROUND_SIZE_Y,
+    GROUND_LOCATION,
+    GROUND_NAME,
+    GROUND_MAT_NAME,
+    GROUND_MAT_COLOR,
+)
 
 log = setup_logging("groundBuilder")
 
 
+def create_ground_material(
+    name: str = GROUND_MAT_NAME, color: tuple = GROUND_MAT_COLOR
+) -> bpy.types.Material:
+    """
+    地面用マテリアル生成
+    """
+    mat = bpy.data.materials.get(name)
+    if not mat:
+        mat = bpy.data.materials.new(name)
+    mat.use_nodes = True
+    nt = mat.node_tree
+    nt.nodes.clear()
+    bsdf = nt.nodes.new(type="ShaderNodeBsdfPrincipled")
+    out = nt.nodes.new(type="ShaderNodeOutputMaterial")
+    nt.links.new(bsdf.outputs["BSDF"], out.inputs["Surface"])
+    bsdf.inputs["Base Color"].default_value = color
+    bsdf.inputs["Roughness"].default_value = 0.7
+    return mat
+
+
 def build_ground_plane(
-    size: float = 30.0, name: str = "EarthquakeBase"
+    size_x: float = GROUND_SIZE_X,
+    size_y: float = GROUND_SIZE_Y,
+    location: tuple = GROUND_LOCATION,
+    name: str = GROUND_NAME,
 ) -> bpy.types.Object:
     """
-    地面（平面）Blenderオブジェクトを生成して返す
-
-    Args:
-        size (float): 一辺の長さ（Blender単位）
-        name (str): オブジェクト名
+    地面（長方形平面）Blenderオブジェクトを生成・マテリアル適用して返す
+    ※スケールではなく頂点編集でサイズを反映
 
     Returns:
         bpy.types.Object: 作成した地面オブジェクト
-
-    Raises:
-        生成に失敗した場合は例外を発生（Noneは返さない）
-
-    Note:
-        - アニメーションやマテリアルの適用責任はこの関数は持たない
-        - 呼び出し元で地面の扱い（親子付け/アニメ登録など）は実施
     """
     try:
-        bpy.ops.mesh.primitive_plane_add(size=size, location=(0, 0, 0))
+        bpy.ops.mesh.primitive_plane_add(size=1.0, location=location)
         ground_obj = bpy.context.object
         ground_obj.name = name
-        log.info(f"Ground plane '{name}' created (size={size})")
+
+        # 頂点編集でサイズ反映（親子スケール影響ゼロ！）
+        mesh = ground_obj.data
+        for v in mesh.vertices:
+            v.co.x *= size_x / 2  # Blender planeは±1
+            v.co.y *= size_y / 2
+
+        ground_obj.scale = (1, 1, 1)
+
+        # マテリアル適用
+        mat = create_ground_material()
+        if mat:
+            ground_obj.data.materials.clear()
+            ground_obj.data.materials.append(mat)
+
+        log.info(
+            f"Ground plane '{name}' created (size_x={size_x}, size_y={size_y}, location={location})"
+        )
         return ground_obj
     except Exception as e:
         log.error(f"Failed to create ground plane: {e}")
         raise
-
-
-def set_building_parent(
-    ground_obj: bpy.types.Object,
-    node_objs: dict,
-    sandbag_objs: dict,
-    panel_objs: list,
-    roof_obj: object = None,
-    member_objs: list = None,
-) -> None:
-    """
-    主要建物オブジェクト群を地面オブジェクトの子としてまとめる
-
-    Args:
-        ground_obj (bpy.types.Object): 地面のBlenderオブジェクト
-        node_objs (dict): ノード球 {id: Object}
-        sandbag_objs (dict): サンドバッグ {id: Object}
-        panel_objs (list): パネルオブジェクト
-        roof_obj (Object or None): 屋根オブジェクト
-        member_objs (list or None): 柱・梁のオブジェクト [(Object, a, b), ...]
-
-    Returns:
-        None
-
-    Note:
-        - すべての要素がNoneや空dict/listの場合も安全にスキップ
-        - 呼び出し例: set_building_parent(ground_obj, node_objs, sandbag_objs, panel_objs, roof_obj, member_objs)
-    """
-    # ノード球
-    if node_objs:
-        for obj in node_objs.values():
-            if obj:
-                obj.parent = ground_obj
-    # サンドバッグ
-    if sandbag_objs:
-        for obj in sandbag_objs.values():
-            if obj:
-                obj.parent = ground_obj
-    # パネル
-    if panel_objs:
-        for obj in panel_objs:
-            if obj:
-                obj.parent = ground_obj
-    # 屋根
-    if roof_obj:
-        roof_obj.parent = ground_obj
-    # 柱・梁
-    if member_objs:
-        for m in member_objs:
-            obj = m[0] if isinstance(m, (list, tuple)) and m else m
-            if obj:
-                obj.parent = ground_obj
-    log.info("All building objects set as children of the ground object.")

@@ -11,7 +11,6 @@ from mathutils import Vector
 # =======================
 # ノードID・階層設定
 # =======================
-
 NODE_SECTION_NUMBERS = list(range(1, 11))  # 1～10
 
 NODE_IDS_2F = set(range(201, 209))
@@ -45,7 +44,6 @@ VALID_NODE_IDS = (
 # =========================
 # Blenderオブジェクト命名
 # =========================
-
 NODE_OBJ_PREFIX = "Node_"
 PANEL_OBJ_PREFIX = "Panel_"
 MEMBER_OBJ_PREFIX = "Member_"
@@ -59,7 +57,6 @@ UV_MAP_NAME = "UVMap"
 # =========================
 # 幾何・数値パラメータ設定
 # =========================
-
 SPHERE_RADIUS = 0.24
 MEMBER_THICK = 0.4
 CYLINDER_VERTS = 8
@@ -68,9 +65,19 @@ EPS_AXIS = 1e-6
 SANDBAG_CUBE_SIZE = Vector((3.0, 3.0, 0.05))
 
 # =========================
+# 地面（Ground）オブジェクト設定
+# =========================
+GROUND_SIZE_X = 30.0  # 地面X方向長さ
+GROUND_SIZE_Y = 20.0  # 地面Y方向長さ
+GROUND_LOCATION = (0.0, 0.0, 0.0)  # (x, y, z)ワールド座標中心
+GROUND_NAME = "EarthquakeBase"
+
+GROUND_MAT_NAME = "GroundMat"
+GROUND_MAT_COLOR = (0.25, 0.42, 0.18, 1)  # RGBAで暗めグリーン
+
+# =========================
 # ラベル・アニメーション設定
 # =========================
-
 LABEL_SIZE = 0.1
 LABEL_OFFSET = Vector((0.8, -0.5, 0.5))
 ANIM_FPS = 60
@@ -81,14 +88,12 @@ DISP_SCALE = 10
 # =========================
 # マテリアル透明度
 # =========================
-
 WALL_ALPHA = 0.8
 ROOF_ALPHA = 0.6
 
 # =========================
 # データCSV/STRヘッダー管理
 # =========================
-
 TYPE_HEADER = "(TYPE)"
 CMP_HEADER = "(CMP)"
 ID_HEADER = "(ID)"

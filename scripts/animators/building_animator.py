@@ -7,7 +7,7 @@ animators/building_animator.py
 
 設計指針:
 - 地面（Ground）のアニメ責任はground_animator.pyに完全分離
-- on_frame_building は「建物全体」を動かすだけに限定
+- on_frame_building は「建物全体」または部材個別を動かす
 - フレームごとの座標計算/再生成のみ担当（イベント登録はhandler.pyで一元化推奨）
 
 利用前提:
@@ -23,7 +23,6 @@ from configs import EPS_AXIS, UV_MAP_NAME
 
 log = setup_logging("building_animator")
 
-# 必要に応じて警告済みIDを管理
 already_warned_no_anim_node = set()
 already_warned_no_anim_sandbag = set()
 
