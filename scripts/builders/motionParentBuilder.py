@@ -52,6 +52,7 @@ def set_parent(
     panel_objs: list = None,
     roof_obj=None,
     member_objs: list = None,
+    ground_obj=None,
 ):
     """
     複数の建物部材を親オブジェクトに一括で親子付けする
@@ -91,3 +92,6 @@ def set_parent(
             obj = m[0] if isinstance(m, (list, tuple)) and m else m
             if obj:
                 obj.parent = parent_obj
+    # グラウンド
+    if ground_obj:
+        ground_obj.parent = parent_obj

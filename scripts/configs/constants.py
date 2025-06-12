@@ -67,13 +67,12 @@ SANDBAG_CUBE_SIZE = Vector((3.0, 3.0, 0.05))
 # =========================
 # 地面（Ground）オブジェクト設定
 # =========================
-GROUND_SIZE_X = 30.0  # 地面X方向長さ
-GROUND_SIZE_Y = 20.0  # 地面Y方向長さ
-GROUND_LOCATION = (0.0, 0.0, 0.0)  # (x, y, z)ワールド座標中心
-GROUND_NAME = "EarthquakeBase"
-
+GROUND_SIZE_X = 60.0  # 地面X方向長さ
+GROUND_SIZE_Y = 40.0  # 地面Y方向長さ
+GROUND_LOCATION = (10.0, 5.0, -0.18)  
+GROUND_NAME = "Ground"
 GROUND_MAT_NAME = "GroundMat"
-GROUND_MAT_COLOR = (0.25, 0.42, 0.18, 1)  # RGBAで暗めグリーン
+GROUND_MAT_COLOR = (0.25, 0.42, 0.48, 1)  
 
 # =========================
 # ラベル・アニメーション設定
