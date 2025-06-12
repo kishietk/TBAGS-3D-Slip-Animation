@@ -1,13 +1,17 @@
 """
-アニメーション制御モジュール
-- Blenderフレームごとにパネル・屋根・柱梁・サンドバッグをノード変位に自動追従
-- on_frame(): 各オブジェクトの位置・形状を全自動更新
-- init_animation(): Blenderのフレーム変更イベントにハンドラを登録
+animators/building_animator.py
 
-【設計ポイント】
-- panel_objs/roof_obj/member_objs等、Blender Objectリストを直接制御
-- ノード位置/変位はanim_data/sandbag_anim_data/base_posから計算
-- panel/roof/member更新はbmeshで都度再生成
+責務:
+- 建物本体（ノード・サンドバッグ・パネル・屋根・柱・梁）のアニメーション処理を専任
+- Blenderフレームごとに各部材の位置・形状を自動で更新
+
+設計指針:
+- 地面（Ground）のアニメ責任はground_animator.pyに完全分離
+- on_frame_building は「建物全体」を動かすだけに限定
+- フレームごとの座標計算/再生成のみ担当（イベント登録はhandler.pyで一元化推奨）
+
+利用前提:
+- 建物コアデータとBlenderオブジェクト、アニメーション辞書は全てmain等から渡す
 """
 
 import bpy
@@ -15,17 +19,16 @@ import bmesh
 from typing import List, Tuple, Dict, Optional
 from mathutils import Vector, Quaternion
 from utils.logging_utils import setup_logging
-from config import (
-    EPS_AXIS,
-    UV_MAP_NAME,
-)
+from config import EPS_AXIS, UV_MAP_NAME
 
-log = setup_logging()
+log = setup_logging("building_animator")
+
+# 必要に応じて警告済みIDを管理
 already_warned_no_anim_node = set()
 already_warned_no_anim_sandbag = set()
 
 
-def on_frame(
+def on_frame_building(
     scene: bpy.types.Scene,
     panel_objs: List[bpy.types.Object],
     roof_obj: Optional[bpy.types.Object],
@@ -37,12 +40,9 @@ def on_frame(
     sandbag_anim_data: Dict[int, Dict[int, Vector]],
     base_node_pos: Dict[int, Vector],
     base_sandbag_pos: Dict[int, Vector],
-    ground_obj: Optional[bpy.types.Object] = None,
-    earthquake_anim_data: Optional[Dict[int, Vector]] = None,
 ) -> None:
     """
-    1フレーム毎に各Blenderオブジェクトの座標・形状を自動で更新する
-    地面(ground_obj)があれば地震アニメーションも反映
+    1フレーム毎に建物各オブジェクトの座標・形状を自動更新
 
     Args:
         scene: Blenderシーン
@@ -56,17 +56,10 @@ def on_frame(
         sandbag_anim_data: サンドバッグID→{フレーム: 変位Vector}
         base_node_pos: ノードID→初期位置Vector
         base_sandbag_pos: サンドバッグID→初期位置Vector
-        ground_obj: 地面Blenderオブジェクト
-        earthquake_anim_data: {フレーム: Vector(dx,dy,dz)}
+
     Returns:
         None
     """
-    # === 地面の地震アニメーション ===
-    if ground_obj is not None and earthquake_anim_data is not None:
-        disp = earthquake_anim_data.get(scene.frame_current, Vector((0, 0, 0)))
-        log.debug(f"set ground to {disp} at frame {scene.frame_current}")
-        ground_obj.location = disp
-
     all_node_objs = {**node_objs, **sandbag_objs}
 
     # ノード球更新
@@ -94,7 +87,7 @@ def on_frame(
         if nid not in sandbag_anim_data:
             if nid not in already_warned_no_anim_sandbag:
                 log.debug(
-                    f"ノードID={nid} はアニメーションデータ自体がありません（常に変位ゼロ）"
+                    f"サンドバッグID={nid} はアニメーションデータ自体がありません（常に変位ゼロ）"
                 )
                 already_warned_no_anim_sandbag.add(nid)
             disp = Vector((0, 0, 0))
@@ -185,90 +178,3 @@ def on_frame(
             log.error(
                 f"Failed to update member {getattr(obj, 'name', '?')} (nodes {a}-{b}): {e}"
             )
-
-
-def init_animation(
-    panel_objs: List[bpy.types.Object],
-    roof_obj: Optional[bpy.types.Object],
-    roof_quads: List[Tuple[int, int, int, int]],
-    member_objs: List[Tuple[bpy.types.Object, int, int]],
-    node_objs: Dict[int, bpy.types.Object],
-    sandbag_objs: Dict[int, bpy.types.Object],
-    anim_data: Dict[int, Dict[int, Vector]],
-    sandbag_anim_data: Dict[int, Dict[int, Vector]],
-    base_node_pos: Dict[int, Vector],
-    base_sandbag_pos: Dict[int, Vector],
-    ground_obj: Optional[bpy.types.Object] = None,
-    earthquake_anim_data: Optional[Dict[int, Vector]] = None,
-) -> None:
-    """
-    Blenderのフレームチェンジ時にon_frame()を自動実行するイベント登録
-    Args:
-        panel_objs: 壁パネルObjectリスト
-        roof_obj: 屋根ObjectまたはNone
-        roof_quads: 屋根を構成するノードID 4つ組リスト
-        member_objs: (Object, ノードA, ノードB)リスト
-        node_objs: ノードID→Blender Object
-        sandbag_objs: サンドバッグID→Blender Object
-        anim_data: ノードID→{フレーム: 変位Vector}
-        sandbag_anim_data: サンドバッグID→{フレーム: 変位Vector}
-        base_node_pos: ノードID→初期位置Vector
-        base_sandbag_pos: サンドバッグID→初期位置Vector
-        ground_obj: 地面Blender Object
-        earthquake_anim_data: {フレーム: Vector(dx,dy,dz)}
-    Returns:
-        None
-    """
-    try:
-        bpy.app.handlers.frame_change_pre.clear()
-        panel_names = [o.name for o in panel_objs if o]
-        member_info = [(o.name, a, b) for (o, a, b) in member_objs if o]
-        node_name_map = {nid: obj.name for nid, obj in node_objs.items()}
-        sandbag_name_map = {nid: obj.name for nid, obj in sandbag_objs.items()}
-        roof_name = roof_obj.name if roof_obj else None
-        ground_name = ground_obj.name if ground_obj else None
-
-        def _viz_on_frame(scene: bpy.types.Scene):
-            try:
-                panels = [bpy.data.objects.get(n) for n in panel_names]
-                members = [(bpy.data.objects.get(n), a, b) for (n, a, b) in member_info]
-                nodes = {
-                    nid: bpy.data.objects.get(name)
-                    for nid, name in node_name_map.items()
-                }
-                sandbags = {
-                    nid: bpy.data.objects.get(name)
-                    for nid, name in sandbag_name_map.items()
-                }
-                roof = bpy.data.objects.get(roof_name) if roof_name else None
-                ground = bpy.data.objects.get(ground_name) if ground_name else None
-
-                # デバッグログ
-                log.debug(f"frame={scene.frame_current} ground_obj={ground}")
-                if ground:
-                    log.debug(f"ground.location (before): {ground.location}")
-
-                # on_frameは必ず“1回だけ”呼ぶ
-                on_frame(
-                    scene,
-                    panels,
-                    roof,
-                    roof_quads,
-                    members,
-                    nodes,
-                    sandbags,
-                    anim_data,
-                    sandbag_anim_data,
-                    base_node_pos,
-                    base_sandbag_pos,
-                    ground_obj=ground,
-                    earthquake_anim_data=earthquake_anim_data,
-                )
-            except Exception as e:
-                log.error(f"Error in frame_change handler: {e}")
-
-        bpy.app.handlers.frame_change_pre.append(_viz_on_frame)
-        log.info("Animation handler registered.")
-    except Exception as e:
-        log.critical(f"Failed to register animation handler: {e}")
-        raise
