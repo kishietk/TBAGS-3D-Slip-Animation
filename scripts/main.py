@@ -1,16 +1,3 @@
-"""
-main.py
-
-Blender可視化プロジェクトのエントリーポイント
-- シーン初期化からデータロード、部材・地面生成、マテリアル割り当て
-  地面アニメーション・建物アニメーション（全体＋部材個別）両方のハンドラ登録まで一括管理
-
-設計方針:
-- 地面も建物も別々にアニメーションできる設計
-- ground/animators/core/builder群とのインターフェース一貫
-- 例外処理・ロギング充実
-"""
-
 import sys
 import os
 
@@ -32,7 +19,17 @@ def main() -> None:
         clear_scene()
         log.info("Scene cleared.")
 
+        # --- FPS/アニメ長さの自動同期ここから ---
         import bpy
+        from configs.constants import ANIM_FPS, ANIM_SECONDS
+
+        scene = bpy.context.scene
+        scene.render.fps = ANIM_FPS
+        scene.frame_start = 1
+        scene.frame_end = ANIM_FPS * ANIM_SECONDS
+        log.info(f"Scene FPS set to {ANIM_FPS}, frames 1-{scene.frame_end}")
+        # --- FPS/アニメ長さの自動同期ここまで ---
+
         from loaders.loaderManager import LoaderManager
         from cores.coreConstructer import coreConstructer
         from builders.sceneBuilder import build_blender_objects
@@ -51,12 +48,10 @@ def main() -> None:
         log.info("Core data loaded.")
 
         # 3. コアモデル構築
-
         cc = coreConstructer(nodes_data, edges_data)
         log.info(f"Core summary: {cc.summary()}")
 
         # 4. Blenderオブジェクト生成
-
         (
             node_objs,
             sandbag_objs,

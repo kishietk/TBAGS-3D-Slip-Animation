@@ -75,11 +75,15 @@ GROUND_MAT_NAME = "GroundMat"
 GROUND_MAT_COLOR = (0.25, 0.42, 0.48, 1)  
 
 # =========================
-# ラベル・アニメーション設定
+# ラベル設定
 # =========================
 LABEL_SIZE = 0.1
 LABEL_OFFSET = Vector((0.8, -0.5, 0.5))
-ANIM_FPS = 60
+
+# =========================
+# アニメーション設定
+# =========================
+ANIM_FPS = 32
 ANIM_SECONDS = 30
 ANIM_TOTAL_FRAMES = ANIM_FPS * ANIM_SECONDS
 DISP_SCALE = 10
