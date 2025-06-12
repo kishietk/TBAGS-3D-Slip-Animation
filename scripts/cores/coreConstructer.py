@@ -12,7 +12,7 @@
 
 from typing import Dict, List, Optional
 from utils.logging_utils import setup_logging
-from config import (
+from configs import (
     SANDBAG_NODE_KIND_IDS,
     WALL_NODE_KIND_IDS,
     COLUMNS_KIND_IDS,
@@ -178,7 +178,7 @@ class coreConstructer:
         Returns:
             List[Tuple[int, int]]
         """
-        from config import COLUMNS_KIND_IDS
+        from configs import COLUMNS_KIND_IDS
 
         return [
             (e.node_a.id, e.node_b.id)
@@ -192,7 +192,7 @@ class coreConstructer:
         Returns:
             List[Tuple[int, int]]
         """
-        from config import BEAMS_KIND_IDS
+        from configs import BEAMS_KIND_IDS
 
         return [
             (e.node_a.id, e.node_b.id)

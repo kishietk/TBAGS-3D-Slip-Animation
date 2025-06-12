@@ -10,7 +10,7 @@ import csv
 from typing import Dict
 from mathutils import Vector
 from utils.logging_utils import setup_logging
-from config import ANIM_FPS, DISP_SCALE, EARTHQUAKE_ANIM_CSV
+from configs import ANIM_FPS, DISP_SCALE, EARTHQUAKE_ANIM_CSV
 
 log = setup_logging("earthquakeAnimLoader")
 

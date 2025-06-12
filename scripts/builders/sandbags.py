@@ -12,7 +12,7 @@ from mathutils import Vector
 from utils.logging_utils import setup_logging
 from builders.labels import create_label
 from cores.nodeCore import Node
-from config import LABEL_SIZE, LABEL_OFFSET
+from configs import LABEL_SIZE, LABEL_OFFSET
 
 log = setup_logging()
 

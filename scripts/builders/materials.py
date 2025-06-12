@@ -9,7 +9,7 @@ Blenderオブジェクト用マテリアル生成・一括適用モジュール
 import bpy
 from typing import Dict, List, Tuple, Optional
 from utils.logging_utils import setup_logging
-from config import WALL_IMG, ROOF_IMG, WALL_ALPHA, ROOF_ALPHA
+from configs import WALL_IMG, ROOF_IMG, WALL_ALPHA, ROOF_ALPHA
 
 log = setup_logging()
 

@@ -64,7 +64,7 @@ def main() -> None:
         log.info("Blender objects created.")
 
         # --- サンドバッグ/通常ノードでID分割 ---
-        from config import SANDBAG_NODE_KIND_IDS, EARTHQUAKE_ANIM_CSV
+        from configs import SANDBAG_NODE_KIND_IDS, EARTHQUAKE_ANIM_CSV
 
         nodes = cc.get_nodes()
         base_node_pos = {

@@ -17,7 +17,7 @@ from builders.sandbags import build_sandbags, create_sandbag_labels
 from builders.panels import build_blender_panels, build_roof
 from builders.columns import build_columns
 from builders.beams import build_beams
-from config import SANDBAG_NODE_KIND_IDS, SANDBAG_CUBE_SIZE, SPHERE_RADIUS
+from configs import SANDBAG_NODE_KIND_IDS, SANDBAG_CUBE_SIZE, SPHERE_RADIUS
 
 
 def build_blender_objects(

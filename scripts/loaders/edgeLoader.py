@@ -15,7 +15,7 @@ import re
 from typing import List, Dict, Optional, NamedTuple
 from utils.logging_utils import setup_logging
 from loaders.nodeLoader import NodeData
-from config import (
+from configs import (
     KIND_LABELS,
     EDGE_NODE_KIND_IDS,
 )
