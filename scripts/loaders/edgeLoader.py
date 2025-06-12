@@ -16,7 +16,7 @@ from typing import List, Dict, Optional, NamedTuple
 from utils.logging_utils import setup_logging
 from loaders.nodeLoader import NodeData
 from config import (
-    EBEAM_KIND_LABELS,
+    KIND_LABELS,
     EDGE_NODE_KIND_IDS,
 )
 
@@ -92,7 +92,7 @@ def load_edges(
                 m_kind = re.match(r"#\s*(\d+)\s*(.+)?", line_strip)
                 if m_kind:
                     current_kind_id = int(m_kind.group(1))
-                    current_kind_label = EBEAM_KIND_LABELS.get(
+                    current_kind_label = KIND_LABELS.get(
                         current_kind_id, m_kind.group(2) or "unknown"
                     )
                     log.debug(
