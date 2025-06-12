@@ -10,7 +10,7 @@ from typing import Dict
 from utils.logging_utils import setup_logging
 from cores.nodeCore import Node
 from builders.labels import create_label
-from config import LABEL_SIZE, LABEL_OFFSET
+from configs import LABEL_SIZE, LABEL_OFFSET
 
 log = setup_logging()
 

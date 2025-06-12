@@ -11,7 +11,7 @@ LoaderManager
 
 from typing import Dict, List
 from mathutils import Vector
-from config import NODE_CSV, EDGES_FILE, NODE_ANIM_CSV
+from configs import NODE_CSV, EDGES_FILE, NODE_ANIM_CSV
 from loaders.nodeLoader import load_nodes, NodeData
 from loaders.edgeLoader import load_edges, EdgeData
 from loaders.nodeAnimLoader import load_animation_data

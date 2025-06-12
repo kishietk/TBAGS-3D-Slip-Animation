@@ -10,7 +10,7 @@ import csv
 from typing import Dict
 from mathutils import Vector
 from utils.logging_utils import setup_logging
-from config import ANIM_FPS, DISP_SCALE, EARTHQUAKE_ANIM_CSV
+from configs import ANIM_FPS, DISP_SCALE, EARTHQUAKE_ANIM_CSV
 
 log = setup_logging("earthquakeAnimLoader")
 
@@ -37,7 +37,7 @@ def load_earthquake_motion_csv(path: str = EARTHQUAKE_ANIM_CSV) -> Dict[int, Vec
             header2 = next(
                 reader, None
             )  # 例: Time  (s),Disp. (mm),,Time  (s),Disp. (mm)
-            log.info(f"CSV Header: {header1} / {header2}")
+            
             for lineno, row in enumerate(reader, start=3):
                 if not row or not row[0].strip() or not row[1].strip():
                     continue
@@ -55,7 +55,4 @@ def load_earthquake_motion_csv(path: str = EARTHQUAKE_ANIM_CSV) -> Dict[int, Vec
         log.critical(f"[{path}] CRITICAL: Failed to open/read earthquake CSV ({e})")
         raise
 
-    log.info(
-        f"Loaded earthquake anim data: {len(frame_data)} frames. Sample: {list(frame_data.items())[:10]}"
-    )
     return frame_data

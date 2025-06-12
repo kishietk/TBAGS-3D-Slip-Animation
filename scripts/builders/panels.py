@@ -12,7 +12,7 @@ import bpy
 from mathutils import Vector
 from typing import List, Dict, Tuple, Any, Optional
 from utils.logging_utils import setup_logging
-from config import EPS_XY_MATCH
+from configs import EPS_XY_MATCH
 
 log = setup_logging()
 

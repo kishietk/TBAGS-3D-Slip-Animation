@@ -15,7 +15,7 @@ from collections import defaultdict
 from typing import Dict
 from mathutils import Vector
 from utils.logging_utils import setup_logging
-from config import NODE_ANIM_CSV, VALID_NODE_IDS, ANIM_FPS, DISP_SCALE
+from configs import NODE_ANIM_CSV, VALID_NODE_IDS, ANIM_FPS, DISP_SCALE
 
 log = setup_logging()
 

@@ -8,7 +8,7 @@
 import re
 from typing import Dict, NamedTuple
 from mathutils import Vector
-from config import NODE_CSV, NODE_SECTION_NUMBERS, VALID_NODE_IDS
+from configs import NODE_CSV, NODE_SECTION_NUMBERS, VALID_NODE_IDS
 from utils.logging_utils import setup_logging
 
 log = setup_logging()  # configのLOG_LEVELから出力レベル設定

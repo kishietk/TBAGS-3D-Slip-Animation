@@ -9,7 +9,7 @@ Blenderオブジェクト用マテリアル生成・一括適用モジュール
 import bpy
 from typing import Dict, List, Tuple, Optional
 from utils.logging_utils import setup_logging
-from config import WALL_IMG, ROOF_IMG, WALL_ALPHA, ROOF_ALPHA
+from configs import WALL_IMG, ROOF_IMG, WALL_ALPHA, ROOF_ALPHA
 
 log = setup_logging()
 
@@ -197,6 +197,7 @@ def apply_all_materials(
     panel_objs: List[bpy.types.Object],
     roof_obj: Optional[bpy.types.Object],
     member_objs: List[Tuple[bpy.types.Object, int, int]],
+    ground_obj=None,
 ) -> None:
     """
     ノード球・サンドバッグ立方体・壁パネル・屋根・柱・梁にマテリアルを一括適用
@@ -266,6 +267,14 @@ def apply_all_materials(
             o.data.materials.clear()
             o.data.materials.append(mat_sandbag)
             sandbag_count += 1
+
+        # グラウンドメッシュ
+        if ground_obj is not None:
+            from builders.groundBuilder import create_ground_material
+            mat = create_ground_material()
+            if mat:
+                ground_obj.data.materials.clear()
+                ground_obj.data.materials.append(mat)
 
         log.info(
             f"Materials applied. Panels: {panel_count}, Roofs: {roof_count}, "
