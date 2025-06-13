@@ -1,11 +1,20 @@
 """
-パネル・屋根生成ビルダー
-Panelコアデータから壁パネル・屋根パネルをBlender上に生成する
+ファイル名: builders/panels.py
 
-【設計思想】
-- コアPanelリスト → Blenderパネル・屋根オブジェクト群へ変換
-- 失敗パネルはログへ（例: 4ノード以外のPanel）
-- 屋根生成関数も一括定義
+責務:
+- コアPanelリストからBlender壁パネル・屋根オブジェクトを生成する。
+- 4ノード以外のPanelや生成失敗時はログに記録し、復帰は担わない。
+- 屋根は最上階ノード群から自動生成。
+
+注意点:
+- Panelは4ノードのみ対応、他はスキップ
+- 屋根はZ最上位・格子パターン前提
+- 例外時はエラーログ出力のみ（raiseしない）
+
+TODO:
+- パネル/屋根生成汎用化（不正パネル・変則形状対応）
+- quad探索部/face生成部の切り出し・型安全化
+- オブジェクト属性一元管理・メタデータ分離
 """
 
 import bpy
@@ -14,20 +23,24 @@ from typing import List, Dict, Tuple, Any, Optional
 from utils.logging_utils import setup_logging
 from configs import EPS_XY_MATCH
 
-log = setup_logging()
+log = setup_logging("build_panels")
 
 
 def build_blender_panels(
     panels: List[Any],  # List[Panel]
 ) -> List[bpy.types.Object]:
     """
-    コアPanelリストからBlender上に壁パネルを生成する
+    役割:
+        コアPanelリストからBlender上に壁パネルを生成する。
 
-    Args:
+    引数:
         panels (List[Panel]): Panelインスタンスのリスト
 
-    Returns:
+    返り値:
         List[bpy.types.Object]: パネルのBlenderオブジェクトリスト
+
+    注意:
+        - 4ノードPanel以外は生成不可（スキップ・警告のみ）
     """
     if not panels:
         log.warning("No Panel data supplied to build_blender_panels()")
@@ -48,12 +61,12 @@ def build_blender_panels(
             bpy.context.collection.objects.link(obj)
 
             verts_bl = [tuple(v) for v in verts]
-            faces = [(0, 1, 2, 3)]  # この順で作成
+            faces = [(0, 1, 2, 3)]
 
             mesh.from_pydata(verts_bl, [], faces)
             mesh.update()
 
-            obj["panel_ids"] = [n.id for n in panel.nodes]  # [a, b, d, c]の順
+            obj["panel_ids"] = [n.id for n in panel.nodes]
             obj["panel_kind"] = panel.kind
             if hasattr(panel, "floor"):
                 obj["panel_floor"] = panel.floor
@@ -73,14 +86,19 @@ def build_roof(
     nodes: Dict[int, Vector],
 ) -> Tuple[Optional[bpy.types.Object], List[Tuple[int, int, int, int]]]:
     """
-    最上階ノードから屋根パネル群を生成し、Blenderオブジェクトとして返す
+    役割:
+        最上階ノードから屋根パネル群を生成し、Blenderオブジェクトとして返す。
 
-    Args:
+    引数:
         nodes (Dict[int, Vector]): ノードID→座標Vectorの辞書
 
-    Returns:
+    返り値:
         Tuple[Optional[bpy.types.Object], List[Tuple[int,int,int,int]]]:
             (屋根オブジェクト, 屋根パネルIDタプルリスト)
+
+    注意:
+        - Z最大値層のノード格子に対してのみ対応
+        - 順序・四角形整合等は盤面前提（不正形状は今後対応）
     """
     zs = sorted({v.z for v in nodes.values()})
     if not zs:
@@ -116,9 +134,6 @@ def build_roof(
         mesh = bpy.data.meshes.new("RoofMesh")
         obj = bpy.data.objects.new("Roof", mesh)
         bpy.context.collection.objects.link(obj)
-        # 頂点座標リストを作成
-        verts = [tops[nid] for nid in tops]
-        # facesは作成済みquadリストを利用（順番が一致していれば）
         mesh.update()
         obj["roof_quads"] = quads
         log.debug(f"Created Roof: {obj.name}, quads={quads}")

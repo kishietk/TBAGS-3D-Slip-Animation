@@ -1,17 +1,24 @@
 """
-animators/building_animator.py
+ファイル名: animators/building_animator.py
 
 責務:
-- 建物本体（ノード・サンドバッグ・パネル・屋根・柱・梁）のアニメーション処理を専任
-- Blenderフレームごとに各部材の位置・形状を自動で更新
+- 建物本体（ノード・サンドバッグ・パネル・屋根・柱・梁）のアニメーション“処理のみ”を担う。
+- Blenderフレームごとに各部材の位置・形状を更新。
+- 地面（Ground）はground_animator.pyで完全分離（ここで責任持たない）。
 
 設計指針:
-- 地面（Ground）のアニメ責任はground_animator.pyに完全分離
-- on_frame_building は「建物全体」または部材個別を動かす
-- フレームごとの座標計算/再生成のみ担当（イベント登録はhandler.pyで一元化推奨）
+- on_frame_building関数で「建物全体」や各部材をフレームごとに動かす。
+- フレームごとの座標計算・再生成・再配置責任のみを担い、ハンドラ登録等の“イベント登録”責任は外部(handler.py等)で一元化推奨。
+- 必要なデータ（Blenderオブジェクト・アニメ辞書等）は外部(main等)から全て渡す前提。
 
-利用前提:
-- 建物コアデータとBlenderオブジェクト、アニメーション辞書は全てmain等から渡す
+注意点:
+- 地面・外部オブジェクトの責任は持たない（ground_animatorへ分離）。
+- “アニメーション/再配置”のみ。オブジェクト生成・マテリアル割当・ハンドラ登録は他責任。
+- エラー/不整合は警告ログ・エラーで通知（raiseせず処理継続）。
+
+TODO:
+- フレーム補間・物理ベース移動等、アニメ高度化は今後責任分離で対応
+- パネル/屋根生成の動的構造変化対応（可変形状・連結パネルなど）
 """
 
 import bpy
@@ -41,9 +48,10 @@ def on_frame_building(
     base_sandbag_pos: Dict[int, Vector],
 ) -> None:
     """
-    1フレーム毎に建物各オブジェクトの座標・形状を自動更新
+    役割:
+        1フレーム毎に建物各オブジェクトの座標・形状を自動更新。
 
-    Args:
+    引数:
         scene: Blenderシーン
         panel_objs: パネルObjectリスト
         roof_obj: 屋根ObjectまたはNone
@@ -56,12 +64,16 @@ def on_frame_building(
         base_node_pos: ノードID→初期位置Vector
         base_sandbag_pos: サンドバッグID→初期位置Vector
 
-    Returns:
+    返り値:
         None
+
+    注意:
+        - アニメーション辞書・初期座標は呼び出し元で一元管理すること
+        - パネル/屋根等の再生成はbmeshで動的対応
     """
     all_node_objs = {**node_objs, **sandbag_objs}
 
-    # ノード球更新
+    # ノード球アニメーション
     for nid, obj in node_objs.items():
         if nid not in base_node_pos:
             continue
@@ -78,7 +90,7 @@ def on_frame_building(
             disp = node_anim.get(scene.frame_current, Vector((0, 0, 0)))
         obj.location = base_pos + disp
 
-    # サンドバッグ更新
+    # サンドバッグアニメーション
     for nid, obj in sandbag_objs.items():
         if nid not in base_sandbag_pos:
             continue
@@ -95,7 +107,7 @@ def on_frame_building(
             disp = anim_data_sb.get(scene.frame_current, Vector((0, 0, 0)))
         obj.location = base_pos + disp
 
-    # パネル再構築（4ノードで面生成＋UV）
+    # パネル再構築
     for obj in panel_objs:
         try:
             if obj is None:
@@ -103,7 +115,7 @@ def on_frame_building(
             ids = obj.get("panel_ids")
             if not ids or len(ids) != 4:
                 continue
-            a, b, d, c = ids  # [a, b, d, c]の順
+            a, b, d, c = ids
             verts = [
                 all_node_objs[a].location,
                 all_node_objs[b].location,
@@ -123,7 +135,7 @@ def on_frame_building(
         except Exception as e:
             log.error(f"Failed to update panel {getattr(obj, 'name', '?')}: {e}")
 
-    # 屋根再構築（roof_quadsが空でなければbmesh生成）
+    # 屋根再構築
     if roof_obj is not None and roof_quads:
         try:
             mesh = roof_obj.data
@@ -151,7 +163,7 @@ def on_frame_building(
         except Exception as e:
             log.error(f"Failed to update roof: {e}")
 
-    # 柱・梁再配置（位置・姿勢・長さをノードにフィット）
+    # 柱・梁再配置（ノード動的アニメに追従）
     up = Vector((0, 0, 1))
     for obj, a, b in member_objs:
         try:

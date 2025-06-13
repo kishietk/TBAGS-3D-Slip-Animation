@@ -1,16 +1,20 @@
 """
-ラベル生成ユーティリティ（builders/labels.py）
+ファイル名: builders/labels.py
 
-- 任意Blenderオブジェクトにテキストラベルを追加
-- 親オブジェクトにChildOf制約 or 親子付けで追従
-- アニメーション・スタイル責任は持たない
+責務:
+- 任意Blenderオブジェクトにテキストラベルを追加するユーティリティ。
+- 親子付けまたはChildOf制約で親に追従（位置・追従方式のみ責任範囲）。
+
+TODO:
+- テキストスタイル・カラー等の外部化（専用ラベルビルダーへ昇格も視野）
+- アニメ・可視性制御・重なり回避等の責任は今後分割可能性あり
 """
 
 import bpy
 from mathutils import Vector
 from utils.logging_utils import setup_logging
 
-log = setup_logging()
+log = setup_logging("labels")
 
 
 def create_label(
@@ -22,9 +26,10 @@ def create_label(
     use_constraint: bool = True,
 ) -> bpy.types.Object:
     """
-    指定Blenderオブジェクトにテキストラベルを追加する
+    役割:
+        指定Blenderオブジェクトにテキストラベルを追加する。
 
-    Args:
+    引数:
         obj (bpy.types.Object): 親オブジェクト
         text (str): ラベルテキスト
         abs_size (float): テキスト絶対サイズ（Blender単位）
@@ -32,12 +37,12 @@ def create_label(
         name_prefix (str): オブジェクト名プリフィクス
         use_constraint (bool): ChildOf制約で追従（True推奨）
 
-    Returns:
+    返り値:
         bpy.types.Object: 作成されたテキストラベルオブジェクト
 
-    Notes:
-        - use_constraint=Trueの場合、オブジェクトのワールド座標にoffsetを加算して固定
-        - Falseの場合は親子関係（parent）で単純追従
+    補足:
+        use_constraint=Trueの場合はワールド位置固定、
+        Falseの場合はparentでローカル追従。
     """
     from math import radians
 

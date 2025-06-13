@@ -1,23 +1,15 @@
 """
-builders/motionParentBuilder.py
+ファイル名: builders/motionParentBuilder.py
 
 責務:
-- 地震アニメーション用の親(Empty)オブジェクトを生成
-- 複数の建物部材群を一括で親子付けする
+- 地震アニメーション用の親(Empty)オブジェクト生成と、建物部材群の一括親子付けのみを担う。
 
-利用例:
-    from builders.motionParentBuilder import build_motion_parent, set_parent
+注意点:
+- ground_obj（地面）はデフォルトで親子付けしない（必要な場合のみ）。
+- 部材グループ単位の親子構造分割など設計の余地あり。
 
-    motion_parent = build_motion_parent()
-    set_parent(
-        motion_parent,
-        node_objs=node_objs,
-        sandbag_objs=sandbag_objs,
-        panel_objs=panel_objs,
-        roof_obj=roof_obj,
-        member_objs=member_objs,
-        # ground_objは親子付けしない
-    )
+TODO:
+- ground_objの扱い統一、親階層分割管理、親子解除APIの検討
 """
 
 import bpy

@@ -1,14 +1,25 @@
 """
-configs/kind_labels.py
+ファイル名: configs/kind_labels.py
 
 責務:
-- 部材種別IDと日本語/英語ラベル・分類IDリストなど「種別/ラベル/分類」に関する定数の管理
+- ノードや部材などの“種別ID”とその分類リスト、ラベル（英語/日本語）、およびIDグルーピングを一元管理。
+- プロジェクト内の全「分類・ラベル・グループID」責務を担う（数値定数やパスは責任外）。
+
+設計指針:
+- ラベル管理、グルーピング、分類（柱/梁/壁/サンドバッグ等）は全てここで一元化
+- 物理値・描画定数はconstants.pyへ、ファイルパス等はpaths.pyへ
+- グループID・種別IDの追加・編集が発生した場合は必ずここだけを修正
+- 日本語/英語併記やenum化は拡張案として随時追加
+
+TODO:
+- 日本語ラベル対応（例: KIND_LABELS_JP等）
+- Enum化や、複数分類セットを自動生成するロジックの導入
+- 逆引き辞書（ラベル→kind_id）対応
 """
 
 # =========================
-# EBEAM3D部材種別管理
+# 種別ID→英語ラベルマッピング
 # =========================
-
 KIND_LABELS = {
     1: "frame_nodes_and_top_of_upper_level_sandbag_with_foundation_on_top",
     2: "top_of_upper_level_sandbag_without_foundation_on_top",
@@ -104,13 +115,19 @@ KIND_LABELS = {
     92: "ground_connecting_node",
 }
 
-
 # =========================
-# 種別IDグループ管理
+# 分類・グルーピング用IDリスト
 # =========================
+# ノード種別区間ID（構造や階層の分類目的等）
+NODE_SECTION_KIND_IDS = list(range(1, 11))  # セクション区間番号1～10
 
+# 柱・梁・エッジ・壁・サンドバッグ等、部材種別IDリスト
 COLUMNS_KIND_IDS = [53, 55]
 BEAMS_KIND_IDS = [42, 43, 44, 45, 46, 48, 49, 50, 51]
 EDGE_NODE_KIND_IDS = [0, 1]
 WALL_NODE_KIND_IDS = [0, 1]
 SANDBAG_NODE_KIND_IDS = [0, 2, 3, 4, 5, 7, 8, 9]
+
+# --- 将来拡張指針 ---
+# ・IDセット追加時はここに追記・命名規則を統一
+# ・分類増／仕様変化時も他ファイル改修不要な構造とする

@@ -9,8 +9,7 @@
 """
 
 import bpy
-from utils.logging_utils import setup_logging
-from utils.scene_utils import clear_scene
+from utils.blenderScene_utils import clear_scene
 from loaders.loaderManager import LoaderManager
 from cores.coreConstructer import coreConstructer
 from builders.sceneBuilder import build_blender_objects

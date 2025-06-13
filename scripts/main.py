@@ -1,8 +1,9 @@
-# main.py
 """
 責務:
 - プロジェクトの実行起点。
-- sys.pathやプロジェクトパスの設定も担い、utils/main_utils.pyの各工程を呼ぶ。
+
+TODO:
+- 引数で設定ファイルや実行モードを切り替えられるように拡張（T-BAGSの有無）
 """
 
 import sys
@@ -25,7 +26,7 @@ from utils.main_utils import (
 def main():
     """
     役割:
-        全体フローの実行（setup→load→core構築→Blenderオブジェクト生成→マテリアル適用→アニメハンドラ登録）。
+        全体フローの実行（setup →→ load →→ core構築 →→ Blenderオブジェクト生成 →→ マテリアル適用 →→ アニメハンドラ登録）
     """
     setup_scene()
     nodes_data, edges_data, anim_data = load_all_data()

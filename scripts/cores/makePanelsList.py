@@ -1,13 +1,15 @@
 """
-コアパネル自動生成モジュール
-- ノード群・kind_id指定から壁/床/屋根のパネル（面）を自動的に決定
-- [a, b, d, c]のノードID順でPanelDataリストを生成
+ファイル名: cores/makePanelsList.py
 
-【設計思想】
-- 3D格子状に規則的な構造ノードからpanel四角面を自動抽出
-- kind_idで壁/床/屋根候補ノードだけフィルタ
-- EPS_XY_MATCHで座標誤差を吸収
-- panel構築判定（find_at, segsなど）は可読性を重視
+責務:
+- ノード群・kind_id指定から壁/床/屋根のパネル（面）を自動的に決定し、PanelDataリストを生成する。
+- [a, b, d, c]のノードID順で面を定義。
+- 3D格子状の構造から四角面を探索し自動生成。
+
+設計思想:
+- kind_idによる壁/床/屋根候補ノードだけをフィルタ
+- EPS_XY_MATCHで座標誤差を吸収しパネル構築
+- find_atやsegs等の小関数で可読性重視
 """
 
 from typing import Dict, List, NamedTuple
@@ -15,11 +17,21 @@ from loaders.nodeLoader import NodeData
 from configs import EPS_XY_MATCH
 from utils.logging_utils import setup_logging
 
-log = setup_logging()
+log = setup_logging("makePanelsList")
 
 
 class PanelData(NamedTuple):
-    node_ids: List[int]  # [a, b, d, c] の順
+    """
+    役割:
+        パネル（面）を定義するデータ構造体。
+    属性:
+        node_ids (List[int]): 4点ノードID（[a, b, d, c]順）
+        kind (str): パネル種別
+        floor (str): 階情報等
+        attributes (dict): 任意属性
+    """
+
+    node_ids: List[int]
     kind: str = "wall"
     floor: str = ""
     attributes: dict = {}
@@ -30,12 +42,20 @@ def make_panels_list(
     panel_node_kind_ids: List[int],
 ) -> List[PanelData]:
     """
-    ノード情報と指定kind_idに基づき壁パネル（PanelData）リストを生成
-    Args:
+    役割:
+        ノード情報と指定kind_idに基づき、壁パネル（PanelData）リストを生成する。
+
+    引数:
         node_map (Dict[int, NodeData]): ノードID→NodeData
         panel_node_kind_ids (List[int]): panel候補のkind_id
-    Returns:
-        List[PanelData]: 4点ID・属性付PanelDataリスト
+
+    返り値:
+        List[PanelData]: 4点ID・属性付きPanelDataリスト
+
+    処理:
+        - 指定kind_idのノードのみ壁候補として抽出
+        - 3D座標から各階層・各面の組み合わせを探索
+        - EPS_XY_MATCHで誤差を吸収し、find_at/segs等の小関数で組み合わせ探索
     """
     log.info("=================[パネルコアオブジェクトを作成]=========================")
     panels: List[PanelData] = []
@@ -57,7 +77,7 @@ def make_panels_list(
     ymin, ymax = min(ys), max(ys)
 
     def eq(a: float, b: float) -> bool:
-        """座標比較の誤差吸収"""
+        """座標比較の誤差吸収（EPS_XY_MATCHで比較）"""
         return abs(a - b) < EPS_XY_MATCH
 
     # 各階ごとにpanel quad探索
@@ -81,11 +101,13 @@ def make_panels_list(
         )
 
         def segs(lst):
+            """隣接ノード間のペアを生成"""
             return [(lst[i], lst[i + 1]) for i in range(len(lst) - 1)]
 
         for (a_id, a), (b_id, b) in segs(left) + segs(front) + segs(right) + segs(back):
 
             def find_at(x: float, y: float, zval: float):
+                """指定座標に一致するノード（誤差吸収）を探索"""
                 for nid2, n2 in wall_nodes:
                     if eq(n2.pos.z, zval) and eq(n2.pos.x, x) and eq(n2.pos.y, y):
                         return nid2, n2

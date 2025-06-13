@@ -1,10 +1,18 @@
 """
-animators/ground_animator.py
+ファイル名: animators/ground_animator.py
 
 責務:
-- 地震アニメーション用の親オブジェクト（motion parent）のみを動かすハンドラ
-- グラウンドメッシュ（ground_obj）も独立して動かすハンドラ
-- どちらもBlenderのフレームチェンジイベントでlocationを毎フレーム更新
+- 地震アニメーション用の親オブジェクト（motion parent）のみを動かすハンドラを提供する。
+- earthquake_anim_data(フレーム毎変位)を元にmotion_parentの.locationを毎フレーム更新。
+- ground_obj等の独立アニメ処理も将来分離責任。
+
+注意点:
+- Blenderイベント登録はframe_change_preのみ（clear/重複管理は運用責任）
+- ground_obj用ハンドラ分離など設計拡張余地あり
+
+TODO:
+- ground_obj独立アニメハンドラの導入
+- イベント登録解除/重複防止/多重登録管理
 """
 
 import bpy
@@ -20,11 +28,18 @@ def register_ground_anim_handler(
     earthquake_anim_data: Optional[Dict[int, Vector]] = None,
 ) -> None:
     """
-    motion_parent(Empty)の.locationを毎フレームアニメーションで更新
+    役割:
+        motion_parent(Empty)の.locationを地震アニメーションデータで毎フレーム更新するハンドラを登録。
 
-    Args:
+    引数:
         motion_parent: アニメーション対象のEmpty（建物群の親）
-        earthquake_anim_data: {frame: Vector(dx, dy, dz)}
+        earthquake_anim_data: {frame: Vector(dx, dy, dz)}（なければ静止）
+
+    返り値:
+        None
+
+    注意:
+        - ハンドラはappendのみ。多重登録/解除は呼び出し元で管理推奨。
     """
 
     def _on_frame(scene):
@@ -37,6 +52,5 @@ def register_ground_anim_handler(
                 f"motion_parent.location set to {tuple(disp)} at frame {scene.frame_current}"
             )
 
-    # 前回登録を防ぐためハンドラをappendのみ（運用に応じてclear対応も検討可）
     bpy.app.handlers.frame_change_pre.append(_on_frame)
     log.info("Motion parent (building) animation handler registered.")

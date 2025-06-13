@@ -1,12 +1,17 @@
 """
-LoaderManager
-- ノード・エッジ・アニメーション全データの一元ロード管理クラス
-- 各種データ取得（load_nodes/load_edges/load_animation）を統合的に提供
+ファイル名: loaders/loaderManager.py
 
-【設計・運用指針】
-- コンストラクタ引数でパスを切替可能（デフォルトはconfig値）
-- 内部で各専用ローダを呼び出し、エラーハンドル・ログ出力も統一
-- 型ヒント・ドキュメント完備でメンテ容易
+責務:
+- ノード・エッジ・アニメーション全データの一元ロード管理クラス（LoaderManager）。
+- 各データ種のロード専用関数を呼び出し、エラーハンドルやログも一括管理。
+
+設計・運用指針:
+- コンストラクタで各種パスを個別設定可能（デフォルトはconfig値）。
+- 型ヒント・docstring統一で保守性向上。
+
+TODO:
+- ファイルが存在しない/パス間違い時のハンドリング（ユーザ向けガイドやリトライロジックの導入）
+- 検証やテストのためfile-likeオブジェクト入力も選択可能なAPI拡張
 """
 
 from typing import Dict, List
@@ -17,14 +22,19 @@ from loaders.edgeLoader import load_edges, EdgeData
 from loaders.nodeAnimLoader import load_animation_data
 from utils.logging_utils import setup_logging
 
-log = setup_logging()
+log = setup_logging("LoaderManager")
 
 
 class LoaderManager:
     """
-    全ロード管理クラス
-    - ノード・エッジ・アニメーションCSV/STR一括ロード・ログ付き
-    - パス切替やリトライにも柔軟に対応
+    役割:
+        ノード・エッジ・アニメーションの全データを一括管理/ロードするクラス。
+        パスの切り替えや一元的なログ出力も担う。
+
+    属性:
+        node_path (str): ノードCSVファイルパス
+        edge_path (str): エッジ定義ファイルパス
+        anim_path (str): アニメーションCSVファイルパス
     """
 
     def __init__(
@@ -34,7 +44,9 @@ class LoaderManager:
         anim_path: str = NODE_ANIM_CSV,
     ):
         """
-        Args:
+        役割:
+            各データファイルパスを指定してインスタンス化する。
+        引数:
             node_path (str): ノードファイルパス
             edge_path (str): エッジファイルパス
             anim_path (str): アニメーションファイルパス
@@ -45,52 +57,53 @@ class LoaderManager:
 
     def load_nodes(self) -> Dict[int, NodeData]:
         """
-        ノードデータ（NodeData型）の辞書を返す
-        Returns:
+        役割:
+            ノードデータ（NodeData型）の辞書をロードして返す。
+        返り値:
             Dict[int, NodeData]: ノードID→NodeData
-        Raises:
+        例外:
             Exception: 読込失敗時
         """
         try:
             node_data_dict = load_nodes(self.node_path)
-            log.info(
-                f"LoaderManager: Loaded {len(node_data_dict)} nodes from {self.node_path}"
-            )
+            log.info(f"Loaded {len(node_data_dict)} nodes from {self.node_path}")
             return node_data_dict
         except Exception as e:
-            log.critical(f"LoaderManager: Failed to load nodes ({e})")
+            log.critical(f"Failed to load nodes ({e})")
             raise
 
     def load_edges(self, node_map: Dict[int, NodeData]) -> List[EdgeData]:
         """
-        エッジデータ（EdgeData型）のリストを返す
-        Args:
+        役割:
+            エッジデータ（EdgeData型）のリストをロードして返す。
+        引数:
             node_map (Dict[int, NodeData]): ノードID→NodeDataの辞書
-        Returns:
+        返り値:
             List[EdgeData]: EdgeDataリスト
-        Raises:
+        例外:
             Exception: 読込失敗時
         """
         try:
             edges = load_edges(self.edge_path, node_map)
-            log.info(f"LoaderManager: Loaded {len(edges)} edges from {self.edge_path}")
+            log.info(f"Loaded {len(edges)} edges from {self.edge_path}")
             return edges
         except Exception as e:
-            log.critical(f"LoaderManager: Failed to load edges ({e})")
+            log.critical(f"Failed to load edges ({e})")
             raise
 
     def load_animation(self) -> Dict[int, Dict[int, Vector]]:
         """
-        アニメーションデータをロード。
-        Returns:
+        役割:
+            アニメーションデータ（ノードIDごとの{フレーム: Vector}辞書）をロードして返す。
+        返り値:
             Dict[int, Dict[int, Vector]]: {ノードID: {フレーム: Vector}}
-        Raises:
+        例外:
             Exception: 読込失敗時
         """
         try:
             anim_data = load_animation_data(self.anim_path)
-            log.info(f"LoaderManager: Loaded animation data from {self.anim_path}")
+            log.info(f"Loaded animation data from {self.anim_path}")
             return anim_data
         except Exception as e:
-            log.critical(f"LoaderManager: Failed to load animation ({e})")
+            log.critical(f"Failed to load animation ({e})")
             raise

@@ -1,10 +1,19 @@
 """
-サンドバッグノード群（SandbagNode）をBlender上に立方体で生成するビルダー
+ファイル名: builders/sandbags.py
 
-【設計思想】
-- コアモデルのサンドバッグノード集合 → Blender上の立方体群へ一括生成
-- ノードIDとBlender Object辞書を返すことで、他処理（ラベル付け・アニメ等）と連携しやすい
-- ラベル生成関数も分離
+責務:
+- サンドバッグノード群をBlender上に立方体として一括生成するビルダー。
+- ノードIDとBlender Objectの辞書返却で、他のラベル・アニメ処理と連携しやすい設計。
+- ラベル付与は専用関数で責任分離。
+
+注意点:
+- 入力nodesはSandbagNode型/Node型/座標dict等を暫定サポート（型統一はTODO）
+- ラベル生成はcreate_sandbag_labelsでのみ担保
+
+TODO:
+- Node/SandbagNode型受け口の統一・型ヒント強化
+- 直方体サイズ・座標等の入力バリデーション
+- 物理シミュ/剛体設定等の将来責任分離
 """
 
 import bpy
@@ -14,7 +23,7 @@ from builders.labels import create_label
 from cores.nodeCore import Node
 from configs import LABEL_SIZE, LABEL_OFFSET
 
-log = setup_logging()
+log = setup_logging("build_sandbags")
 
 
 def build_sandbags(
@@ -22,14 +31,19 @@ def build_sandbags(
     cube_size: tuple[float, float, float],
 ) -> dict[int, bpy.types.Object]:
     """
-    各ノード位置に直方体サンドバッグを生成（3辺サイズ指定対応）
+    役割:
+        各ノード位置に直方体サンドバッグを生成し、ノードID→Blender Object辞書を返す。
 
-    Args:
+    引数:
         nodes (dict[int, Node]): ノードID→Node/SandbagNode
         cube_size (tuple[float, float, float]): (X, Y, Z)各辺サイズ
 
-    Returns:
+    返り値:
         dict[int, bpy.types.Object]: ノードID→Blender Object
+
+    注意:
+        - Blender立方体はデフォ1辺=2なのでスケール0.5で1x1x1となる
+        - 入力型は現状暫定、将来統一予定
     """
     objs: dict[int, bpy.types.Object] = {}
     for nid, node in nodes.items():
@@ -42,7 +56,6 @@ def build_sandbags(
             obj.name = f"Sandbag_{nid}"
             # 3辺個別スケール
             obj.scale = (cube_size[0] / 2, cube_size[1] / 2, cube_size[2] / 2)
-            # ※Blender立方体はデフォ1辺=2なので1.0立方体/scale=0.5で1x1x1
             objs[nid] = obj
         except Exception as e:
             log.error(f"Failed to create sandbag for node {nid}: {e}")
@@ -55,15 +68,19 @@ def create_sandbag_labels(
     offset: Vector = LABEL_OFFSET,
 ) -> None:
     """
-    サンドバッグ立方体にノードIDラベルを付与
+    役割:
+        サンドバッグ立方体にノードIDラベルを付与する。
 
-    Args:
+    引数:
         nodes (dict[int, Vector]): ノードID→座標
         abs_size (float): ラベル文字サイズ
         offset (Vector): ラベル配置オフセット
 
-    Returns:
+    返り値:
         None
+
+    注意:
+        - サンドバッグが見つからない場合は警告のみ（スキップ）
     """
     for nid, pos in nodes.items():
         sandbag_name = f"Sandbag_{nid}"
