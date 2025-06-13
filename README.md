@@ -57,14 +57,11 @@ scripts/
 - `/data` ディレクトリに構造 STR やアニメーション CSV 等を格納
 - `/textures` に壁・屋根等の画像テクスチャを配置
 
-### 2. Blender スクリプト実行
+### 2. Blender の「Scripting」タブで以下を実行
 
-Blender の「Scripting」タブで以下を実行
-
-    import sys
-    sys.path.insert(0, r"C:\Users\kishie\Documents\TBAGS-Slip-Animation\scripts")
-    main_py = r"C:\Users\kishie\Documents\TBAGS-Slip-Animation\scripts\main.py"
-    exec(compile(open(main_py, encoding="utf-8").read(), main_py, "exec"))
+import runpy
+main_py = r"C:\Users\kishie\Documents\TBAGS-Slip-Animation\scripts\main.py"
+runpy.run_path(main_py, run_name="__main__")
 
 ---
 
