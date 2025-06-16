@@ -1,13 +1,18 @@
 """
-builders/groundBuilder.py
+ファイル名: builders/groundBuilder.py
 
 責務:
-- グラウンドメッシュ（地面）の生成・マテリアル適用だけを担う
-- 他部材と同列の「ただの部材」として扱う
+- グラウンドメッシュ（地面）Blenderオブジェクトの生成とマテリアル適用のみを担う。
+- 他部材と同列の「単純な部材」として設計（ビルダー群の1つ）。
 
 使い方:
     from builders.groundBuilder import build_ground_plane
     ground_obj = build_ground_plane()
+
+TODO:
+- マテリアル生成の共通化（他部材との統合/外部ユーティリティ化）
+- groundオブジェクトにタグ/属性管理追加
+- カスタム形状・凹凸・マップ対応など拡張余地
 """
 
 import bpy
@@ -28,7 +33,13 @@ def create_ground_material(
     name: str = GROUND_MAT_NAME, color: tuple = GROUND_MAT_COLOR
 ) -> bpy.types.Material:
     """
-    地面用マテリアル生成
+    役割:
+        地面用のシンプルなマテリアルを生成・返す。
+    引数:
+        name (str): マテリアル名
+        color (tuple): RGBAカラー
+    返り値:
+        bpy.types.Material: Blenderマテリアル
     """
     mat = bpy.data.materials.get(name)
     if not mat:
@@ -51,10 +62,17 @@ def build_ground_plane(
     name: str = GROUND_NAME,
 ) -> bpy.types.Object:
     """
-    地面（長方形平面）Blenderオブジェクトを生成・マテリアル適用して返す
-    ※スケールではなく頂点編集でサイズを反映
+    役割:
+        地面（長方形平面）Blenderオブジェクトを生成し、マテリアル適用して返す。
+        ※頂点編集で正確なサイズ反映
 
-    Returns:
+    引数:
+        size_x (float): X方向サイズ
+        size_y (float): Y方向サイズ
+        location (tuple): 中心座標
+        name (str): オブジェクト名
+
+    返り値:
         bpy.types.Object: 作成した地面オブジェクト
     """
     try:
@@ -62,7 +80,7 @@ def build_ground_plane(
         ground_obj = bpy.context.object
         ground_obj.name = name
 
-        # 頂点編集でサイズ反映（親子スケール影響ゼロ！）
+        # 頂点編集でサイズ反映
         mesh = ground_obj.data
         for v in mesh.vertices:
             v.co.x *= size_x / 2  # Blender planeは±1
@@ -76,9 +94,7 @@ def build_ground_plane(
             ground_obj.data.materials.clear()
             ground_obj.data.materials.append(mat)
 
-        log.info(
-            f"Ground plane '{name}' created (size_x={size_x}, size_y={size_y}, location={location})"
-        )
+        log.info(f"Blenderパネル(地面)を生成しました: {ground_obj.name} (size={size_x}x{size_y})")
         return ground_obj
     except Exception as e:
         log.error(f"Failed to create ground plane: {e}")

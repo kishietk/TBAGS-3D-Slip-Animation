@@ -1,7 +1,19 @@
 """
-ノード球Blenderオブジェクトの生成ビルダー
-- ノードIDと座標を受け、Blender上に静的な球体のみ生成
-- アニメーション・キーフレーム処理は一切持たない（責任分離）
+ファイル名: builders/nodes.py
+
+責務:
+- ノードIDと座標からBlender球体（ノード球）を静的に生成する。
+- アニメーション・キーフレーム処理は一切持たず、純粋なモデルビルドのみ担う。
+- ノードラベル付与もサポート（builders/labels依存）。
+
+注意点:
+- 入力はNode型 or {'pos', 'kind_id'}を持つdictにも対応（暫定的多態性）
+- ノード球生成失敗時の例外ログのみで復帰
+- ラベル生成責任はcreate_node_labels関数に限定
+
+TODO:
+- 入力型統一・受け口整理（Node型またはpydantic/dataclass型推奨に変更予定）
+- ラベル/ノード本体のスタイル・可視性制御の責任分離
 """
 
 import bpy
@@ -12,7 +24,7 @@ from cores.nodeCore import Node
 from builders.labels import create_label
 from configs import LABEL_SIZE, LABEL_OFFSET
 
-log = setup_logging()
+log = setup_logging("build_nodes")
 
 
 def build_nodes(
@@ -20,14 +32,19 @@ def build_nodes(
     radius: float,
 ) -> Dict[int, bpy.types.Object]:
     """
-    ノード座標からBlender球体（ノード球）を静的に生成する
-    ※アニメーション処理はここでは行わない
+    役割:
+        ノード座標からBlender球体（ノード球）を静的に生成する。
+        ※アニメーション処理は行わない。
 
-    Args:
-        nodes (Dict[int, Node]): ノードID→Nodeインスタンス または (pos, kind_id) を持つdict
+    引数:
+        nodes (Dict[int, Node]): ノードID→Nodeインスタンス or (pos, kind_id)持つdict
         radius (float): 球体半径
-    Returns:
+
+    返り値:
         Dict[int, bpy.types.Object]: ノードID→Blenderオブジェクトの辞書
+
+    注意:
+        - 入力型が複数ある現状は暫定。今後型を統一推奨。
     """
     objs: Dict[int, bpy.types.Object] = {}
     for nid, node in nodes.items():
@@ -58,6 +75,7 @@ def build_nodes(
             log.debug(f"Node sphere {nid} created at {tuple(pos)} (radius={radius})")
         except Exception as e:
             log.error(f"Failed to create node sphere for ID {nid}: {e}")
+    log.info(f"{len(objs)}件のBlenderノード(#1)を生成しました。")
     return objs
 
 
@@ -67,14 +85,17 @@ def create_node_labels(
     offset: Vector = LABEL_OFFSET,
 ) -> None:
     """
-    ノード球体にノードIDラベルを付与
-
-    Args:
+    役割:
+        ノード球体にノードIDラベルを付与する。
+    引数:
         nodes (Dict[int, Vector]): ノードID→座標
         abs_size (float): ラベル文字サイズ
         offset (Vector): ラベル配置オフセット
-    Returns:
+    返り値:
         None
+
+    注意:
+        - ノードオブジェクトが見つからなければ警告のみ（スキップ）
     """
     for nid, pos in nodes.items():
         node_name = f"Node_{nid}"

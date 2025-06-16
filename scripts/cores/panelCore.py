@@ -1,12 +1,19 @@
 """
-パネル（Panel）コアクラス
-- 4ノードで構成される面（壁・屋根等）の属性・参照情報を管理
-- Edge/Nodeの双方向リンクによるグラフ構造把握
+ファイル名: cores/panelCore.py
 
-【設計方針】
+責務:
+- 4ノードで構成される面（壁・屋根等）のコアクラスPanelを定義。
+- 属性（種別、階層、追加情報）および、Edge/Nodeとの相互参照によるグラフ把握を担う。
+
+設計方針:
 - nodes: List[Node]（必ず4点）、edges: List[Edge]
 - kind: str型種別("wall"/"roof"等)
 - floor: 階層ラベル、attributes: 任意の追加辞書
+
+TODO:
+- Panelクラスの責務・参照範囲の見直し（ノード/エッジへの双方向リンク追加はPanelで持つべきか再検討）
+- パネル属性や識別IDの設計方針整理
+- 型ヒント厳格化やdataclass化の検討
 """
 
 from typing import List, Optional, TYPE_CHECKING
@@ -18,9 +25,9 @@ if TYPE_CHECKING:
 
 class Panel:
     """
-    パネル（壁・屋根等の面）コアクラス
-    - 4ノード・エッジ・種別・階層・属性を包括
-    - 構造グラフ全体で面/屋根を表現
+    役割:
+        4ノードで構成される面（壁・屋根等）のコアクラス。
+        面の属性・参照情報を管理し、Edge/Nodeへの双方向リンクも構築する。
     """
 
     def __init__(
@@ -32,15 +39,16 @@ class Panel:
         attributes: Optional[dict] = None,
     ) -> None:
         """
-        Panelインスタンス初期化
-        Args:
+        役割:
+            Panelインスタンスを初期化し、各種属性・ノード/エッジへの参照も構築。
+        引数:
             nodes (List[Node]): 4つのノード
             edges (Optional[List[Edge]]): 構成エッジ
-            kind (str): 種別（"wall"/"roof"等）
+            kind (str): パネル種別（"wall"/"roof"等）
             floor (Optional[str]): 階層
             attributes (Optional[dict]): 任意追加属性
-        Returns:
-            None
+        返り値:
+            なし
         """
         self.id: str = "_".join(str(n.id) for n in sorted(nodes, key=lambda n: n.id))
         self.nodes: List["Node"] = nodes
@@ -57,9 +65,10 @@ class Panel:
 
     def __repr__(self) -> str:
         """
-        パネル情報を可読文字列で返す
-        Returns:
-            str: パネル情報
+        役割:
+            パネル情報を可読文字列で返す。
+        返り値:
+            str
         """
         return (
             f"Panel(id={self.id}, kind={self.kind}, floor={self.floor}, "

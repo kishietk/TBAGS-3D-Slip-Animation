@@ -1,22 +1,34 @@
 """
-ノード情報ロードユーティリティ
-- ノード定義ファイル（STR/CSV）をパースして辞書形式で返す
-- kind_idの自動割当、コメント/セクション解析、T-BAG区間の特殊判定も実装
-- VALID_NODE_IDSによりプロジェクトで許可されたIDのみ採用
+ファイル名: loaders/nodeLoader.py
+
+責務:
+- ノード定義ファイル（STR/CSV）をパースして、ノードID→NodeDataの辞書として返す。
+- kind_idの自動割当、コメント/セクション解析、T-BAG区間の特殊判定も実装。
+- VALID_NODE_IDSによりプロジェクトで許可されたIDのみ採用。
+
+設計・注意点:
+- セクション見出し（例: #1, #2...）でkind_id切替
+- TBAG区間コメントでkind_id=0を割当
+- XYZ座標のバリデーション・異常値は全てスキップ/ログ記録
+
+TODO:
+- セクションやTBAG区間コメントの書式が変更された場合にも対応できる柔軟性を持たせる
+- テスト・検証用にfile-likeオブジェクト入力やサブセット読み込みにも対応する
 """
 
 import re
 from typing import Dict, NamedTuple
 from mathutils import Vector
-from configs import NODE_CSV, NODE_SECTION_NUMBERS, VALID_NODE_IDS
+from configs import NODE_CSV, NODE_SECTION_KIND_IDS, VALID_NODE_IDS
 from utils.logging_utils import setup_logging
 
-log = setup_logging()  # configのLOG_LEVELから出力レベル設定
+log = setup_logging("nodeLoader")
 
 
 class NodeData(NamedTuple):
     """
-    ノード1点の座標・種別kind_idを格納するデータ型
+    役割:
+        ノード1点の座標・種別kind_idを格納するデータ型。
     属性:
         pos (Vector): 座標(XYZ)
         kind_id (int): ノード種別番号
@@ -28,22 +40,31 @@ class NodeData(NamedTuple):
 
 def load_nodes(path: str = NODE_CSV) -> Dict[int, NodeData]:
     """
-    ノード定義ファイル(.str/.csv)を読み込み、
-    kind_id（区分）・セクション・TBAG区間判定も含めて
-    ノードID→NodeDataの辞書として返す。
+    役割:
+        ノード定義ファイル(.str/.csv)をパースし、
+        ノードID→NodeDataの辞書として返す。
+        kind_id（区分）・セクション・TBAG区間判定も反映する。
 
-    Args:
-        path (str): 読み込むノードファイルパス
-    Returns:
+    引数:
+        path (str): ノードファイルパス
+
+    返り値:
         Dict[int, NodeData]: ノードID→NodeDataの辞書
-    Raises:
-        Exception: ファイル読み込み・解析失敗時は例外
+
+    例外:
+        Exception: ファイル読み込み・解析失敗時
+
+    処理:
+        - セクション見出し（#1, #2, ...）でkind_id切替
+        - TBAG区間コメントでkind_id=0割当
+        - VALID_NODE_IDS外は全てスキップ
+        - XYZパース失敗や不正行はログ出力
     """
     log.info("=================[ノード情報を読み取り]=========================")
     nodes: Dict[int, NodeData] = {}
 
     section_pattern = re.compile(r"#\s*(\d+)")
-    valid_sections = set(NODE_SECTION_NUMBERS)
+    valid_sections = set(NODE_SECTION_KIND_IDS)
     current_kind_id = None
     tbag_section_active = False
 
@@ -51,7 +72,7 @@ def load_nodes(path: str = NODE_CSV) -> Dict[int, NodeData]:
         with open(path, encoding="utf-8", errors="ignore") as f:
             for row_idx, line in enumerate(f, start=1):
                 line_strip = line.strip()
-                # セクション見出し（例: #1, #2, ...）検出
+                # セクション見出し（例: #1, #2, ...）
                 m_section = section_pattern.match(line_strip)
                 if m_section:
                     sec = int(m_section.group(1))
@@ -100,11 +121,7 @@ def load_nodes(path: str = NODE_CSV) -> Dict[int, NodeData]:
                             float(m_node.group(3)),
                             float(m_node.group(4)),
                         )
-                        # TBAG区間中はkind_id=0を強制割当
-                        if tbag_section_active:
-                            kind_id = 0
-                        else:
-                            kind_id = current_kind_id
+                        kind_id = 0 if tbag_section_active else current_kind_id
                         nodes[nid] = NodeData(Vector((x, y, z)), kind_id)
                         log.info(f"Added node : ID = {nid}, #{kind_id}")
                     except Exception as e:
@@ -121,5 +138,5 @@ def load_nodes(path: str = NODE_CSV) -> Dict[int, NodeData]:
         log.critical(f"[{path}] CRITICAL: Failed to read node STR ({e})")
         raise
 
-    log.info(f"Loaded {len(nodes)} nodes from {path}")
+    log.info(f"{len(nodes)}件のノードを読み込みました。")
     return nodes

@@ -1,35 +1,40 @@
 """
-エッジデータローダ
-- STRファイル等テキストから、エッジ定義（データ構造）リストを生成
-- EDGE_NODE_KIND_IDS等で種別・ノード種類を厳格フィルタ
-- EdgeData(NamedTuple)リストのみ返す（部材インスタンスは返さない）
+ファイル名: loaders/edgeLoader.py
 
-【設計・注意点】
-- ファイルフォーマットは“EBEAM3D”セクション区切りあり
-- 行頭#の行で種別IDを設定、2つ以上整数が並ぶ行でエッジ定義
-- 不正ノードID・種別フィルタで徹底的に異常値除外
-- kind_id, kind_label, ノード存在性は必ず検証
+責務:
+- STRファイルなどテキストからエッジ定義（EdgeDataリスト）を厳格に生成。
+- 種別IDやノード種別によるフィルタでデータクレンジングも担う。
+- 部材インスタンスは返さず、構造体リストのみを返す。
+
+設計・注意点:
+- "EBEAM3D"セクション内のみを解析
+- 行頭#で種別ID切替、2つ以上整数でエッジ定義
+- 不正ID・種別不一致・ノード未存在は除外
+- ログで詳細追跡
+
+TODO:
+- ヘッダやセクションの書式が変わる場合に備えて柔軟に判定・パースできるよう拡張
+- 異常スキップ・除外時の詳細ログメッセージをより明確に整理
 """
 
 import re
 from typing import List, Dict, Optional, NamedTuple
 from utils.logging_utils import setup_logging
 from loaders.nodeLoader import NodeData
-from configs import (
-    KIND_LABELS,
-    EDGE_NODE_KIND_IDS,
-)
+from configs import KIND_LABELS, EDGE_NODE_KIND_IDS
 
-log = setup_logging()
+log = setup_logging("edgeLoader")
 
 
 class EdgeData(NamedTuple):
     """
-    エッジ（部材）の情報構造体
-    node_a (int): ノードAのID
-    node_b (int): ノードBのID
-    kind_id (int): 部材種別ID（53=柱など）
-    kind_label (str): 部材種別日本語ラベル/識別名
+    役割:
+        エッジ（部材）の情報を格納する構造体。
+    属性:
+        node_a (int): ノードAのID
+        node_b (int): ノードBのID
+        kind_id (int): 部材種別ID
+        kind_label (str): 部材種別日本語ラベル
     """
 
     node_a: int
@@ -44,23 +49,26 @@ def load_edges(
     valid_kind_ids: Optional[List[int]] = None,
 ) -> List[EdgeData]:
     """
-    STR等のエッジ定義テキストから、厳格フィルタを通した
-    EdgeData構造体（node_a, node_b, kind_id, kind_label）リストを返す
+    役割:
+        STRファイル等のテキストから厳格にフィルタした
+        EdgeData構造体リストを返す。
 
-    Args:
+    引数:
         path (str): エッジ定義ファイルパス
         node_map (Dict[int, NodeData]): ノードID→NodeDataインスタンスの辞書
         valid_kind_ids (Optional[List[int]]): 許可する部材種別IDリスト
-    Returns:
-        List[EdgeData]: 厳格にフィルタ済みのエッジリスト
-    Raises:
+
+    返り値:
+        List[EdgeData]: フィルタ済みエッジリスト
+
+    例外:
         Exception: ファイル読み込み・データ不整合時
 
-    処理手順:
-    - "EBEAM3D"セクション内だけを対象とする
-    - # 行で部材種別切替
-    - 2つ以上の数値→エッジ（ID重複・異常値・種別不一致は除外）
-    - 必要に応じてログに詳細を記録
+    処理:
+        - "EBEAM3D"セクションのみ解析
+        - 行頭#で種別ID切替、2つ以上整数でエッジ定義
+        - 不正ID・種別不一致・ノード未存在は除外
+        - 詳細はログ出力
     """
     log.info("=================[エッジ情報を読み取り]=========================")
     edges: List[EdgeData] = []
@@ -106,12 +114,12 @@ def load_edges(
                     continue
                 node_a_id, node_b_id = nums[-2], nums[-1]
 
-                # 異常ID・重複を徹底除外
+                # 異常ID・重複を除外
                 if node_a_id <= 0 or node_b_id <= 0 or node_a_id == node_b_id:
                     abnormal_skip_count += 1
                     continue
 
-                # 種別フィルタ＆両ノード存在＆kind_id合致を厳密確認
+                # 種別フィルタ・両ノード存在・kind_id合致
                 kind_a = getattr(node_map.get(node_a_id), "kind_id", None)
                 kind_b = getattr(node_map.get(node_b_id), "kind_id", None)
                 if (
@@ -152,13 +160,13 @@ def load_edges(
         raise
 
     if abnormal_skip_count > 0:
-        log.info(
+        log.debug(
             f"Skipped {abnormal_skip_count} edge lines due to abnormal node ids (0, negative, or duplicate)."
         )
     if kindid_skip_count > 0:
-        log.info(
+        log.debug(
             f"Skipped {kindid_skip_count} edge lines due to node kind_id not in EDGE_NODE_KIND_IDS."
         )
 
-    log.info(f"Loaded {len(edges)} edges from {path}")
+    log.info(f"{len(edges)}件のエッジを読み込みました。")
     return edges

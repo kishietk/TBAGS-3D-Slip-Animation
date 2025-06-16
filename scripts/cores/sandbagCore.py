@@ -1,12 +1,18 @@
 """
-サンドバッグノード（SandbagNode）コアクラス
-- サンドバッグ専用ノード（立方体表示、IDで種別区別）
-- ノードID/座標/種別ID/階層属性/関連エッジ・パネルリストを保持
-- Node型インターフェース互換（add_edge/add_panel/properties）
+ファイル名: cores/sandbagCore.py
 
-【設計指針】
-- node.pyのNode型とメソッド・属性を合わせることで汎用コードから区別不要
-- kind_idによりサンドバッグ/ノーマルノードを判別
+責務:
+- サンドバッグ専用ノード（SandbagNode）コアクラスを定義。
+- ノードID・座標・種別ID・階層属性・関連エッジ/パネルを管理し、Node型インターフェースと互換。
+
+設計指針:
+- nodeCore.pyのNode型と属性・メソッドを合わせ、汎用コード側での分岐不要に設計。
+- kind_idでサンドバッグ/通常ノードを一元判別。
+
+TODO:
+- Node/SandbagNodeの二重管理の責務を再検討（継承構造や型共通化も視野）
+- add_edge/add_panelの責務をSandbagNodeが持つ設計の是非
+- dataclass等による実装統一も検討
 """
 
 from mathutils import Vector
@@ -19,9 +25,10 @@ if TYPE_CHECKING:
 
 class SandbagNode:
     """
-    サンドバッグノード（立方体で表示される特殊ノード）
-    - ID/座標/階層/種別/関連エッジ/パネルを管理
-    - Nodeクラス互換API（add_edge, add_panel, __repr__）
+    役割:
+        サンドバッグ専用ノード（立方体で表示される特殊ノード）コアクラス。
+        ノードID/座標/階層/種別/関連エッジ/パネルを管理。
+        Node型インターフェース（add_edge, add_panel, __repr__）とも互換。
     """
 
     def __init__(
@@ -40,31 +47,34 @@ class SandbagNode:
 
     def add_edge(self, edge: "Edge") -> None:
         """
-        関連エッジリストに追加
-        Args:
-            edge (Edge): 紐付けるエッジ
-        Returns:
-            None
+        役割:
+            関連エッジをこのノードに追加（重複不可）。
+        引数:
+            edge (Edge)
+        返り値:
+            なし
         """
         if edge not in self.edges:
             self.edges.append(edge)
 
     def add_panel(self, panel: "Panel") -> None:
         """
-        関連パネルリストに追加
-        Args:
-            panel (Panel): 紐付けるパネル
-        Returns:
-            None
+        役割:
+            関連パネルをこのノードに追加（重複不可）。
+        引数:
+            panel (Panel)
+        返り値:
+            なし
         """
         if panel not in self.panels:
             self.panels.append(panel)
 
     def __repr__(self) -> str:
         """
-        サンドバッグノード情報を可読文字列で返す
-        Returns:
-            str: ノード情報
+        役割:
+            サンドバッグノードの主要属性・接続数を可読文字列で返す。
+        返り値:
+            str
         """
         return (
             f"SandbagNode(id={self.id}, pos={tuple(self.pos)}, floor={self.floor}, "

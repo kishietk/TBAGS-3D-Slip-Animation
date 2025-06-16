@@ -18,9 +18,8 @@ animation.log
 
 __pycache__/
 *.pyc
-animation-kumamoto-with-tbags.csv
-animation-kumamoto-no-tbags.csv
-node_position.csv
-kumamoto-erthquake-disp.csv
-self-no-tbags.str
-self-with-tbags.str
+
+data/
+/data/*
+*.csv
+*.str

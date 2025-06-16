@@ -1,11 +1,13 @@
 """
-梁（Beam）コアクラス
-- Edgeクラスを継承し、「梁」専用属性is_beamを付与
-- データモデル上、梁・柱などEdge系クラスで一元的に管理可能
+ファイル名: cores/beamCore.py
 
-【設計ポイント】
-- Beam: Edgeのサブクラス（Python OOP流儀）
-- is_beam属性は判定用（型判定やラベル付与に便利）
+責務:
+- Edgeクラスを継承した「梁（Beam）」コアクラスを定義する。
+- is_beam属性を持ち、部材種判定やラベル付与に用いる。
+
+設計ポイント:
+- BeamはEdgeのサブクラス
+- is_beam属性は型判定や他用途にも活用
 """
 
 from cores.edgeCore import Edge
@@ -13,18 +15,21 @@ from cores.edgeCore import Edge
 
 class Beam(Edge):
     """
-    梁（Beam）コアクラス
-    - Edgeクラスを継承し、is_beam属性で「梁」判別
+    役割:
+        Edgeクラスを継承した「梁（Beam）」コアクラス。
+        is_beam属性を持ち、型判定やラベル付与等に利用する。
     """
 
     def __init__(self, *args, **kwargs) -> None:
         """
-        Beamインスタンス初期化
-        Args:
+        役割:
+            Beamインスタンスを初期化（Edgeの初期化引数をそのまま利用）。
+            is_beam属性をTrueでセット。
+        引数:
             *args: Edgeクラスの引数
             **kwargs: Edgeクラスのキーワード引数
-        Returns:
-            None
+        返り値:
+            なし
         """
         super().__init__(*args, **kwargs)
         self.is_beam: bool = True
