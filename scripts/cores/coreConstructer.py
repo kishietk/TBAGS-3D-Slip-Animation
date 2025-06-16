@@ -26,8 +26,8 @@ from cores.edgeCore import Edge
 from cores.beamCore import Beam
 from cores.columnCore import Column
 from cores.panelCore import Panel
-from loaders.nodeLoader import NodeData
-from loaders.edgeLoader import EdgeData
+from loaders.structureParser import NodeData
+from loaders.structureParser import EdgeData
 from cores.makePanelsList import make_panels_list, PanelData
 
 log = setup_logging("coreConstructer")
@@ -36,12 +36,12 @@ log = setup_logging("coreConstructer")
 class coreConstructer:
     """
     役割:
-        ロード済みノード/エッジ情報からコア構造グラフ（Node, SandbagNode, Edge, Beam, Column, Panel）を自動構築・一元管理。
+        ロード済みノード/エッジ情報からコア構造グラフ（Node, Edge, Beam, Column, Panel）を自動構築・一元管理。
         各種リスト/辞書の取得APIや要素数サマリーも提供。
 
     属性:
         panel_node_kind_ids (List[int]): パネル候補のkind_idリスト
-        nodes (Dict[int, Node | SandbagNode]): コアノード辞書
+        nodes (Dict[int, Node]): コアノード辞書
         edges (List[Edge]): コアエッジリスト
         panels (List[Panel]): コアパネルリスト
     """
@@ -63,7 +63,7 @@ class coreConstructer:
             なし
         """
         self.panel_node_kind_ids = panel_node_kind_ids or WALL_NODE_KIND_IDS
-        self.nodes: Dict[int, Union[Node, SandbagNode]] = {}
+        self.nodes: Dict[int, Node] = {}
         self.edges: List[Edge] = []
         self.panels: List[Panel] = []
         self._construct_core_all(nodes_data, edges_data)
@@ -81,9 +81,7 @@ class coreConstructer:
             f"ノード：{len(self.nodes)}件、 エッジ：{len(self.edges)}件、 パネル：{len(self.panels)}件のコア要素を構築しました。"
         )
 
-    def _construct_core_nodes(
-        self, nodes_data: Dict[int, NodeData]
-    ) -> Dict[int, Union[Node, SandbagNode]]:
+    def _construct_core_nodes(self, nodes_data: Dict[int, NodeData]) -> Dict[int, Node]:
         """
         役割:
             kind_idでSandbag/Nodeを判別してコアノードを生成。
@@ -92,23 +90,16 @@ class coreConstructer:
         返り値:
             Dict[int, Node | SandbagNode]
         """
-        node_map: Dict[int, Union[Node, SandbagNode]] = {}
+        node_map: Dict[int, Node] = {}
         for nid, data in nodes_data.items():
-            kind_id = data.kind_id
-            pos = data.pos
-            if kind_id == 0 or (
-                kind_id is not None and kind_id in SANDBAG_NODE_KIND_IDS
-            ):
-                node_map[nid] = SandbagNode(nid, pos, kind_id=kind_id)
-            else:
-                node_map[nid] = Node(nid, pos, kind_id=kind_id)
+            node_map[nid] = Node(nid, data.pos, kind_id=data.kind_id)
             log.debug(
-                f"Loaded Node {nid}: {pos}, kind_id={kind_id}, type={type(node_map[nid]).__name__}"
+                f"Loaded Node {nid}: {data.pos}, kind_id={data.kind_id}, type={type(node_map[nid]).__name__}"
             )
         return node_map
 
     def _construct_core_edges(
-        self, edges_data: List[EdgeData], node_map: Dict[int, Union[Node, SandbagNode]]
+        self, edges_data: List[EdgeData], node_map: Dict[int, Node]
     ) -> List[Edge]:
         """
         役割:
@@ -135,7 +126,7 @@ class coreConstructer:
 
     def _construct_core_panels(
         self,
-        node_map: Dict[int, Union[Node, SandbagNode]],
+        node_map: Dict[int, Node],
         panel_node_kind_ids: List[int],
     ) -> List[Panel]:
         """
@@ -160,9 +151,7 @@ class coreConstructer:
             panels.append(panel)
         return panels
 
-    def get_nodes(
-        self, ids: Optional[List[int]] = None
-    ) -> List[Union[Node, SandbagNode]]:
+    def get_nodes(self, ids: Optional[List[int]] = None) -> List[Node]:
         """
         役割:
             コアノードのリストを返却。ids指定時はそのIDのみ返す。

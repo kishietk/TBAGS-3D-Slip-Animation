@@ -1,12 +1,10 @@
 """
-ファイル名: cores/edgeCore.py
-
 責務:
 - 2ノード間の部材（梁・柱等）の基底クラス（Edge）を定義する。
 - kind_id, kind_label, 関連パネルリストの保持と、パネル・ノード参照APIを提供。
 
 設計方針:
-- node_a/node_b: Node型。両端点で必ずadd_edgeで相互参照構築
+- node_a/node_b: Node型。両端点で必ずadd_edgeで相互参照構築（※今は削除！）
 - panels: このエッジに付随するPanel（壁/床等）のリスト
 - get_other_node()で反対側ノードを取得できる
 """
@@ -35,7 +33,7 @@ class Edge:
     ) -> None:
         """
         役割:
-            エッジを初期化し、両端ノードと双方向参照を構築。
+            エッジを初期化し、両端ノードを記録。
         引数:
             node_a (Node): 接続ノードA
             node_b (Node): 接続ノードB
@@ -50,8 +48,6 @@ class Edge:
         self.kind_id: Optional[int] = kind_id
         self.kind_label: Optional[str] = kind_label
         self.panels: List["Panel"] = []
-        self.node_a.add_edge(self)
-        self.node_b.add_edge(self)
 
     def add_panel(self, panel: "Panel") -> None:
         """
