@@ -180,7 +180,6 @@ def apply_all_materials(
     役割:
         ノード球・サンドバッグ立方体・壁パネル・屋根・柱・梁にマテリアルを一括適用。
     """
-    log.info("=== Applying all materials ===")
     try:
         mat_wall = make_texture_mat("WallMat", WALL_IMG, WALL_ALPHA)
         mat_roof = make_texture_mat("RoofMat", ROOF_IMG, ROOF_ALPHA)
@@ -189,37 +188,57 @@ def apply_all_materials(
         mat_node = make_node_mat()
         mat_sandbag = make_sandbag_mat()
 
+        # 件数カウント用
+        counts = {
+            "パネル": 0,
+            "屋根": 0,
+            "柱": 0,
+            "梁": 0,
+            "ノード": 0,
+            "サンドバッグ": 0,
+            "地面": 0,
+        }
+
         # パネル
         for o in panel_objs:
             o.data.materials.clear()
             o.data.materials.append(mat_wall)
+            counts["パネル"] += 1
 
         # 屋根
         if roof_obj:
             roof_obj.data.materials.clear()
             roof_obj.data.materials.append(mat_roof)
+            counts["屋根"] += 1
 
         # 柱・梁
         for obj, a, b in member_objs:
+            obj.data.materials.clear()
             if obj.name.startswith("Column_"):
-                obj.data.materials.clear()
                 obj.data.materials.append(mat_col)
+                counts["柱"] += 1
             elif obj.name.startswith("Beam_"):
-                obj.data.materials.clear()
                 obj.data.materials.append(mat_beam)
+                counts["梁"] += 1
             else:
-                obj.data.materials.clear()
+                # 分類不能 → 梁として処理
                 obj.data.materials.append(mat_beam)
+                counts["梁"] += 1
+                log.warning(
+                    f"オブジェクト「{obj.name}」は柱・梁名規則に一致せず。梁としてマテリアルを適用。"
+                )
 
         # ノード球
         for o in node_objs.values():
             o.data.materials.clear()
             o.data.materials.append(mat_node)
+            counts["ノード"] += 1
 
         # サンドバッグ
         for o in sandbag_objs.values():
             o.data.materials.clear()
             o.data.materials.append(mat_sandbag)
+            counts["サンドバッグ"] += 1
 
         # グラウンドメッシュ
         if ground_obj is not None:
@@ -229,8 +248,14 @@ def apply_all_materials(
             if mat:
                 ground_obj.data.materials.clear()
                 ground_obj.data.materials.append(mat)
+                counts["地面"] += 1
+            else:
+                log.warning("地面マテリアルの作成に失敗しました（Noneが返されました）")
 
-        log.info("Materials applied to all objects.")
+        # ログ
+        summary = "、".join([f"{label}:{n}" for label, n in counts.items() if n > 0])
+        log.info(f"マテリアルを適用:[{summary}]")
+
     except Exception as e:
-        log.error(f"Failed to apply all materials: {e}")
+        log.error(f"マテリアル一括適用処理に失敗しました: {e}")
         raise

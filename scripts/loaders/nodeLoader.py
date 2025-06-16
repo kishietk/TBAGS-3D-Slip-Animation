@@ -138,5 +138,5 @@ def load_nodes(path: str = NODE_CSV) -> Dict[int, NodeData]:
         log.critical(f"[{path}] CRITICAL: Failed to read node STR ({e})")
         raise
 
-    log.info(f"Loaded {len(nodes)} nodes from {path}")
+    log.info(f"{len(nodes)}件のノードを読み込みました。")
     return nodes

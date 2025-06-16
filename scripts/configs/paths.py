@@ -18,25 +18,98 @@ TODO:
 import os
 
 # =======================
-# ルート・データ・画像ディレクトリ
+# パス基本定義
 # =======================
 PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
-DATA_DIR = os.path.normpath(os.path.join(PROJECT_DIR, "../../data"))
-TEXTURE_DIR = os.path.normpath(os.path.join(PROJECT_DIR, "../../textures"))
+ROOT_DIR = os.path.normpath(os.path.join(PROJECT_DIR, "../../"))
+DATA_DIR = os.path.join(ROOT_DIR, "data")
+TEXTURE_DIR = os.path.join(ROOT_DIR, "textures")
 
 # =======================
-# データファイルパス
+# 共通ファイル名
 # =======================
-NODE_CSV = os.path.join(DATA_DIR, "self-with-tbags.str")
-EDGES_FILE = os.path.join(DATA_DIR, "self-with-tbags.str")
-NODE_ANIM_CSV = os.path.join(DATA_DIR, "animation-kumamoto-with-tbags.csv")
-EARTHQUAKE_ANIM_CSV = os.path.join(DATA_DIR, "kumamoto-erthquake-disp.csv")
+FILE_WITH_TBAGS = "input-with-tbags.str"
+FILE_NO_TBAGS = "input-no-tbags.str"
 
 # =======================
-# 画像・テクスチャファイルパス
+# 地震データセット
+# =======================
+EARTHQUAKE_DATASETS = {
+    "kumamoto_with_tbags": {
+        "base": "kumamoto",
+        "tbags": True,
+        "node_file": FILE_WITH_TBAGS,
+        "label": "Kumamoto (with T-BAGS)",
+    },
+    "kumamoto_no_tbags": {
+        "base": "kumamoto",
+        "tbags": False,
+        "node_file": FILE_NO_TBAGS,
+        "label": "Kumamoto (no T-BAGS)",
+    },
+    "tohoku_with_tbags": {
+        "base": "tohoku",
+        "tbags": True,
+        "node_file": FILE_WITH_TBAGS,
+        "label": "Tohoku (with T-BAGS)",
+    },
+    "tohoku_no_tbags": {
+        "base": "tohoku",
+        "tbags": False,
+        "node_file": FILE_NO_TBAGS,
+        "label": "Tohoku (no T-BAGS)",
+    },
+    "kobe_with_tbags": {
+        "base": "kobe",
+        "tbags": True,
+        "node_file": FILE_WITH_TBAGS,
+        "label": "Kobe (with T-BAGS)",
+    },
+    "kobe_no_tbags": {
+        "base": "kobe",
+        "tbags": False,
+        "node_file": FILE_NO_TBAGS,
+        "label": "Kobe (no T-BAGS)",
+    },
+}
+
+# 各データセットに絶対パス追加（初期化処理）
+for key, dataset in EARTHQUAKE_DATASETS.items():
+    base = dataset["base"]
+    tag = "with-tbags" if dataset["tbags"] else "no-tbags"
+    dataset["node_csv"] = os.path.join(DATA_DIR, dataset["node_file"])
+    dataset["edges_file"] = os.path.join(DATA_DIR, dataset["node_file"])
+    dataset["node_anim_csv"] = os.path.join(DATA_DIR, f"animation-{base}-{tag}.csv")
+    dataset["earthquake_anim_csv"] = os.path.join(
+        DATA_DIR, f"{base}-erthquake-disp.csv"
+    )
+
+# =======================
+# デフォルト設定（熊本 with T-BAGS）
+# =======================
+DEFAULT_KEY = "kumamoto_with_tbags"
+NODE_ANIM_CSV = EARTHQUAKE_DATASETS[DEFAULT_KEY]["node_anim_csv"]
+EARTHQUAKE_ANIM_CSV = EARTHQUAKE_DATASETS[DEFAULT_KEY]["earthquake_anim_csv"]
+NODE_CSV = EARTHQUAKE_DATASETS[DEFAULT_KEY]["node_csv"]
+EDGES_FILE = EARTHQUAKE_DATASETS[DEFAULT_KEY]["edges_file"]
+
+# =======================
+# テクスチャ画像
 # =======================
 WALL_IMG = os.path.join(TEXTURE_DIR, "wall_texture.png")
 ROOF_IMG = os.path.join(TEXTURE_DIR, "roof_texture.png")
 
-# --- 将来拡張の指針 ---
-# ・クラウドや環境ごとにパス切替が必要になった場合は、ここを関数化 or .env対応などで拡張
+
+# =======================
+# ログ関数
+# =======================
+def log_dataset_selection(key):
+    """
+    指定キーの地震データセット情報をログ出力用に整形。
+    """
+    d = EARTHQUAKE_DATASETS.get(key)
+    if d:
+        lines = [f"地震：{d['base'].capitalize()},  T-BAGS：{'あり' if d['tbags'] else 'なし'}"]
+    else:
+        lines = [f"[ERROR] 不明なデータセットキー: {key}"]
+    return "\n".join(lines)

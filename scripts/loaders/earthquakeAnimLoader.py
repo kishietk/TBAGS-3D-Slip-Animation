@@ -35,8 +35,7 @@ def load_earthquake_motion_csv(path: str = EARTHQUAKE_ANIM_CSV) -> Dict[int, Vec
     例外:
         Exception: ファイルオープンやパース失敗時に発生
     """
-    log.info("=================[地震基準面アニメCSV読込]=========================")
-    log.info(f"Reading earthquake animation data from: {path}")
+    log.info("=================[地震基準面アニメーションCSVを読み取り]=========================")
     frame_data: Dict[int, Vector] = {}
     try:
         with open(path, encoding="utf-8", errors="ignore") as f:

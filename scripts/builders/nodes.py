@@ -75,6 +75,7 @@ def build_nodes(
             log.debug(f"Node sphere {nid} created at {tuple(pos)} (radius={radius})")
         except Exception as e:
             log.error(f"Failed to create node sphere for ID {nid}: {e}")
+    log.info(f"{len(objs)}件のBlenderノード(#1)を生成しました。")
     return objs
 
 

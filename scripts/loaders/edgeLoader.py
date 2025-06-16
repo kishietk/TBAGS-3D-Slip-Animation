@@ -160,13 +160,13 @@ def load_edges(
         raise
 
     if abnormal_skip_count > 0:
-        log.info(
+        log.debug(
             f"Skipped {abnormal_skip_count} edge lines due to abnormal node ids (0, negative, or duplicate)."
         )
     if kindid_skip_count > 0:
-        log.info(
+        log.debug(
             f"Skipped {kindid_skip_count} edge lines due to node kind_id not in EDGE_NODE_KIND_IDS."
         )
 
-    log.info(f"Loaded {len(edges)} edges from {path}")
+    log.info(f"{len(edges)}件のエッジを読み込みました。")
     return edges

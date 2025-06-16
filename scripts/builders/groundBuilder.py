@@ -94,9 +94,7 @@ def build_ground_plane(
             ground_obj.data.materials.clear()
             ground_obj.data.materials.append(mat)
 
-        log.info(
-            f"Ground plane '{name}' created (size_x={size_x}, size_y={size_y}, location={location})"
-        )
+        log.info(f"Blenderパネル(地面)を生成しました: {ground_obj.name} (size={size_x}x{size_y})")
         return ground_obj
     except Exception as e:
         log.error(f"Failed to create ground plane: {e}")

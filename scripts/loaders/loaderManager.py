@@ -16,11 +16,13 @@ TODO:
 
 from typing import Dict, List
 from mathutils import Vector
-from configs import NODE_CSV, EDGES_FILE, NODE_ANIM_CSV
+from configs import NODE_CSV, EDGES_FILE, NODE_ANIM_CSV, EARTHQUAKE_ANIM_CSV
 from loaders.nodeLoader import load_nodes, NodeData
 from loaders.edgeLoader import load_edges, EdgeData
 from loaders.nodeAnimLoader import load_animation_data
+from loaders.earthquakeAnimLoader import load_earthquake_motion_csv
 from utils.logging_utils import setup_logging
+
 
 log = setup_logging("LoaderManager")
 
@@ -28,20 +30,21 @@ log = setup_logging("LoaderManager")
 class LoaderManager:
     """
     役割:
-        ノード・エッジ・アニメーションの全データを一括管理/ロードするクラス。
-        パスの切り替えや一元的なログ出力も担う。
-
+        ノード・エッジ・アニメーション全データを一括ロードするクラス。
+        各種ファイルパスを個別指定可能。
     属性:
         node_path (str): ノードCSVファイルパス
         edge_path (str): エッジ定義ファイルパス
-        anim_path (str): アニメーションCSVファイルパス
+        node_anim_path (str): ノードアニメCSV
+        earthquake_anim_path (str): 地震基準面アニメCSV
     """
 
     def __init__(
         self,
         node_path: str = NODE_CSV,
         edge_path: str = EDGES_FILE,
-        anim_path: str = NODE_ANIM_CSV,
+        node_anim_path: str = NODE_ANIM_CSV,
+        earthquake_anim_path: str = EARTHQUAKE_ANIM_CSV,
     ):
         """
         役割:
@@ -53,7 +56,8 @@ class LoaderManager:
         """
         self.node_path = node_path
         self.edge_path = edge_path
-        self.anim_path = anim_path
+        self.node_anim_path = node_anim_path
+        self.earthquake_anim_path = earthquake_anim_path
 
     def load_nodes(self) -> Dict[int, NodeData]:
         """
@@ -65,8 +69,7 @@ class LoaderManager:
             Exception: 読込失敗時
         """
         try:
-            node_data_dict = load_nodes(self.node_path)
-            log.info(f"Loaded {len(node_data_dict)} nodes from {self.node_path}")
+            node_data_dict = load_nodes()
             return node_data_dict
         except Exception as e:
             log.critical(f"Failed to load nodes ({e})")
@@ -85,13 +88,20 @@ class LoaderManager:
         """
         try:
             edges = load_edges(self.edge_path, node_map)
-            log.info(f"Loaded {len(edges)} edges from {self.edge_path}")
             return edges
         except Exception as e:
             log.critical(f"Failed to load edges ({e})")
             raise
 
     def load_animation(self) -> Dict[int, Dict[int, Vector]]:
+        try:
+            anim_data = load_animation_data(self.node_anim_path)
+            return anim_data
+        except Exception as e:
+            log.critical(f"Failed to load node animation ({e})")
+            raise
+
+    def load_earthquake_motion(self) -> Dict[int, Vector]:
         """
         役割:
             アニメーションデータ（ノードIDごとの{フレーム: Vector}辞書）をロードして返す。
@@ -101,9 +111,8 @@ class LoaderManager:
             Exception: 読込失敗時
         """
         try:
-            anim_data = load_animation_data(self.anim_path)
-            log.info(f"Loaded animation data from {self.anim_path}")
-            return anim_data
+            eq_data = load_earthquake_motion_csv(self.earthquake_anim_path)
+            return eq_data
         except Exception as e:
-            log.critical(f"Failed to load animation ({e})")
+            log.critical(f"Failed to load earthquake motion ({e})")
             raise

@@ -76,9 +76,8 @@ def build_blender_panels(
             )
         except Exception as e:
             log.error(f"Failed to create panel ({panel}): {e}")
-    log.info(
-        f"build_blender_panels: {len(blender_objs)} Blender panels created from core data"
-    )
+
+    log.info(f"{len(blender_objs)}件のBlender壁オブジェクトを生成しました。")
     return blender_objs
 
 
@@ -137,6 +136,7 @@ def build_roof(
         mesh.update()
         obj["roof_quads"] = quads
         log.debug(f"Created Roof: {obj.name}, quads={quads}")
+        log.info("Blenderパネル(屋根)を生成しました。")
         return obj, quads
     except Exception as e:
         log.error(f"Failed to create roof mesh: {e}")

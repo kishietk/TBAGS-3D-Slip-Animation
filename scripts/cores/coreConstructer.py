@@ -73,11 +73,12 @@ class coreConstructer:
         役割:
             コアモデルの全要素（ノード・エッジ・パネル）を構築。
         """
+        log.info("=================[コアモデルを構築]=========================")
         self.nodes = self._construct_core_nodes(nodes_data)
         self.edges = self._construct_core_edges(edges_data, self.nodes)
         self.panels = self._construct_core_panels(self.nodes, self.panel_node_kind_ids)
         log.info(
-            f"CoreConstructer build completed: {len(self.nodes)} nodes, {len(self.edges)} edges, {len(self.panels)} panels"
+            f"ノード：{len(self.nodes)}件、 エッジ：{len(self.edges)}件、 パネル：{len(self.panels)}件のコア要素を構築しました。"
         )
 
     def _construct_core_nodes(

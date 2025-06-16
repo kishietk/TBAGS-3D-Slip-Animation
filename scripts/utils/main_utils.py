@@ -18,7 +18,57 @@ from builders.materials import apply_all_materials
 from animators.ground_animator import register_ground_anim_handler
 from animators.building_animator import on_frame_building
 from loaders.earthquakeAnimLoader import load_earthquake_motion_csv
-from configs import ANIM_FPS, ANIM_SECONDS, SANDBAG_NODE_KIND_IDS, EARTHQUAKE_ANIM_CSV
+from configs import (
+    ANIM_FPS,
+    ANIM_SECONDS,
+    SANDBAG_NODE_KIND_IDS,
+    EARTHQUAKE_ANIM_CSV,
+    log_dataset_selection,
+)
+import argparse
+from utils.logging_utils import setup_logging
+
+log = setup_logging("main_utils")
+
+
+def parse_args():
+    """
+    役割:
+        コマンドライン引数（地震データセット指定など）をパースして返す。
+    引数:
+        なし
+    返り値:
+        argparse.Namespace（引数の値を持つオブジェクト）
+    """
+    log.info("=================[データリストを決定]=========================")
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--dataset",
+        type=str,
+        default="kumamoto_with_tbags",
+        help="地震データセット名を指定（例: kumamoto_with_tbags）",
+    )
+    args = parser.parse_args()
+    log.info(f"{log_dataset_selection(args.dataset)}")
+
+    return args
+
+
+def get_dataset_from_args(args, datasets_dict):
+    """
+    役割:
+        引数の'dataset'が辞書に存在すれば該当データセット辞書を返す。なければValueErrorを投げる。
+    引数:
+        args: argparseで取得したNamespace
+        datasets_dict: データセットの辞書（paths.EARTHQUAKE_DATASETSなど）
+    返り値:
+        dict: 指定データセットの内容
+    例外:
+        ValueError: データセット名が不正な場合
+    """
+    if args.dataset not in datasets_dict:
+        raise ValueError(f"指定データセットが存在しません: {args.dataset}")
+    return datasets_dict[args.dataset]
 
 
 def setup_scene():
@@ -37,20 +87,30 @@ def setup_scene():
     scene.frame_end = ANIM_FPS * ANIM_SECONDS
 
 
-def load_all_data():
+def load_all_data(node_csv, edges_file, node_anim_csv, earthquake_anim_csv):
     """
     役割:
-        必要な全データ（ノード、エッジ、アニメーション）をロードする。
+        必要な全データ（ノード、エッジ、アニメーション、地震基準面）を指定パスでロードする。
     引数:
-        なし
+        node_csv (str): ノードデータファイルパス
+        edges_file (str): エッジデータファイルパス
+        node_anim_csv (str): ノードアニメーションCSVパス
+        earthquake_anim_csv (str): 地震アニメーションCSVパス
     返り値:
-        nodes_data, edges_data, anim_data
+        nodes_data, edges_data, anim_data, eq_motion_data
     """
-    loader = LoaderManager()
+    loader = LoaderManager(
+        node_path=node_csv,
+        edge_path=edges_file,
+        node_anim_path=node_anim_csv,
+        earthquake_anim_path=earthquake_anim_csv,
+    )
     nodes_data = loader.load_nodes()
     edges_data = loader.load_edges(nodes_data)
     anim_data = loader.load_animation()
-    return nodes_data, edges_data, anim_data
+    eq_anim_data = loader.load_earthquake_motion()
+
+    return nodes_data, edges_data, anim_data, eq_anim_data
 
 
 def build_core_model(nodes_data, edges_data):
@@ -105,7 +165,12 @@ def apply_materials_to_all(blender_objs):
     )
 
 
-def setup_animation_handlers(core, anim_data, blender_objs):
+def setup_animation_handlers(
+    core,
+    anim_data,
+    blender_objs,
+    earthquake_anim_data=load_earthquake_motion_csv(EARTHQUAKE_ANIM_CSV),
+):
     """
     役割:
         アニメーションハンドラをセットアップする（建物・地面のアニメイベントを登録）。
@@ -137,9 +202,6 @@ def setup_animation_handlers(core, anim_data, blender_objs):
         member_objs=member_objs,
         ground_obj=ground_obj,
     )
-
-    # 地震アニメーションデータ読込
-    earthquake_anim_data = load_earthquake_motion_csv(EARTHQUAKE_ANIM_CSV)
 
     # ノード種別分け
     nodes = core.get_nodes()

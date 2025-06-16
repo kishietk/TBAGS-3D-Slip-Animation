@@ -21,7 +21,15 @@ from collections import defaultdict
 from typing import Dict
 from mathutils import Vector
 from utils.logging_utils import setup_logging
-from configs import NODE_ANIM_CSV, VALID_NODE_IDS, ANIM_FPS, DISP_SCALE,TYPE_HEADER, CMP_HEADER, ID_HEADER
+from configs import (
+    NODE_ANIM_CSV,
+    VALID_NODE_IDS,
+    ANIM_FPS,
+    DISP_SCALE,
+    TYPE_HEADER,
+    CMP_HEADER,
+    ID_HEADER,
+)
 
 log = setup_logging("nodeAnimLoader")
 
@@ -49,8 +57,7 @@ def load_animation_data(path: str = NODE_ANIM_CSV) -> Dict[int, Dict[int, Vector
         - 各行[時刻, ...]をフレーム換算、値をスケール変換してVectorへ
         - 不正値・列不足はログ警告しスキップ
     """
-    log.info("=================[アニメーション情報を読み取り]=========================")
-    log.info(f"Reading animation data from: {path}")
+    log.info("=================[ノードアニメーションCSVを読み取り]=========================")
     rows = []
     try:
         with open(path, newline="", encoding="utf-8", errors="ignore") as f:
@@ -115,7 +122,7 @@ def load_animation_data(path: str = NODE_ANIM_CSV) -> Dict[int, Dict[int, Vector
         log.critical(f"[{path}] No DISP columns found for valid nodes.")
         raise RuntimeError("No valid DISP columns in animation CSV")
 
-    log.info(f"→ Found {len(col_map)} DISP columns for valid nodes")
+    log.info(f"{len(col_map)}件の有効ノードのDISP列を検出しました。")
 
     # アニメーションデータ本体の読み込み
     anim_data: Dict[int, Dict[int, Vector]] = defaultdict(
@@ -155,7 +162,5 @@ def load_animation_data(path: str = NODE_ANIM_CSV) -> Dict[int, Dict[int, Vector
         for frame, vec in frames.items():
             result[nid][frame] = vec
 
-    log.info(
-        f"Loaded animation data: {len(result)} nodes, up to {max((len(f) for f in result.values()), default=0)} frames"
-    )
+    log.info(f"{len(result)}件のノードアニメーションデータを読み込みました。")
     return result

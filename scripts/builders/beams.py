@@ -69,4 +69,5 @@ def build_beams(
             objs.append((obj, a, b))
         except Exception as e:
             log.error(f"Failed to create beam between {a} and {b}: {e}")
+    log.info(f"{len(objs)}件のBlender梁オブジェクトを生成しました。")
     return objs

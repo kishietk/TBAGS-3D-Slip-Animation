@@ -26,6 +26,7 @@ from builders.columns import build_columns
 from builders.beams import build_beams
 from builders.groundBuilder import build_ground_plane
 from configs import SANDBAG_NODE_KIND_IDS, SANDBAG_CUBE_SIZE, SPHERE_RADIUS
+from utils.logging_utils import setup_logging
 
 
 def build_blender_objects(
@@ -71,6 +72,10 @@ def build_blender_objects(
         - すべて“静的オブジェクト”のみ生成（アニメ・動的処理は非対応）
         - 返却値の型や順序は今後NamedTuple化などで明文化可能
     """
+
+    log = setup_logging("sceneBuilder")
+    log.info("=================[Blenderオブジェクトを構築]=========================")
+
     # kind_idで通常ノード/サンドバッグノードを分離
     sandbag_nodes: Dict[int, Any] = {}
     normal_nodes: Dict[int, Any] = {}
@@ -112,7 +117,7 @@ def build_blender_objects(
     beam_objs = build_beams(all_node_positions, set(beam_edges), thickness=0.5)
     member_objs = list(column_objs) + list(beam_objs)
 
-    # グラウンド生成（ただの部材のひとつとして）
+    # グラウンド生成
     ground_obj = build_ground_plane() if include_ground else None
 
     return (

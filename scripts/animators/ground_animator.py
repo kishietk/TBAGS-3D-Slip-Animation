@@ -53,4 +53,3 @@ def register_ground_anim_handler(
             )
 
     bpy.app.handlers.frame_change_pre.append(_on_frame)
-    log.info("Motion parent (building) animation handler registered.")

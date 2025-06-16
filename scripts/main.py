@@ -1,9 +1,7 @@
 """
 責務:
 - プロジェクトの実行起点。
-
-TODO:
-- 引数で設定ファイルや実行モードを切り替えられるように拡張（T-BAGSの有無）
+- 引数で地震データセットやT-BAGS有無を切り替え可能。
 """
 
 import sys
@@ -13,7 +11,10 @@ project_dir = os.path.dirname(os.path.abspath(__file__))
 if project_dir not in sys.path:
     sys.path.insert(0, project_dir)
 
+from configs import paths
 from utils.main_utils import (
+    parse_args,
+    get_dataset_from_args,
     setup_scene,
     load_all_data,
     build_core_model,
@@ -22,18 +23,25 @@ from utils.main_utils import (
     setup_animation_handlers,
 )
 
-
 def main():
-    """
-    役割:
-        全体フローの実行（setup →→ load →→ core構築 →→ Blenderオブジェクト生成 →→ マテリアル適用 →→ アニメハンドラ登録）
-    """
+    args = parse_args()
+    dataset = get_dataset_from_args(args, paths.EARTHQUAKE_DATASETS)
+    node_csv = dataset["node_csv"]
+    edges_file = dataset["edges_file"]
+    node_anim_csv = dataset["node_anim_csv"]
+    earthquake_anim_csv = dataset["earthquake_anim_csv"]
+
     setup_scene()
-    nodes_data, edges_data, anim_data = load_all_data()
+    nodes_data, edges_data, anim_data, eq_anim_data = load_all_data(
+        node_csv=node_csv,
+        edges_file=edges_file,
+        node_anim_csv=node_anim_csv,
+        earthquake_anim_csv=earthquake_anim_csv,
+    )
     core = build_core_model(nodes_data, edges_data)
     blender_objs = build_blender_objects_from_core(core)
     apply_materials_to_all(blender_objs)
-    setup_animation_handlers(core, anim_data, blender_objs)
+    setup_animation_handlers(core, anim_data, blender_objs, eq_anim_data)
 
 
 if __name__ == "__main__":

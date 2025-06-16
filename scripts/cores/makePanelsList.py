@@ -57,7 +57,6 @@ def make_panels_list(
         - 3D座標から各階層・各面の組み合わせを探索
         - EPS_XY_MATCHで誤差を吸収し、find_at/segs等の小関数で組み合わせ探索
     """
-    log.info("=================[パネルコアオブジェクトを作成]=========================")
     panels: List[PanelData] = []
     wall_nodes = [
         (nid, n) for nid, n in node_map.items() if n.kind_id in panel_node_kind_ids
@@ -127,6 +126,4 @@ def make_panels_list(
                     attributes={},
                 )
                 panels.append(panel)
-
-    log.info(f"Maked {len(panels)} panel lists")
     return panels

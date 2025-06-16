@@ -59,6 +59,7 @@ def build_sandbags(
             objs[nid] = obj
         except Exception as e:
             log.error(f"Failed to create sandbag for node {nid}: {e}")
+    log.info(f"{len(objs)}件のBlenderサンドバッグを生成しました。")
     return objs
 
 

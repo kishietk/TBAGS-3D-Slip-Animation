@@ -14,6 +14,9 @@ TODO:
 
 import bpy
 from configs import GROUND_LOCATION
+from utils.logging_utils import setup_logging
+
+log = setup_logging("motion_parent_builder")
 
 
 def build_motion_parent(
@@ -29,12 +32,17 @@ def build_motion_parent(
     Returns:
         bpy.types.Object: 作成したEmpty親オブジェクト
     """
-    bpy.ops.object.empty_add(type="PLAIN_AXES", location=location)
-    obj = bpy.context.object
-    obj.name = name
-    obj.hide_viewport = True
-    obj.hide_render = True
-    return obj
+    try:
+        bpy.ops.object.empty_add(type="PLAIN_AXES", location=location)
+        obj = bpy.context.object
+        obj.name = name
+        obj.hide_viewport = True
+        obj.hide_render = True
+        log.info("地震モーション用オブジェクト生成しました。")
+        return obj
+    except Exception as e:
+        log.error(f"Emptyオブジェクト「{name}」の生成に失敗しました: {e}")
+        raise
 
 
 def set_parent(
@@ -56,34 +64,59 @@ def set_parent(
         panel_objs (list): パネルオブジェクト
         roof_obj (Object or None): 屋根オブジェクト
         member_objs (list or None): 柱・梁オブジェクト [(Object, a, b), ...]
+        ground_obj (Object or None): 地面オブジェクト（任意）
 
     Returns:
         None
     """
+    # カテゴリ別件数
+    counts = {
+        "ノード": 0,
+        "サンドバッグ": 0,
+        "パネル": 0,
+        "屋根": 0,
+        "部材": 0,
+        "地面": 0,
+    }
+
+    # 内部関数: 個々のオブジェクトに対して親オブジェクトを設定
+    def _assign_parent(obj, label=""):
+        if obj:
+            obj.parent = parent_obj
+            log.debug(
+                f"{label}オブジェクト「{obj.name}」を「{parent_obj.name}」に親子付けしました。"
+            )
+            counts[label] += 1
+
     # ノード球
     if node_objs:
         for obj in node_objs.values():
-            if obj:
-                obj.parent = parent_obj
+            _assign_parent(obj, "ノード")
+
     # サンドバッグ
     if sandbag_objs:
         for obj in sandbag_objs.values():
-            if obj:
-                obj.parent = parent_obj
+            _assign_parent(obj, "サンドバッグ")
+
     # パネル
     if panel_objs:
         for obj in panel_objs:
-            if obj:
-                obj.parent = parent_obj
+            _assign_parent(obj, "パネル")
+
     # 屋根
     if roof_obj:
-        roof_obj.parent = parent_obj
+        _assign_parent(roof_obj, "屋根")
+
     # 柱・梁
     if member_objs:
         for m in member_objs:
             obj = m[0] if isinstance(m, (list, tuple)) and m else m
-            if obj:
-                obj.parent = parent_obj
+            _assign_parent(obj, "部材")
+
     # グラウンド
     if ground_obj:
-        ground_obj.parent = parent_obj
+        _assign_parent(ground_obj, "地面")
+
+    # ログ出力
+    summary = "、".join([f"{label}:{n}" for label, n in counts.items() if n > 0])
+    log.info(f"親子関係を設定：[{summary}]")
