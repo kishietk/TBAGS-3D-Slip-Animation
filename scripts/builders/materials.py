@@ -234,11 +234,16 @@ def apply_all_materials(
             o.data.materials.append(mat_node)
             counts["ノード"] += 1
 
-        # サンドバッグ
-        for o in sandbag_objs.values():
-            o.data.materials.clear()
-            o.data.materials.append(mat_sandbag)
-            counts["サンドバッグ"] += 1
+        # サンドバッグユニット配下のメッシュに適用
+        for parent in sandbag_objs.values():
+            if parent is None:
+                continue
+            for child in parent.children:
+                # メッシュかをチェック
+                if getattr(child.data, "materials", None) is not None:
+                    child.data.materials.clear()
+                    child.data.materials.append(mat_sandbag)
+                    counts["サンドバッグ"] += 1
 
         # グラウンドメッシュ
         if ground_obj is not None:
