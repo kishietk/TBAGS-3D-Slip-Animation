@@ -6,6 +6,6 @@ config.py
 - 既存コードの「from config import ...」や「import config」での利用をサポート
 """
 
-from configs.paths import *
-from configs.constants import *
-from configs.kind_labels import *
+from .paths import *
+from .constants import *
+from .kind_labels import *
