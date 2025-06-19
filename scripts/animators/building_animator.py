@@ -1,37 +1,22 @@
+# animators/building_animator.py
+
 """
 ファイル名: animators/building_animator.py
 
 責務:
-- 建物本体（ノード・サンドバッグ・パネル・屋根・柱・梁）のアニメーション“処理のみ”を担う。
+- 建物本体（ノード・サンドバッグユニット・パネル・屋根・柱・梁）のアニメーション処理のみを担う。
 - Blenderフレームごとに各部材の位置・形状を更新。
-- 地面（Ground）はground_animator.pyで完全分離（ここで責任持たない）。
-
-設計指針:
-- on_frame_building関数で「建物全体」や各部材をフレームごとに動かす。
-- フレームごとの座標計算・再生成・再配置責任のみを担い、ハンドラ登録等の“イベント登録”責任は外部(handler.py等)で一元化推奨。
-- 必要なデータ（Blenderオブジェクト・アニメ辞書等）は外部(main等)から全て渡す前提。
-
-注意点:
-- 地面・外部オブジェクトの責任は持たない（ground_animatorへ分離）。
-- “アニメーション/再配置”のみ。オブジェクト生成・マテリアル割当・ハンドラ登録は他責任。
-- エラー/不整合は警告ログ・エラーで通知（raiseせず処理継続）。
-
-TODO:
-- フレーム補間・物理ベース移動等、アニメ高度化は今後責任分離で対応
-- パネル/屋根生成の動的構造変化対応（可変形状・連結パネルなど）
+- 地面（Ground）は ground_animator.py で完全分離。
 """
 
 import bpy
 import bmesh
-from typing import List, Tuple, Dict, Optional
+from typing import List, Tuple, Dict, Any, Optional
 from mathutils import Vector, Quaternion
 from utils.logging_utils import setup_logging
 from configs import EPS_AXIS, UV_MAP_NAME
 
 log = setup_logging("building_animator")
-
-already_warned_no_anim_node = set()
-already_warned_no_anim_sandbag = set()
 
 
 def on_frame_building(
@@ -46,97 +31,60 @@ def on_frame_building(
     sandbag_anim_data: Dict[int, Dict[int, Vector]],
     base_node_pos: Dict[int, Vector],
     base_sandbag_pos: Dict[int, Vector],
+    core: Optional[Any] = None,
 ) -> None:
-    """
-    役割:
-        1フレーム毎に建物各オブジェクトの座標・形状を自動更新。
-
-    引数:
-        scene: Blenderシーン
-        panel_objs: パネルObjectリスト
-        roof_obj: 屋根ObjectまたはNone
-        roof_quads: 屋根を構成するノードID 4つ組リスト
-        member_objs: (Object, ノードA, ノードB)のリスト
-        node_objs: ノードID→Blender Object
-        sandbag_objs: サンドバッグID→Blender Object
-        anim_data: ノードID→{フレーム: 変位Vector}
-        sandbag_anim_data: サンドバッグID→{フレーム: 変位Vector}
-        base_node_pos: ノードID→初期位置Vector
-        base_sandbag_pos: サンドバッグID→初期位置Vector
-
-    返り値:
-        None
-
-    注意:
-        - アニメーション辞書・初期座標は呼び出し元で一元管理すること
-        - パネル/屋根等の再生成はbmeshで動的対応
-    """
-    all_node_objs = {**node_objs, **sandbag_objs}
-
-    # ノード球アニメーション
+    # --- ノード球アニメーション更新 ---
     for nid, obj in node_objs.items():
         if nid not in base_node_pos:
             continue
-        base_pos = base_node_pos[nid]
-        if nid not in anim_data:
-            if nid not in already_warned_no_anim_node:
-                log.debug(
-                    f"ノードID={nid} はアニメーションデータ自体がありません（常に変位ゼロ）"
-                )
-                already_warned_no_anim_node.add(nid)
-            disp = Vector((0, 0, 0))
-        else:
-            node_anim = anim_data[nid]
-            disp = node_anim.get(scene.frame_current, Vector((0, 0, 0)))
-        obj.location = base_pos + disp
+        disp = anim_data.get(nid, {}).get(scene.frame_current, Vector((0, 0, 0)))
+        obj.location = base_node_pos[nid] + disp
 
-    # サンドバッグアニメーション
-    for nid, obj in sandbag_objs.items():
-        if nid not in base_sandbag_pos:
-            continue
-        base_pos = base_sandbag_pos[nid]
-        if nid not in sandbag_anim_data:
-            if nid not in already_warned_no_anim_sandbag:
-                log.debug(
-                    f"サンドバッグID={nid} はアニメーションデータ自体がありません（常に変位ゼロ）"
-                )
-                already_warned_no_anim_sandbag.add(nid)
-            disp = Vector((0, 0, 0))
-        else:
-            anim_data_sb = sandbag_anim_data[nid]
-            disp = anim_data_sb.get(scene.frame_current, Vector((0, 0, 0)))
-        obj.location = base_pos + disp
+    # --- サンドバッグユニットアニメーション（上下別々） ---
+    for parent in sandbag_objs.values():
+        for face in parent.children:
+            nid = face.get("sandbag_node_id")
+            if nid is None:
+                continue
+            disp = sandbag_anim_data.get(nid, {}).get(
+                scene.frame_current, Vector((0, 0, 0))
+            )
+            # ローカル座標で初期Zに対する変位を反映
+            face.location.x = disp.x
+            face.location.y = disp.y
+            initial_z = face.get("initial_z", face.location.z)
+            face.location.z = initial_z + disp.z
 
-    # パネル再構築
+    # --- パネル再構築 (通常／サンドバッグ両対応) ---
     for obj in panel_objs:
         try:
-            if obj is None:
-                continue
             ids = obj.get("panel_ids")
             if not ids or len(ids) != 4:
                 continue
-            a, b, d, c = ids
-            verts = [
-                all_node_objs[a].location,
-                all_node_objs[b].location,
-                all_node_objs[d].location,
-                all_node_objs[c].location,
-            ]
+            verts = []
+            for nid in ids:
+                if nid in node_objs:
+                    verts.append(node_objs[nid].location)
+                else:
+                    disp = sandbag_anim_data.get(nid, {}).get(
+                        scene.frame_current, Vector((0, 0, 0))
+                    )
+                    verts.append(base_sandbag_pos.get(nid, Vector((0, 0, 0))) + disp)
             mesh = obj.data
             mesh.clear_geometry()
             bm = bmesh.new()
             uv_layer = bm.loops.layers.uv.new(UV_MAP_NAME)
             vlist = [bm.verts.new(v) for v in verts]
-            face = bm.faces.new(vlist)
-            for loop, uv in zip(face.loops, [(0, 0), (1, 0), (1, 1), (0, 1)]):
+            f = bm.faces.new(vlist)
+            for loop, uv in zip(f.loops, [(0, 0), (1, 0), (1, 1), (0, 1)]):
                 loop[uv_layer].uv = uv
             bm.to_mesh(mesh)
             bm.free()
         except Exception as e:
-            log.error(f"Failed to update panel {getattr(obj, 'name', '?')}: {e}")
+            log.error(f"Failed to update panel {obj.name}: {e}")
 
-    # 屋根再構築
-    if roof_obj is not None and roof_quads:
+    # --- 屋根再構築 ---
+    if roof_obj and roof_quads:
         try:
             mesh = roof_obj.data
             mesh.clear_geometry()
@@ -145,17 +93,19 @@ def on_frame_building(
             vert_map: Dict[int, bmesh.types.BMVert] = {}
             for quad in roof_quads:
                 for nid in quad:
-                    if nid not in vert_map:
-                        vert_map[nid] = bm.verts.new(all_node_objs[nid].location)
+                    coord = (
+                        node_objs[nid].location
+                        if nid in node_objs
+                        else base_sandbag_pos.get(nid, Vector((0, 0, 0)))
+                        + sandbag_anim_data.get(nid, {}).get(
+                            scene.frame_current, Vector((0, 0, 0))
+                        )
+                    )
+                    vert_map[nid] = (
+                        bm.verts.new(coord) if nid not in vert_map else vert_map[nid]
+                    )
             for bl, br, tr, tl in roof_quads:
-                face = bm.faces.new(
-                    [
-                        vert_map[bl],
-                        vert_map[br],
-                        vert_map[tr],
-                        vert_map[tl],
-                    ]
-                )
+                face = bm.faces.new([vert_map[n] for n in (bl, br, tr, tl)])
                 for loop, uv in zip(face.loops, [(0, 0), (1, 0), (1, 1), (0, 1)]):
                     loop[uv_layer].uv = uv
             bm.to_mesh(mesh)
@@ -163,16 +113,22 @@ def on_frame_building(
         except Exception as e:
             log.error(f"Failed to update roof: {e}")
 
-    # 柱・梁再配置（ノード動的アニメに追従）
+    # --- 柱・梁再配置 (通常／サンドバッグ両対応) ---
     up = Vector((0, 0, 1))
     for obj, a, b in member_objs:
         try:
-            if obj is None:
-                continue
-            p1 = all_node_objs[a].location
-            p2 = all_node_objs[b].location
-            vec = p2 - p1
-            mid = (p1 + p2) * 0.5
+
+            def loc(nid):
+                if nid in node_objs:
+                    return node_objs[nid].location
+                return base_sandbag_pos.get(
+                    nid, Vector((0, 0, 0))
+                ) + sandbag_anim_data.get(nid, {}).get(
+                    scene.frame_current, Vector((0, 0, 0))
+                )
+
+            p1, p2 = loc(a), loc(b)
+            mid, vec = (p1 + p2) * 0.5, p2 - p1
             length = vec.length
             obj.location = mid
             axis = up.cross(vec)
@@ -184,8 +140,7 @@ def on_frame_building(
             else:
                 obj.rotation_mode = "QUATERNION"
                 obj.rotation_quaternion = Quaternion((1, 0, 0, 0))
-            obj.scale = (obj.scale.x, obj.scale.y, length)
+            sx, sy, _ = obj.scale
+            obj.scale = (sx, sy, length)
         except Exception as e:
-            log.error(
-                f"Failed to update member {getattr(obj, 'name', '?')} (nodes {a}-{b}): {e}"
-            )
+            log.error(f"Failed to update member {obj.name} (nodes {a}-{b}): {e}")

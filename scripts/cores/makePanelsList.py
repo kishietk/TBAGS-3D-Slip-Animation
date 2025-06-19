@@ -13,7 +13,7 @@
 """
 
 from typing import Dict, List, NamedTuple
-from loaders.nodeLoader import NodeData
+from loaders.structureParser import NodeData
 from configs import EPS_XY_MATCH
 from utils.logging_utils import setup_logging
 

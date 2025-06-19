@@ -1,123 +1,111 @@
+# builders/sceneBuilder.py
+
 """
 ファイル名: builders/sceneBuilder.py
 
 責務:
-- コアモデル(Node/SandbagNode/Panel...)からBlender用表示オブジェクト群を一括生成する統合ビルダー。
-- kind_idで通常ノード/サンドバッグを自動仕分けし、各ビルダーに分派。
-- 生成物（球体/立方体/パネル/屋根/柱/梁/地面）をapply_all_materialsやアニメーター用にそのまま返す。
-- ラベル生成・グラウンド生成も一元化。
+- コアモデル(Node/SandbagNode/Panel…)からBlender用表示オブジェクト群を一括生成。
+- kind_idで通常ノード／サンドバッグを自動仕分けし、各ビルダーに分派。
+- 生成物（球体／“工”字サンドバッグユニット／パネル／屋根／柱／梁／地面）を返却。
 
-注意点:
-- 全オブジェクトは“静的”生成のみ（アニメ責任は担わない）
-- 入力型（Node/SandbagNode/Panel等）の型安全性は今後さらに強化予定
-- kind_id仕分けルールが将来的に変わる場合は責務/ロジックも要見直し
-
-TODO:
-- オブジェクト返却順序・型の明文化（NamedTuple等で返す設計も視野）
-- 部材種別追加時の拡張方針
-- グラウンド生成/属性付与の外部化
+注意:
+- メンバー（columns/beams）には column_edges, beam_edges を使用。
+- ノードは dict or list の両方を受け取る。
 """
 
-from typing import List, Dict, Tuple, Any, Optional
-from builders.nodes import build_nodes, create_node_labels
-from builders.sandbags import build_sandbags, create_sandbag_labels
+from typing import List, Dict, Tuple, Any, Optional, Union
+import bpy
+from utils.logging_utils import setup_logging
+
+from builders.nodes import build_nodes
+from cores.sandbagUnit import pair_sandbag_nodes
+from builders.sandbagUnitsBuilder import build_sandbag_units
 from builders.panels import build_blender_panels, build_roof
 from builders.columns import build_columns
 from builders.beams import build_beams
 from builders.groundBuilder import build_ground_plane
-from configs import SANDBAG_NODE_KIND_IDS, SANDBAG_CUBE_SIZE, SPHERE_RADIUS
-from utils.logging_utils import setup_logging
+
+from configs import (
+    SANDBAG_NODE_KIND_IDS,
+    SPHERE_RADIUS,
+    SANDBAG_FACE_SIZE,
+    SANDBAG_BAR_THICKNESS,
+)
+
+log = setup_logging("sceneBuilder")
 
 
 def build_blender_objects(
-    nodes: Dict[int, Any] | List[Any],
+    nodes: Union[Dict[int, Any], List[Any]],
     column_edges: List[Tuple[int, int]],
     beam_edges: List[Tuple[int, int]],
-    panels: Optional[Any] = None,
-    sandbag_cube_size=SANDBAG_CUBE_SIZE,
-    node_sphere_radius=SPHERE_RADIUS,
+    panels: Optional[List[Any]] = None,
+    sandbag_face_size: Tuple[float, float] = SANDBAG_FACE_SIZE,
+    sandbag_bar_thickness: float = SANDBAG_BAR_THICKNESS,
+    node_sphere_radius: float = SPHERE_RADIUS,
     include_ground: bool = True,
 ) -> Tuple[
-    Dict[int, Any],  # node_objs
-    Dict[int, Any],  # sandbag_objs
-    List[Any],  # panel_objs
-    Any,  # roof_obj
+    Dict[int, bpy.types.Object],  # node_objs
+    Dict[int, bpy.types.Object],  # sandbag_unit_objs
+    List[bpy.types.Object],  # panel_objs
+    Optional[bpy.types.Object],  # roof_obj
     List[Tuple[int, int, int, int]],  # roof_quads
-    List[Any],  # member_objs
-    Any,  # ground_obj
+    List[Tuple[bpy.types.Object, int, int]],  # member_objs
+    Optional[bpy.types.Object],  # ground_obj
 ]:
     """
-    役割:
-        コアデータからBlender用の全オブジェクトを一括生成し、各ビルダー/部材単位で返却。
+    nodes: dict or list of core Node/SandbagNode objects
+    column_edges: list of (start_id, end_id)
+    beam_edges:   list of (start_id, end_id)
+    panels:       list of core Panel objects
 
-    引数:
-        nodes: Dict/List[int, Node/SandbagNode]
-        column_edges: 柱エッジリスト (List[Tuple[int, int]])
-        beam_edges: 梁エッジリスト (List[Tuple[int, int]])
-        panels: Panelリスト（省略可）
-        sandbag_cube_size: サンドバッグ立方体一辺の長さ
-        node_sphere_radius: ノード球体半径
-        include_ground: グラウンドも生成・返却するか
-
-    返り値:
-        node_objs: ノード球 {id: BlenderObject}
-        sandbag_objs: サンドバッグ立方体 {id: BlenderObject}
-        panel_objs: パネルオブジェクトリスト
-        roof_obj: 屋根オブジェクト
-        roof_quads: 屋根パネルIDタプルリスト
-        member_objs: 柱・梁オブジェクトリスト
-        ground_obj: グラウンドオブジェクト（部材と同列）
-
-    注意:
-        - すべて“静的オブジェクト”のみ生成（アニメ・動的処理は非対応）
-        - 返却値の型や順序は今後NamedTuple化などで明文化可能
+    returns:
+        node_objs, sandbag_unit_objs, panel_objs, roof_obj,
+        roof_quads, member_objs, ground_obj
     """
-
-    log = setup_logging("sceneBuilder")
     log.info("=================[Blenderオブジェクトを構築]=========================")
 
-    # kind_idで通常ノード/サンドバッグノードを分離
+    # nodes が dict なら .values()、list ならそのままイテレート
+    iterable = nodes.values() if isinstance(nodes, dict) else nodes
+
+    # kind_id で通常ノード／サンドバッグノードを分離
     sandbag_nodes: Dict[int, Any] = {}
     normal_nodes: Dict[int, Any] = {}
-    for n in nodes.values() if isinstance(nodes, dict) else nodes:
-        kind_id = getattr(n, "kind_id", None)
-        if kind_id == 0 or kind_id in SANDBAG_NODE_KIND_IDS:
+    for n in iterable:
+        kind = getattr(n, "kind_id", None)
+        if kind == 0 or kind in SANDBAG_NODE_KIND_IDS:
             sandbag_nodes[n.id] = n
         else:
             normal_nodes[n.id] = n
 
-    # 通常ノード球体生成（静的）
+    # 1) 通常ノード球体生成
     node_objs = (
         build_nodes(normal_nodes, radius=node_sphere_radius) if normal_nodes else {}
     )
 
-    # サンドバッグ立方体生成（静的）
-    sandbag_objs = (
-        build_sandbags(sandbag_nodes, cube_size=sandbag_cube_size)
-        if sandbag_nodes
-        else {}
-    )
+    # 2) サンドバッグUnit (“工”字形) 生成
+    # nodes dict が必要な形なら整形
+    node_dict = nodes if isinstance(nodes, dict) else {n.id: n for n in nodes}
+    units = pair_sandbag_nodes(node_dict)
+    sandbag_objs = build_sandbag_units(units) if units else {}
 
-    # ラベル生成
-    create_node_labels({nid: n.pos for nid, n in normal_nodes.items()})
-    create_sandbag_labels({nid: n.pos for nid, n in sandbag_nodes.items()})
-
-    # パネル生成
+    # 3) パネル生成
     panel_objs = build_blender_panels(panels) if panels else []
 
-    # 屋根生成
-    all_node_positions = {
+    # 4) 屋根生成
+    # 全ノード位置辞書を組み合わせ
+    all_pos = {
         **{nid: n.pos for nid, n in normal_nodes.items()},
         **{nid: n.pos for nid, n in sandbag_nodes.items()},
     }
-    roof_obj, roof_quads = build_roof(all_node_positions)
+    roof_obj, roof_quads = build_roof(all_pos)
 
-    # 柱・梁生成
-    column_objs = build_columns(all_node_positions, set(column_edges), thickness=0.5)
-    beam_objs = build_beams(all_node_positions, set(beam_edges), thickness=0.5)
+    # 5) 柱・梁生成
+    column_objs = build_columns(all_pos, set(column_edges), thickness=0.5)
+    beam_objs = build_beams(all_pos, set(beam_edges), thickness=0.5)
     member_objs = list(column_objs) + list(beam_objs)
 
-    # グラウンド生成
+    # 6) 地面生成
     ground_obj = build_ground_plane() if include_ground else None
 
     return (

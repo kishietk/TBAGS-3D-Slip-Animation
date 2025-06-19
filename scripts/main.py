@@ -23,18 +23,17 @@ from utils.main_utils import (
     setup_animation_handlers,
 )
 
+
 def main():
     args = parse_args()
     dataset = get_dataset_from_args(args, paths.EARTHQUAKE_DATASETS)
     node_csv = dataset["node_csv"]
-    edges_file = dataset["edges_file"]
     node_anim_csv = dataset["node_anim_csv"]
     earthquake_anim_csv = dataset["earthquake_anim_csv"]
 
     setup_scene()
     nodes_data, edges_data, anim_data, eq_anim_data = load_all_data(
         node_csv=node_csv,
-        edges_file=edges_file,
         node_anim_csv=node_anim_csv,
         earthquake_anim_csv=earthquake_anim_csv,
     )

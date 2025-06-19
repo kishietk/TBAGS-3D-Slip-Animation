@@ -59,8 +59,25 @@ scripts/
 
 ### 2. Blender の「Scripting」タブで以下を実行
 
+import sys
 import runpy
+
 main_py = r"C:\Users\kishie\Documents\TBAGS-Slip-Animation\scripts\main.py"
+
+# ================================
+# データセット選択肢
+# sys.argv = [main_py, "--dataset=kumamoto_with_tbags"]
+# sys.argv = [main_py, "--dataset=kumamoto_no_tbags"]
+# sys.argv = [main_py, "--dataset=kobe_with_tbags"]
+
+# データセット選択肢(未設定)
+# sys.argv = [main_py, "--dataset=tohoku_with_tbags"]
+# sys.argv = [main_py, "--dataset=tohoku_no_tbags"]
+# sys.argv = [main_py, "--dataset=kobe_no_tbags"]
+# ================================
+
+sys.argv = [main_py, "--dataset=kobe_with_tbags"]
+
 runpy.run_path(main_py, run_name="__main__")
 
 ---

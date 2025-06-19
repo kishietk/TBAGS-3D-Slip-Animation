@@ -51,10 +51,13 @@ UV_MAP_NAME = "UVMap"
 # ----------------------------
 SPHERE_RADIUS = 0.24
 MEMBER_THICK = 0.4
-CYLINDER_VERTS = 8
+CYLINDER_VERTS = 4
 EPS_XY_MATCH = 1e-3
 EPS_AXIS = 1e-6
-SANDBAG_CUBE_SIZE = Vector((3.0, 3.0, 0.05))
+
+# 工字サンドバッグ表示用パラメータ
+SANDBAG_FACE_SIZE      = Vector((3.0, 3.0))  
+SANDBAG_BAR_THICKNESS  = 0.2
 
 # ----------------------------
 # 地面（Ground）パラメータ

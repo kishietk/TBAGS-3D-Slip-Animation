@@ -1,4 +1,3 @@
-# utils/main_utils.py
 """
 ファイル名: utils/main_utils.py
 
@@ -50,7 +49,6 @@ def parse_args():
     )
     args = parser.parse_args()
     log.info(f"{log_dataset_selection(args.dataset)}")
-
     return args
 
 
@@ -87,13 +85,13 @@ def setup_scene():
     scene.frame_end = ANIM_FPS * ANIM_SECONDS
 
 
-def load_all_data(node_csv, edges_file, node_anim_csv, earthquake_anim_csv):
+def load_all_data(node_csv, node_anim_csv, earthquake_anim_csv):
     """
     役割:
         必要な全データ（ノード、エッジ、アニメーション、地震基準面）を指定パスでロードする。
+        ※ ノード・エッジは1つのSTRファイルからまとめてロード
     引数:
-        node_csv (str): ノードデータファイルパス
-        edges_file (str): エッジデータファイルパス
+        node_csv (str): ノード+エッジを含むSTRファイルパス
         node_anim_csv (str): ノードアニメーションCSVパス
         earthquake_anim_csv (str): 地震アニメーションCSVパス
     返り値:
@@ -101,15 +99,12 @@ def load_all_data(node_csv, edges_file, node_anim_csv, earthquake_anim_csv):
     """
     loader = LoaderManager(
         node_path=node_csv,
-        edge_path=edges_file,
         node_anim_path=node_anim_csv,
         earthquake_anim_path=earthquake_anim_csv,
     )
-    nodes_data = loader.load_nodes()
-    edges_data = loader.load_edges(nodes_data)
+    nodes_data, edges_data = loader.load_structure()
     anim_data = loader.load_animation()
     eq_anim_data = loader.load_earthquake_motion()
-
     return nodes_data, edges_data, anim_data, eq_anim_data
 
 

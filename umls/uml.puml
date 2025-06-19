@@ -3,10 +3,10 @@
 
 ' ========== LOADERS ==========
 package loaders {
-    class nodeLoader_py as "nodeLoader.py" <<loader>> {
+    class structureParser_py as "structureParser.py" <<loader>> {
         ' ノード定義ファイル（STR/CSV）→ NodeData辞書
     }
-    class edgeLoader_py as "edgeLoader.py" <<loader>> {
+    class structureParser_py as "structureParser.py" <<loader>> {
         ' エッジ定義ファイル（STR等）→ EdgeDataリスト
     }
     class nodeAnimLoader_py as "nodeAnimLoader.py" <<loader>> {
@@ -138,8 +138,8 @@ main_utils_py --> materials_py
 main_utils_py --> building_animator_py
 main_utils_py --> ground_animator_py
 
-loaderManager_py --> nodeLoader_py
-loaderManager_py --> edgeLoader_py
+loaderManager_py --> structureParser_py
+loaderManager_py --> structureParser_py
 loaderManager_py --> nodeAnimLoader_py
 loaderManager_py --> earthquakeAnimLoader_py
 
