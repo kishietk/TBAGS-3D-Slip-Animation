@@ -26,39 +26,36 @@ def on_frame_building(
     roof_quads: List[Tuple[int, int, int, int]],
     member_objs: List[Tuple[bpy.types.Object, int, int]],
     node_objs: Dict[int, bpy.types.Object],
-    sandbag_objs: Dict[int, bpy.types.Object],  # unit.id → Empty親オブジェクト
-    anim_data: Dict[int, Dict[int, Vector]],  # ノードID→{フレーム: 変位}
-    sandbag_anim_data: Dict[int, Dict[int, Vector]],  # ノードID→{フレーム: 変位}
+    sandbag_objs: Dict[int, bpy.types.Object],
+    anim_data: Dict[int, Dict[int, Vector]],
+    sandbag_anim_data: Dict[int, Dict[int, Vector]],
     base_node_pos: Dict[int, Vector],
-    base_sandbag_pos: Dict[int, Vector],  # 呼び出し側が渡すが未使用可
-    core: Optional[Any] = None,  # core.sandbags がある場合のみ使用
+    base_sandbag_pos: Dict[int, Vector],
+    core: Optional[Any] = None,
 ) -> None:
     # --- ノード球アニメーション更新 ---
     for nid, obj in node_objs.items():
         if nid not in base_node_pos:
             continue
-        base_pos = base_node_pos[nid]
         disp = anim_data.get(nid, {}).get(scene.frame_current, Vector((0, 0, 0)))
-        obj.location = base_pos + disp
+        obj.location = base_node_pos[nid] + disp
 
     # --- サンドバッグユニットアニメーション（上下別々） ---
-    if core is not None:
-        for unit in core.sandbags:  # List[SandbagUnit]
-            parent = sandbag_objs.get(unit.id)
-            if parent is None:
+    for parent in sandbag_objs.values():
+        for face in parent.children:
+            nid = face.get("sandbag_node_id")
+            if nid is None:
                 continue
+            disp = sandbag_anim_data.get(nid, {}).get(
+                scene.frame_current, Vector((0, 0, 0))
+            )
+            # ローカル座標で初期Zに対する変位を反映
+            face.location.x = disp.x
+            face.location.y = disp.y
+            initial_z = face.get("initial_z", face.location.z)
+            face.location.z = initial_z + disp.z
 
-            for idx, sb_node in enumerate(unit.nodes):
-                face = parent.children[idx]
-                base_z = unit.z_values[idx]
-                disp = sandbag_anim_data.get(sb_node.id, {}).get(
-                    scene.frame_current, Vector((0, 0, 0))
-                )
-                face.location = (
-                    Vector((unit.centroid.x, unit.centroid.y, base_z)) + disp
-                )
-
-    # --- パネル再構築 (通常ノード or サンドバッグノード 両対応) ---
+    # --- パネル再構築 (通常／サンドバッグ両対応) ---
     for obj in panel_objs:
         try:
             ids = obj.get("panel_ids")
@@ -78,8 +75,8 @@ def on_frame_building(
             bm = bmesh.new()
             uv_layer = bm.loops.layers.uv.new(UV_MAP_NAME)
             vlist = [bm.verts.new(v) for v in verts]
-            face = bm.faces.new(vlist)
-            for loop, uv in zip(face.loops, [(0, 0), (1, 0), (1, 1), (0, 1)]):
+            f = bm.faces.new(vlist)
+            for loop, uv in zip(f.loops, [(0, 0), (1, 0), (1, 1), (0, 1)]):
                 loop[uv_layer].uv = uv
             bm.to_mesh(mesh)
             bm.free()
@@ -87,7 +84,7 @@ def on_frame_building(
             log.error(f"Failed to update panel {obj.name}: {e}")
 
     # --- 屋根再構築 ---
-    if roof_obj is not None and roof_quads:
+    if roof_obj and roof_quads:
         try:
             mesh = roof_obj.data
             mesh.clear_geometry()
@@ -96,25 +93,19 @@ def on_frame_building(
             vert_map: Dict[int, bmesh.types.BMVert] = {}
             for quad in roof_quads:
                 for nid in quad:
-                    if nid not in vert_map:
-                        pos = node_objs.get(nid)
-                        if pos is not None:
-                            coord = pos.location
-                        else:
-                            disp = sandbag_anim_data.get(nid, {}).get(
-                                scene.frame_current, Vector((0, 0, 0))
-                            )
-                            coord = base_sandbag_pos.get(nid, Vector((0, 0, 0))) + disp
-                        vert_map[nid] = bm.verts.new(coord)
+                    coord = (
+                        node_objs[nid].location
+                        if nid in node_objs
+                        else base_sandbag_pos.get(nid, Vector((0, 0, 0)))
+                        + sandbag_anim_data.get(nid, {}).get(
+                            scene.frame_current, Vector((0, 0, 0))
+                        )
+                    )
+                    vert_map[nid] = (
+                        bm.verts.new(coord) if nid not in vert_map else vert_map[nid]
+                    )
             for bl, br, tr, tl in roof_quads:
-                face = bm.faces.new(
-                    [
-                        vert_map[bl],
-                        vert_map[br],
-                        vert_map[tr],
-                        vert_map[tl],
-                    ]
-                )
+                face = bm.faces.new([vert_map[n] for n in (bl, br, tr, tl)])
                 for loop, uv in zip(face.loops, [(0, 0), (1, 0), (1, 1), (0, 1)]):
                     loop[uv_layer].uv = uv
             bm.to_mesh(mesh)
@@ -122,25 +113,23 @@ def on_frame_building(
         except Exception as e:
             log.error(f"Failed to update roof: {e}")
 
-    # --- 柱・梁再配置（通常 or サンドバッグノード対応） ---
+    # --- 柱・梁再配置 (通常／サンドバッグ両対応) ---
     up = Vector((0, 0, 1))
     for obj, a, b in member_objs:
         try:
 
-            def get_loc(nid: int) -> Vector:
+            def loc(nid):
                 if nid in node_objs:
                     return node_objs[nid].location
-                disp = sandbag_anim_data.get(nid, {}).get(
+                return base_sandbag_pos.get(
+                    nid, Vector((0, 0, 0))
+                ) + sandbag_anim_data.get(nid, {}).get(
                     scene.frame_current, Vector((0, 0, 0))
                 )
-                return base_sandbag_pos.get(nid, Vector((0, 0, 0))) + disp
 
-            p1 = get_loc(a)
-            p2 = get_loc(b)
-            mid = (p1 + p2) * 0.5
-            vec = p2 - p1
+            p1, p2 = loc(a), loc(b)
+            mid, vec = (p1 + p2) * 0.5, p2 - p1
             length = vec.length
-
             obj.location = mid
             axis = up.cross(vec)
             if axis.length > EPS_AXIS:
@@ -151,7 +140,6 @@ def on_frame_building(
             else:
                 obj.rotation_mode = "QUATERNION"
                 obj.rotation_quaternion = Quaternion((1, 0, 0, 0))
-
             sx, sy, _ = obj.scale
             obj.scale = (sx, sy, length)
         except Exception as e:

@@ -1,57 +1,64 @@
 # builders/sandbagUnitsBuilder.py
 
+from typing import Any, Dict, List
 import bpy
 from mathutils import Vector
 from utils.logging_utils import setup_logging
-from cores.sandbagUnit import SandbagUnit
-from configs.constants import SANDBAG_FACE_SIZE, SANDBAG_BAR_THICKNESS
+from configs import SANDBAG_FACE_SIZE, SANDBAG_BAR_THICKNESS
 
 log = setup_logging("build_sandbag_units")
 
 
-def build_sandbag_units(
-    units: list[SandbagUnit],
-) -> dict[str, bpy.types.Object]:
+def build_sandbag_units(units: List[Any]) -> Dict[int, bpy.types.Object]:
     """
-    役割:
-        SandbagUnitごとに“工”字形オブジェクト（Empty親 + 2面 + 中央バー）を生成。
+    SandbagUnit のリストから、工字型ユニットを生成します。
+    - 親Empty をユニットの重心位置に配置
+    - 子要素として下面フェース、上面フェース、中央バーをローカル配置
+    - フェースにはそれぞれ紐付くノードIDをカスタムプロパティとして設定
+
+    上下面フェースを個別に動かせるように:
+    - face["sandbag_node_id"] = 対応するノードID
     """
-    objs: dict[str, bpy.types.Object] = {}
+    objs: Dict[int, bpy.types.Object] = {}
+    face_w, face_d = SANDBAG_FACE_SIZE
+
     for unit in units:
-        # 親Empty
-        bpy.ops.object.empty_add(type="PLAIN_AXES", location=unit.centroid)
+        cid = unit.id
+        centroid: Vector = unit.centroid  # Vector(x, y, z)
+        z0, z1 = unit.z_values  # [下面Z, 上面Z]
+        height = z1 - z0
+
+        # 1) 親 Empty を重心に配置
+        bpy.ops.object.empty_add(type="PLAIN_AXES", location=centroid)
         parent = bpy.context.object
-        parent.name = f"SandbagUnit_{unit.id}"
+        parent.name = f"SandbagUnit_{cid}"
 
-        bottom_z, top_z = unit.z_values
-        face_w, face_d = SANDBAG_FACE_SIZE
-
-        # 下部面
-        for idx, z in enumerate((bottom_z, top_z)):
-            bpy.ops.mesh.primitive_plane_add(
-                size=1.0,
-                location=(unit.centroid.x, unit.centroid.y, z),
-            )
+        # 2) 下・上フェース
+        for idx, (node, z) in enumerate(zip(unit.nodes, (z0, z1))):
+            bpy.ops.mesh.primitive_plane_add(size=1.0, location=(0, 0, 0))
             face = bpy.context.object
-            face.name = f"SandbagUnit_{unit.id}_Face_{idx}"
-            # 面の縦横サイズ調整
-            face.scale = (face_w / 2, face_d / 2, 1)
+            face.name = f"SandbagFace_{cid}_{idx}"
             face.parent = parent
+            # local座標: X/Y=0、Zは下面または上面
+            face.location = Vector((0, 0, z - centroid.z))
+            face.scale = Vector((face_w, face_d, 1))
+            # カスタムプロパティでノードIDを保持
+            face["sandbag_node_id"] = node.id
 
-        # 中央バー（円柱）
-        height = top_z - bottom_z
-        mid_z = (bottom_z + top_z) / 2
+        # 3) 中央バー（円柱）
+        mid_z = (z0 + z1) / 2
         bpy.ops.mesh.primitive_cylinder_add(
             vertices=16,
             radius=SANDBAG_BAR_THICKNESS,
             depth=height,
-            location=(unit.centroid.x, unit.centroid.y, mid_z),
+            location=(0, 0, 0),
         )
         bar = bpy.context.object
-        bar.name = f"SandbagUnit_{unit.id}_Bar"
+        bar.name = f"SandbagBar_{cid}"
         bar.parent = parent
+        bar.location = Vector((0, 0, mid_z - centroid.z))
 
-        objs[unit.id] = parent
+        objs[cid] = parent
 
     log.info(f"{len(objs)}件の工字サンドバッグユニットを生成しました。")
     return objs
