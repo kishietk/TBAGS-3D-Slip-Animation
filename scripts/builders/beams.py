@@ -1,21 +1,15 @@
 """
-ファイル名: builders/beams.py
+梁（Beam）生成ビルダー（builders/beams.py）
 
-責務:
-- ノード座標とエッジ情報からBlender上に梁（Cylinderオブジェクト）を一括生成するビルダー。
-- 柱ビルダーと同一構造で、回転も自動計算。
-
-TODO:
-- build_columnsとの共通化・ベースクラス化（共通ロジック吸収）
-- エラー時のロギング粒度見直し・復帰処理
-- ノード座標受け渡しの型整理（dataclass化等も視野）
+- ノード座標とエッジ情報からBlender上に梁（Cylinder）を一括生成
+- 柱ビルダーと構造同一・回転自動計算
 """
 
 import bpy
 from mathutils import Vector
 from utils.logging_utils import setup_logging
 
-log = setup_logging("build_beams")
+log = setup_logging()
 
 
 def build_beams(
@@ -24,19 +18,18 @@ def build_beams(
     thickness: float,
 ) -> list[tuple[bpy.types.Object, int, int]]:
     """
-    役割:
-        ノード座標とエッジ情報から梁（Cylinderオブジェクト）を生成する。
+    ノード座標とエッジ情報から梁（Cylinderオブジェクト）を生成する
 
-    引数:
+    Args:
         nodes (dict[int, Vector]): ノードID→座標Vectorの辞書
         edges (set[tuple[int, int]]): 梁となるノードIDペア集合
         thickness (float): 梁シリンダーの半径
 
-    返り値:
+    Returns:
         list[tuple[bpy.types.Object, int, int]]: (梁Object, ノードA ID, ノードB ID)タプルリスト
 
-    補足:
-        - build_columns（柱ビルダー）とシグネチャ・設計思想を揃えてある
+    Note:
+        - 柱ビルダー（build_columns）とシグネチャ共通化
     """
     objs = []
     up = Vector((0, 0, 1))
@@ -47,8 +40,11 @@ def build_beams(
             mid = (p1 + p2) / 2
             length = vec.length
 
-            bpy.ops.mesh.primitive_cylinder_add(
-                vertices=16, radius=thickness, depth=1, location=mid
+            # bpy.ops.mesh.primitive_cylinder_add(
+            #     vertices=16, radius=thickness, depth=1, location=mid
+            # )
+            bpy.ops.mesh.primitive_cube_add(
+                size=1, location=mid
             )
             obj = bpy.context.object
             obj.name = f"Beam_{a}_{b}"
@@ -69,5 +65,4 @@ def build_beams(
             objs.append((obj, a, b))
         except Exception as e:
             log.error(f"Failed to create beam between {a} and {b}: {e}")
-    log.info(f"{len(objs)}件のBlender梁オブジェクトを生成しました。")
     return objs

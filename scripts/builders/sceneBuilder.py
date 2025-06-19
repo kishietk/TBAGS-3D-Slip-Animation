@@ -1,119 +1,106 @@
-# builders/sceneBuilder.py
-
 """
-ファイル名: builders/sceneBuilder.py
+コアデータからBlender用の全オブジェクトを生成する統合ビルダー
 
-責務:
-- コアモデル(Node/SandbagNode/Panel…)からBlender用表示オブジェクト群を一括生成。
-- kind_idで通常ノード／サンドバッグを自動仕分けし、各ビルダーに分派。
-- 生成物（球体／“工”字サンドバッグユニット／パネル／屋根／柱／梁／地面）を返却。
+- 通常ノード（球体）、サンドバッグノード（立方体）を種別ごとにビルダー分岐
+- すべての生成は「静的オブジェクトのみ」（アニメーション・キーフレームは担当しない）
+- 戻り値はapply_all_materialsやアニメーターでそのまま使える
 
-注意:
-- メンバー（columns/beams）には column_edges, beam_edges を使用。
-- ノードは dict or list の両方を受け取る。
+【設計思想】
+- コアモデル（Node/SandbagNode/Panel...）→Blender用表示オブジェクト群へ一括変換
+- kind_idで通常ノード/サンドバッグ自動仕分け
+- 追加ラベル、屋根、部材生成も一元化
 """
 
-from typing import List, Dict, Tuple, Any, Optional, Union
-import bpy
-from utils.logging_utils import setup_logging
-
-from builders.nodes import build_nodes
-from cores.sandbagUnit import pair_sandbag_nodes
-from builders.sandbagUnitsBuilder import build_sandbag_units
+from typing import List, Dict, Tuple, Any, Optional
+from builders.nodes import build_nodes, create_node_labels
+from builders.sandbags import build_sandbags, create_sandbag_labels
+from sandbag_create import build_sandbags_from_template
 from builders.panels import build_blender_panels, build_roof
 from builders.columns import build_columns
 from builders.beams import build_beams
-from builders.groundBuilder import build_ground_plane
-
-from configs import (
-    SANDBAG_NODE_KIND_IDS,
-    SPHERE_RADIUS,
-    SANDBAG_FACE_SIZE,
-    SANDBAG_BAR_THICKNESS,
-)
-
-log = setup_logging("sceneBuilder")
+from config import SANDBAG_NODE_KIND_IDS, SANDBAG_CUBE_SIZE, SPHERE_RADIUS
 
 
 def build_blender_objects(
-    nodes: Union[Dict[int, Any], List[Any]],
+    nodes: Dict[int, Any] | List[Any],
     column_edges: List[Tuple[int, int]],
     beam_edges: List[Tuple[int, int]],
-    panels: Optional[List[Any]] = None,
-    sandbag_face_size: Tuple[float, float] = SANDBAG_FACE_SIZE,
-    sandbag_bar_thickness: float = SANDBAG_BAR_THICKNESS,
-    node_sphere_radius: float = SPHERE_RADIUS,
-    include_ground: bool = True,
+    panels: Optional[Any] = None,
+    sandbag_cube_size=SANDBAG_CUBE_SIZE,
+    node_sphere_radius=SPHERE_RADIUS,
 ) -> Tuple[
-    Dict[int, bpy.types.Object],  # node_objs
-    Dict[int, bpy.types.Object],  # sandbag_unit_objs
-    List[bpy.types.Object],  # panel_objs
-    Optional[bpy.types.Object],  # roof_obj
-    List[Tuple[int, int, int, int]],  # roof_quads
-    List[Tuple[bpy.types.Object, int, int]],  # member_objs
-    Optional[bpy.types.Object],  # ground_obj
+    Dict[int, Any],
+    Dict[int, Any],
+    List[Any],
+    Any,
+    List[Tuple[int, int, int, int]],
+    List[Any],
 ]:
     """
-    nodes: dict or list of core Node/SandbagNode objects
-    column_edges: list of (start_id, end_id)
-    beam_edges:   list of (start_id, end_id)
-    panels:       list of core Panel objects
+    コアデータからBlender用の全オブジェクトを生成する
+    kind_idに応じて通常ノード/サンドバッグノードを分離し別ビルダーへ
 
-    returns:
-        node_objs, sandbag_unit_objs, panel_objs, roof_obj,
-        roof_quads, member_objs, ground_obj
+    Args:
+        nodes: ListまたはDict[int, Node/SandbagNode]
+        column_edges: 柱エッジリスト (List[Tuple[int, int]])
+        beam_edges: 梁エッジリスト (List[Tuple[int, int]])
+        panels: Panelリスト（省略可）
+        sandbag_cube_size: サンドバッグ立方体一辺の長さ
+        node_sphere_radius: 通常ノード球体半径
+
+    Returns:
+        node_objs: ノード球 {id: BlenderObject}
+        sandbag_objs: サンドバッグ立方体 {id: BlenderObject}
+        panel_objs: パネルオブジェクトリスト
+        roof_obj: 屋根オブジェクト
+        roof_quads: 屋根パネルIDタプルリスト
+        member_objs: 柱・梁オブジェクトリスト
     """
-    log.info("=================[Blenderオブジェクトを構築]=========================")
 
-    # nodes が dict なら .values()、list ならそのままイテレート
-    iterable = nodes.values() if isinstance(nodes, dict) else nodes
-
-    # kind_id で通常ノード／サンドバッグノードを分離
+    # 1. kind_idで通常ノード/サンドバッグノードに分離
     sandbag_nodes: Dict[int, Any] = {}
     normal_nodes: Dict[int, Any] = {}
-    for n in iterable:
-        kind = getattr(n, "kind_id", None)
-        if kind == 0 or kind in SANDBAG_NODE_KIND_IDS:
+    for n in nodes.values() if isinstance(nodes, dict) else nodes:
+        kind_id = getattr(n, "kind_id", None)
+        if kind_id == 0 or kind_id in SANDBAG_NODE_KIND_IDS:
             sandbag_nodes[n.id] = n
         else:
             normal_nodes[n.id] = n
 
-    # 1) 通常ノード球体生成
+    # 2. 通常ノード球体生成（静的）
     node_objs = (
         build_nodes(normal_nodes, radius=node_sphere_radius) if normal_nodes else {}
     )
 
-    # 2) サンドバッグUnit (“工”字形) 生成
-    # nodes dict が必要な形なら整形
-    node_dict = nodes if isinstance(nodes, dict) else {n.id: n for n in nodes}
-    units = pair_sandbag_nodes(node_dict)
-    sandbag_objs = build_sandbag_units(units) if units else {}
+    # 3. サンドバッグ立方体生成（静的）
+    # sandbag_objs = (
+    #     build_sandbags(sandbag_nodes, cube_size=sandbag_cube_size)
+    #     if sandbag_nodes
+    #     else {}
+    # )
+    sandbag_objs = (
+        build_sandbags_from_template(sandbag_nodes)
+        if sandbag_nodes 
+        else {}
+    )
 
-    # 3) パネル生成
+    # 4. ラベル生成（どちらも個別関数）
+    create_node_labels({nid: n.pos for nid, n in normal_nodes.items()})
+    create_sandbag_labels({nid: n.pos for nid, n in sandbag_nodes.items()})
+
+    # 5. パネル生成
     panel_objs = build_blender_panels(panels) if panels else []
 
-    # 4) 屋根生成
-    # 全ノード位置辞書を組み合わせ
-    all_pos = {
+    # 6. 屋根生成
+    all_node_positions = {
         **{nid: n.pos for nid, n in normal_nodes.items()},
         **{nid: n.pos for nid, n in sandbag_nodes.items()},
     }
-    roof_obj, roof_quads = build_roof(all_pos)
+    roof_obj, roof_quads = build_roof(all_node_positions)
 
-    # 5) 柱・梁生成
-    column_objs = build_columns(all_pos, set(column_edges), thickness=0.5)
-    beam_objs = build_beams(all_pos, set(beam_edges), thickness=0.5)
+    # 7. 柱・梁生成（全ノード座標を統合して生成）
+    column_objs = build_columns(all_node_positions, set(column_edges), thickness=0.5)
+    beam_objs = build_beams(all_node_positions, set(beam_edges), thickness=0.5)
     member_objs = list(column_objs) + list(beam_objs)
 
-    # 6) 地面生成
-    ground_obj = build_ground_plane() if include_ground else None
-
-    return (
-        node_objs,
-        sandbag_objs,
-        panel_objs,
-        roof_obj,
-        roof_quads,
-        member_objs,
-        ground_obj,
-    )
+    return node_objs, sandbag_objs, panel_objs, roof_obj, roof_quads, member_objs

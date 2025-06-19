@@ -1,19 +1,13 @@
 """
-ファイル名: loaders/nodeAnimLoader.py
+アニメーションデータローダ
+- ノードごとのフレーム毎変位データを辞書形式でロード
+- DISP列の自動抽出とスケーリング・ノード/成分単位で厳密管理
 
-責務:
-- ノードごとのフレーム毎変位アニメーションCSVを解析し、
-  ノードID→{フレーム: Vector(dx,dy,dz)}の2重辞書として返す専用ローダ。
-- DISP列自動抽出とスケーリング・厳密なデータ検証も担う。
-
-設計・注意点:
-- (TYPE)(CMP)(ID)の3段ヘッダ解析、DISP列のみ抽出
-- ノードIDや成分インデックスのバリデーションを徹底
-- スケール変換・異常値はすべてログ記録し除外
-
-TODO:
-- ヘッダや列構造が変化するCSVフォーマットにも柔軟に対応できる設計に拡張
-- 単体テストのためfile-likeオブジェクト入力にも対応させる
+【設計・注意点】
+- CSVは(TYPE)(CMP)(ID)ヘッダ3行＋データ本体
+- DISPで始まる列のみを自動判別・col_mapで管理
+- ノードID/成分インデックス等すべて厳密バリデーション
+- 各フレームごとにVector格納、スケール変換
 """
 
 import csv
@@ -21,43 +15,37 @@ from collections import defaultdict
 from typing import Dict
 from mathutils import Vector
 from utils.logging_utils import setup_logging
-from configs import (
-    NODE_ANIM_CSV,
-    VALID_NODE_IDS,
-    ANIM_FPS,
-    DISP_SCALE,
-    TYPE_HEADER,
-    CMP_HEADER,
-    ID_HEADER,
-)
+from config import ANIM_CSV, VALID_NODE_IDS, ANIM_FPS, DISP_SCALE
 
-log = setup_logging("nodeAnimLoader")
+log = setup_logging()
+
+TYPE_HEADER = "(TYPE)"
+CMP_HEADER = "(CMP)"
+ID_HEADER = "(ID)"
 
 
-def load_animation_data(path: str = NODE_ANIM_CSV) -> Dict[int, Dict[int, Vector]]:
+def load_animation_data(path: str = ANIM_CSV) -> Dict[int, Dict[int, Vector]]:
     """
-    役割:
-        ノードごとのフレーム毎変位アニメーションCSVを解析し、
-        ノードID→{フレーム: Vector(dx,dy,dz)}の辞書として返す。
+    アニメーションCSVを解析し、
+    ノードID→{フレーム: 変位Vector}の2重辞書にして返す
 
-    引数:
+    Args:
         path (str): アニメーションCSVファイルパス（省略時はconfig値）
-
-    返り値:
+    Returns:
         Dict[int, Dict[int, Vector]]:
-            ノードID→{フレーム: Vector(dx,dy,dz)}
+            ノードID→{フレーム: Vector(dx,dy,dz)}の辞書
             例: { node_id: { frame: Vector(dx,dy,dz), ... }, ... }
-
-    例外:
+    Raises:
         RuntimeError/Exception: ファイル/ヘッダ/データ不正時
 
-    処理:
-        - (TYPE)(CMP)(ID)の3段ヘッダを自動抽出
-        - DISP列のみcol_mapに格納し管理
-        - 各行[時刻, ...]をフレーム換算、値をスケール変換してVectorへ
-        - 不正値・列不足はログ警告しスキップ
+    【内部処理詳細】
+    - (TYPE)(CMP)(ID)の3段ヘッダを自動解析
+    - DISP列のみを抽出・有効なノードIDだけcol_mapに格納
+    - CSV各行を時間→フレームへ変換、各値をスケール変換
+    - 不正値・列不足はログ警告してスキップ
     """
-    log.info("=================[ノードアニメーションCSVを読み取り]=========================")
+    log.info("=================[アニメーション情報を読み取り]=========================")
+    log.info(f"Reading animation data from: {path}")
     rows = []
     try:
         with open(path, newline="", encoding="utf-8", errors="ignore") as f:
@@ -67,8 +55,9 @@ def load_animation_data(path: str = NODE_ANIM_CSV) -> Dict[int, Dict[int, Vector
         log.critical(f"[{path}] CRITICAL: Failed to open/read animation CSV ({e})")
         raise
 
-    type_row = cmp_row = id_row = None
-    header_end = None
+    type_row = None
+    cmp_row = None
+    id_row = None
     for i, row in enumerate(rows):
         if not row:
             continue
@@ -114,6 +103,7 @@ def load_animation_data(path: str = NODE_ANIM_CSV) -> Dict[int, Dict[int, Vector
                 f"[{path}] Failed to parse node ID at header col {j}: {id_row} ({e})"
             )
             continue
+        #if nid not in VALID_NODE_IDS and nid not in FICTION_NODE_IDS:
         if nid not in VALID_NODE_IDS:
             continue
         col_map[j] = (nid, comp - 1)
@@ -122,7 +112,7 @@ def load_animation_data(path: str = NODE_ANIM_CSV) -> Dict[int, Dict[int, Vector
         log.critical(f"[{path}] No DISP columns found for valid nodes.")
         raise RuntimeError("No valid DISP columns in animation CSV")
 
-    log.info(f"{len(col_map)}件の有効ノードのDISP列を検出しました。")
+    log.info(f"→ Found {len(col_map)} DISP columns for valid nodes")
 
     # アニメーションデータ本体の読み込み
     anim_data: Dict[int, Dict[int, Vector]] = defaultdict(
@@ -162,5 +152,7 @@ def load_animation_data(path: str = NODE_ANIM_CSV) -> Dict[int, Dict[int, Vector
         for frame, vec in frames.items():
             result[nid][frame] = vec
 
-    log.info(f"{len(result)}件のノードアニメーションデータを読み込みました。")
+    log.info(
+        f"Loaded animation data: {len(result)} nodes, up to {max((len(f) for f in result.values()), default=0)} frames"
+    )
     return result

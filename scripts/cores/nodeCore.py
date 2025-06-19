@@ -1,34 +1,28 @@
 """
-責務:
-- 構造グラフ上のノード（Node）コアデータクラスを定義。
-- ノードID・座標・種別ID・階層属性のみを純粋に保持。
-- グラフ構造やリンクの管理責任は外部に完全移譲。
+ノード（Node）コアクラス
+- 構造グラフ上のノードID・位置・階層属性・種別ID・
+  関連エッジ/パネルリストなどを保持
+- Edge/Panelオブジェクトとの相互参照による構造把握
 
-設計指針:
-- データ属性以外の機能・参照・相互リンク・add_edge/add_panelなどは持たない。
-- 参照型・構造管理はCoreGraph等の外部クラスに委譲。
-- 型ヒント厳格化・pydantic/dataclass化も将来検討。
-
-TODO:
-- サンドバッグノードはkind_id=0で通常ノードと統一運用。
-- さらなる属性管理外部化・データクラス強化も検討。
+【設計指針】
+- id: int, pos: Vector, floor: Optional[str], kind_id: Optional[int]
+- add_edge/add_panelで相互リンク構築
+- __repr__は構造・デバッグ用に拡張可能
 """
 
-from typing import Optional
+from typing import List, Optional, TYPE_CHECKING
 from mathutils import Vector
+
+if TYPE_CHECKING:
+    from cores.edgeCore import Edge
+    from cores.panelCore import Panel
 
 
 class Node:
     """
-    役割:
-        構造グラフ上のノード（接点）コアデータクラス。
-        ノードID・座標・階層・種別IDのみを純粋に保持。
-
-    属性:
-        id (int): ノードID
-        pos (Vector): 座標
-        floor (Optional[str]): 階層属性
-        kind_id (Optional[int]): ノード種別ID
+    ノード（接点）コアクラス
+    - ノードID・座標・階層・種別・関連エッジ/パネル保持
+    - 主要グラフ構造ノード基盤
     """
 
     def __init__(
@@ -38,16 +32,52 @@ class Node:
         floor: Optional[str] = None,
         kind_id: Optional[int] = None,
     ) -> None:
+        """
+        ノードを初期化
+        Args:
+            id (int): ノードID
+            pos (Vector): 座標
+            floor (Optional[str]): 階層属性
+            kind_id (Optional[int]): ノード種別
+        Returns:
+            None
+        """
         self.id: int = id
         self.pos: Vector = pos
         self.floor: Optional[str] = floor
         self.kind_id: Optional[int] = kind_id
+        self.edges: List["Edge"] = []
+        self.panels: List["Panel"] = []
+
+    def add_edge(self, edge: "Edge") -> None:
+        """
+        関連エッジリストに追加
+        Args:
+            edge (Edge): 追加するエッジ
+        Returns:
+            None
+        """
+        if edge not in self.edges:
+            self.edges.append(edge)
+
+    def add_panel(self, panel: "Panel") -> None:
+        """
+        関連パネルリストに追加
+        Args:
+            panel (Panel): 追加するパネル
+        Returns:
+            None
+        """
+        if panel not in self.panels:
+            self.panels.append(panel)
 
     def __repr__(self) -> str:
         """
-        役割:
-            ノードの主要属性を可読文字列で返す。
-        返り値:
-            str
+        ノードの情報を可読文字列で返す
+        Returns:
+            str: ノード情報
         """
-        return f"Node(id={self.id}, pos={tuple(self.pos)}, floor={self.floor}, kind_id={self.kind_id})"
+        return (
+            f"Node(id={self.id}, pos={tuple(self.pos)}, floor={self.floor}, "
+            f"edges={len(self.edges)}, panels={len(self.panels)})"
+        )

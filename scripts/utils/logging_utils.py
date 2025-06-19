@@ -7,7 +7,7 @@
 import logging
 
 try:
-    from configs import LOG_LEVEL
+    from config import LOG_LEVEL
 except ImportError:
     LOG_LEVEL = "INFO"
 

@@ -1,21 +1,15 @@
 """
-ファイル名: builders/columns.py
+柱（Column）生成ビルダー（builders/columns.py）
 
-責務:
-- ノード座標とエッジ情報からBlender上に柱（Cylinderオブジェクト）を一括生成するビルダー。
-- 中心・回転・長さは自動計算（親子/アニメ機能は持たない）。
-
-TODO:
-- build_beamsとの共通化・ベースクラス化（重複ロジック統合）
-- ノード座標受け渡しの型整理（dataclass化・type alias導入も視野）
-- エラー時のロギングや復帰処理の粒度見直し
+- ノード座標とエッジ情報からBlender上に柱（Cylinder）を一括生成
+- 回転・長さ自動計算。親子/アニメは持たない
 """
 
 import bpy
 from mathutils import Vector
 from utils.logging_utils import setup_logging
 
-log = setup_logging("build_columns")
+log = setup_logging()
 
 
 def build_columns(
@@ -24,20 +18,19 @@ def build_columns(
     thickness: float,
 ) -> list[tuple[bpy.types.Object, int, int]]:
     """
-    役割:
-        ノード座標とエッジ情報から柱（Cylinderオブジェクト）を生成する。
+    ノード座標とエッジ情報から柱（Cylinderオブジェクト）を生成する
 
-    引数:
+    Args:
         nodes (dict[int, Vector]): ノードID→座標Vectorの辞書
         edges (set[tuple[int, int]]): 柱となるノードIDペア集合
         thickness (float): 柱シリンダーの半径
 
-    返り値:
+    Returns:
         list[tuple[bpy.types.Object, int, int]]: (柱Object, ノードA ID, ノードB ID)タプルリスト
 
-    補足:
-        - 中心座標・回転は自動計算（Blender側でスケール補正）
-        - build_beamsと同一シグネチャ
+    Note:
+        - 中心座標・回転は自動計算
+        - Blender側でスケール補正
     """
     objs = []
     up = Vector((0, 0, 1))
@@ -48,9 +41,13 @@ def build_columns(
             mid = (p1 + p2) / 2
             length = vec.length
 
-            bpy.ops.mesh.primitive_cylinder_add(
-                vertices=16, radius=thickness, depth=1, location=mid
+            # bpy.ops.mesh.primitive_cylinder_add(
+            #     vertices=16, radius=thickness, depth=1, location=mid
+            # )
+            bpy.ops.mesh.primitive_cube_add(
+                size=1, location=mid
             )
+            
             obj = bpy.context.object
             obj.name = f"Column_{a}_{b}"
 
@@ -72,5 +69,4 @@ def build_columns(
             objs.append((obj, a, b))
         except Exception as e:
             log.error(f"Failed to create column between {a} and {b}: {e}")
-    log.info(f"{len(objs)}件のBlender柱オブジェクトを生成しました。")
     return objs

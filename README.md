@@ -42,8 +42,8 @@ scripts/
       animation-kumamoto-no-tbags.csv
       animation-kumamoto-with-tbags.csv
       kumamoto-erthquake-disp.csv
-      self-no-tbags.str
-      self-with-tbags.str
+      input-no-tbags.str
+      input-with-tbags.str
     textures/
       roof_texture.png
       wall_texture.png
