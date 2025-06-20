@@ -11,11 +11,7 @@
 注意:
 - column_edges, beam_edges は Edge 情報を渡す。
 - nodes 引数は dict or list を受け付ける。
-
-TODO:
-- ビルダー間のエラーリカバリや並列実行を検討
 """
-
 from typing import Any, Dict, List, Tuple, Union, Optional
 from utils.logging_utils import setup_logging
 from builders.base import BuilderBase
@@ -60,15 +56,13 @@ class SceneBuilder(BuilderBase):
         self.sandbag_bar_thickness = sandbag_bar_thickness
         self.include_ground = include_ground
 
-    def build(
-        self,
-    ) -> Tuple[
+    def build(self) -> Tuple[
         Dict[int, Any],  # node_objs
         Dict[int, Any],  # sandbag_objs
         List[Any],  # panel_objs
         Any,  # roof_obj
         List[Tuple[int, int, int, int]],  # roof_quads
-        List[Any],  # member_objs
+        List[Tuple[Any, int, int]],  # member_objs as (object, start_id, end_id)
         Any,  # ground_obj
     ]:
         # 0) ノード iterable 作成
@@ -117,10 +111,13 @@ class SceneBuilder(BuilderBase):
         }
         roof_obj, roof_quads = RoofBuilder(all_positions).run()
 
-        # 6) 構造部材生成
+        # 6) 構造部材生成 (柱・梁を start_id, end_id と共に保持)
         col_map = ColumnBuilder(all_positions, self.column_edges, thickness=0.5).run()
         beam_map = BeamBuilder(all_positions, self.beam_edges, thickness=0.5).run()
-        member_objs = list(col_map.values()) + list(beam_map.values())
+        member_objs = [
+            (obj, int(key.split("_")[0]), int(key.split("_")[1]))
+            for key, obj in {**col_map, **beam_map}.items()
+        ]
 
         # 7) 地面生成
         ground_obj = GroundBuilder().run() if self.include_ground else None
@@ -133,8 +130,7 @@ class SceneBuilder(BuilderBase):
             f"Units={len(sandbag_unit_objs)}, "
             f"Panels={len(panel_objs)}, "
             f"RoofQuads={len(roof_quads)}, "
-            f"Columns={len(col_map)}, "
-            f"Beams={len(beam_map)}, "
+            f"Members={len(member_objs)}, "
             f"Ground={'Yes' if ground_obj else 'No'}"
         )
         log.info(summary)

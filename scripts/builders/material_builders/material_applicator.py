@@ -9,7 +9,7 @@
 """
 
 import bpy
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union, Tuple
 from utils.logging_utils import setup_logging
 from builders.base import BuilderBase
 from .material_factories import (
@@ -32,7 +32,7 @@ class MaterialApplicator(BuilderBase):
         sandbag_objs: Dict[int, bpy.types.Object],
         panel_objs: List[bpy.types.Object],
         roof_obj: Optional[bpy.types.Object],
-        member_objs: List[bpy.types.Object],
+        member_objs: List[Union[bpy.types.Object, Tuple[bpy.types.Object, int, int]]],
         ground_obj: Optional[bpy.types.Object],
     ):
         super().__init__()
@@ -80,8 +80,16 @@ class MaterialApplicator(BuilderBase):
             self.roof_obj.data.materials.append(mat_roof)
             counts["屋根"] += 1
 
+        # member_objs がタプルの場合にオブジェクトのみを抽出
+        member_objs_clean: List[bpy.types.Object] = []
+        for item in self.member_objs:
+            if isinstance(item, tuple):
+                member_objs_clean.append(item[0])
+            else:
+                member_objs_clean.append(item)
+
         # 柱・梁
-        for obj in self.member_objs:
+        for obj in member_objs_clean:
             obj.data.materials.clear()
             if obj.name.startswith("Column_"):
                 obj.data.materials.append(mat_col)
@@ -113,5 +121,6 @@ class MaterialApplicator(BuilderBase):
             self.ground_obj.data.materials.append(mat_ground)
             counts["地面"] += 1
 
+        # ログ出力
         summary = "、".join(f"{k}:{v}" for k, v in counts.items() if v > 0)
         log.info(f"マテリアル適用完了: [{summary}]")

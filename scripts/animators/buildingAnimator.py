@@ -140,7 +140,11 @@ def on_frame_building(
             else:
                 obj.rotation_mode = "QUATERNION"
                 obj.rotation_quaternion = Quaternion((1, 0, 0, 0))
+
+            # スケールを「元の長さ」で割って倍率を設定
+            orig = obj.get("orig_depth", length)
             sx, sy, _ = obj.scale
-            obj.scale = (sx, sy, length)
+            obj.scale = (sx, sy, length / orig)
+
         except Exception as e:
             log.error(f"Failed to update member {obj.name} (nodes {a}-{b}): {e}")
