@@ -22,7 +22,7 @@ from builders.base import BuilderBase
 from builders.object_builders import (
     NodeBuilder,
     SandbagBuilder,
-    SandbagUnitsBuilder,
+    TemplateSandbagBuilder,
     PanelBuilder,
     RoofBuilder,
     ColumnBuilder,
@@ -104,7 +104,7 @@ class SceneBuilder(BuilderBase):
             int(unit.id): [n.id for n in unit.nodes] for unit in sandbag_units_list
         }
         sandbag_unit_objs = (
-            SandbagUnitsBuilder(units_map, sandbag_objs).run() if units_map else {}
+            TemplateSandbagBuilder(units_map, sandbag_objs).run() if units_map else {}
         )
 
         # 4) パネル生成

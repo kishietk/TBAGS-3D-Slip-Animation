@@ -33,6 +33,12 @@ VALID_NODE_IDS = set().union(
     NODE_IDS_2F, NODE_IDS_3F, NODE_IDS_4F, *NODE_IDS_SB.values()
 )
 
+
+# TBAGS下側のノード
+FICTION_NODE_IDS = set().union(
+    NODE_IDS_SB[2] | NODE_IDS_SB[4] | NODE_IDS_SB[6] | NODE_IDS_SB[8]
+)
+
 # ----------------------------
 # Blenderオブジェクト命名・UI
 # ----------------------------
@@ -56,8 +62,8 @@ EPS_XY_MATCH = 1e-3
 EPS_AXIS = 1e-6
 
 # 工字サンドバッグ表示用パラメータ
-SANDBAG_FACE_SIZE      = Vector((3.0, 3.0))  
-SANDBAG_BAR_THICKNESS  = 0.2
+SANDBAG_FACE_SIZE = Vector((3.0, 3.0))
+SANDBAG_BAR_THICKNESS = 0.2
 
 # ----------------------------
 # 地面（Ground）パラメータ
