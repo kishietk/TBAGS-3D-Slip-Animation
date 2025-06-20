@@ -12,6 +12,7 @@ from .panel_builder import PanelBuilder
 from .roof_builder import RoofBuilder
 from .sandbag_builder import SandbagBuilder
 from .sandbag_units_builder import SandbagUnitsBuilder
+from .template_sandbag_builder import TemplateSandbagBuilder
 
 __all__ = [
     "BeamBuilder",
@@ -22,4 +23,5 @@ __all__ = [
     "RoofBuilder",
     "SandbagBuilder",
     "SandbagUnitsBuilder",
+    "TemplateSandbagBuilder",
 ]
