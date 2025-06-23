@@ -5,13 +5,13 @@
 
 責務:
     - ロード済みノード/エッジ情報からコア構造グラフを自動構築・管理。
-        （Node, Edge, Beam, Column, Panel, SandbagUnit）
+        （Node, Edge, Beam, Column, Panel, Sandbag）
     - 各コア要素のリスト/辞書取得API提供およびサマリー生成。
 
 設計方針:
     - NodeData/EdgeDataをNode/Edge系オブジェクトに変換
     - kind_idにより要素種別（Wall, Column, Beam, Sandbag）分類を一元化
-    - SandbagUnitは2ノードペアリングで生成
+    - Sandbagは2ノードペアリングで生成
 
 TODO:
     - 例外処理強化: 無効なkind_idや欠損データへの耐性を追加
@@ -23,16 +23,9 @@ TODO:
 from typing import Dict, List, Optional, Union
 from utils.logging_utils import setup_logging
 from configs import WALL_NODE_KIND_IDS, COLUMNS_KIND_IDS, BEAMS_KIND_IDS
-from cores.entities import (
-    Node,
-    Edge,
-    Beam,
-    Column,
-    Panel,
-    SandbagUnit,
-    pair_sandbag_nodes,
-)
-from cores.constructors.makePanelsList import make_panels_list
+from cores.entities import Node, Edge, Beam, Column, Panel, Sandbag
+from .make_panel_unit import make_panel_unit
+from .make_sandbag_unit import make_sandbag_unit
 from loaders.structureParser import NodeData, EdgeData
 
 log = setup_logging("CoreFactory")
@@ -46,7 +39,7 @@ class CoreFactory:
         nodes (Dict[int, Node])
         edges (List[Edge])
         panels (List[Panel])
-        sandbags (List[SandbagUnit])
+        sandbags (List[Sandbag])
     """
 
     def __init__(
@@ -59,7 +52,7 @@ class CoreFactory:
         self.nodes: Dict[int, Node] = {}
         self.edges: List[Edge] = []
         self.panels: List[Panel] = []
-        self.sandbags: List[SandbagUnit] = []
+        self.sandbags: List[Sandbag] = []
         self._construct_core_all(nodes_data, edges_data)
 
     def _construct_core_all(
@@ -71,7 +64,7 @@ class CoreFactory:
         self.nodes = self._construct_core_nodes(nodes_data)
         self.edges = self._construct_core_edges(edges_data, self.nodes)
         self.panels = self._construct_core_panels(self.nodes, self.panel_node_kind_ids)
-        self.sandbags = pair_sandbag_nodes(self.nodes)
+        self.sandbags = make_sandbag_unit(self.nodes)
         log.info(
             f"Nodes={len(self.nodes)}, Edges={len(self.edges)}, "
             f"Panels={len(self.panels)}, Sandbags={len(self.sandbags)}"
@@ -111,7 +104,7 @@ class CoreFactory:
         node_map: Dict[int, Node],
         panel_node_kind_ids: List[int],
     ) -> List[Panel]:
-        panel_data = make_panels_list(
+        panel_data = make_panel_unit(
             node_map=node_map,
             panel_node_kind_ids=panel_node_kind_ids,
         )
@@ -156,7 +149,7 @@ class CoreFactory:
     def get_panels(self) -> List[Panel]:
         return self.panels
 
-    def get_sandbags(self) -> List[SandbagUnit]:
+    def get_sandbags(self) -> List[Sandbag]:
         return self.sandbags
 
     def summary(self) -> str:

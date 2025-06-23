@@ -32,7 +32,7 @@ from builders.object_builders import (
     BeamBuilder,
     GroundBuilder,
 )
-from cores.entities import pair_sandbag_nodes
+from cores.constructors import make_sandbag_unit
 from configs import (
     SANDBAG_NODE_KIND_IDS,
     SPHERE_RADIUS,
@@ -52,7 +52,7 @@ def prepare_sandbag_units(all_nodes: Dict[int, Any]) -> List[Dict[str, Any]]:
     Returns:
         List[Dict]: {unit_id, rep_node, other_node} を要素とするリスト
     """
-    units = pair_sandbag_nodes(all_nodes)
+    units = make_sandbag_unit(all_nodes)
     result: List[Dict[str, Any]] = []
     for unit in units:
         n1, n2 = sorted(unit.nodes, key=lambda n: n.kind_id)

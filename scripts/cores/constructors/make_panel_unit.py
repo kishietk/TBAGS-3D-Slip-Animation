@@ -37,7 +37,7 @@ class PanelData(NamedTuple):
     attributes: dict = {}
 
 
-def make_panels_list(
+def make_panel_unit(
     node_map: Dict[int, NodeData],
     panel_node_kind_ids: List[int],
 ) -> List[PanelData]:
