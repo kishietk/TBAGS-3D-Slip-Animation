@@ -7,10 +7,6 @@
 本プロジェクトは**Blender**上で TBAGS 構造（免震サンドバッグ架構等）の  
 **ノード・柱・梁・パネル・サンドバッグ・アニメーション**を一括生成・可視化するスクリプト群です。
 
-- データ駆動・明確な責務分割・柔軟な拡張性
-- 大規模・複雑モデルや特殊ラベルも容易に可視化
-- 型ヒント・詳細 docstring とログ出力による透明性
-
 ---
 
 ## ディレクトリ構成
@@ -34,20 +30,23 @@
 - **Blender 4.x 以降**（公式推奨）
 - Python 3.10+（Blender 内蔵）
 - mathutils, logging（Blender 標準同梱）
+
 - 必須データ：
+
   data/
-  animation-kumamoto-no-tbags.csv
-  animation-kumamoto-with-tbags.csv
-  animation-kobe-with-tbags.csv
-  kumamoto-erthquake-disp.csv
-  kobe-erthquake-disp.csv
-  self-no-tbags.str
-  self-with-tbags.str
-  sandbag_template_low.blend
+    animation-kumamoto-no-tbags.csv
+    animation-kumamoto-with-tbags.csv
+    animation-kobe-with-tbags.csv
+    kumamoto-erthquake-disp.csv
+    kobe-erthquake-disp.csv
+    self-no-tbags.str
+    self-with-tbags.str
+    sandbag_template_low.blend
+
   textures/
-  roof_texture.png
-  wall_texture.png
-  tbags_texture.jpeg
+    roof_texture.png
+    wall_texture.png
+    tbags_texture.jpeg
 
 ---
 

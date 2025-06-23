@@ -12,7 +12,7 @@
 from typing import List, Dict, Tuple
 from mathutils import Vector
 from configs.kind_labels import SANDBAG_NODE_KIND_IDS
-from cores.nodeCore import Node
+from .node_core import Node
 
 
 class SandbagUnit:

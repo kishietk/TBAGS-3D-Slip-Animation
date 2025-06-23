@@ -1,7 +1,7 @@
-# cores/coreConstructer.py
+# cores/CoreFactory.py
 
 """
-ファイル名: cores/coreConstructer.py
+ファイル名: cores/CoreFactory.py
 
 責務:
     - ロード済みノード/エッジ情報からコア構造グラフを自動構築・管理。
@@ -23,19 +23,22 @@ TODO:
 from typing import Dict, List, Optional, Union
 from utils.logging_utils import setup_logging
 from configs import WALL_NODE_KIND_IDS, COLUMNS_KIND_IDS, BEAMS_KIND_IDS
-from cores.nodeCore import Node
-from cores.edgeCore import Edge
-from cores.beamCore import Beam
-from cores.columnCore import Column
-from cores.panelCore import Panel
-from cores.makePanelsList import make_panels_list
-from cores.sandbagUnit import pair_sandbag_nodes, SandbagUnit
+from cores.entities import (
+    Node,
+    Edge,
+    Beam,
+    Column,
+    Panel,
+    SandbagUnit,
+    pair_sandbag_nodes,
+)
+from cores.constructors.makePanelsList import make_panels_list
 from loaders.structureParser import NodeData, EdgeData
 
-log = setup_logging("coreConstructer")
+log = setup_logging("CoreFactory")
 
 
-class coreConstructer:
+class CoreFactory:
     """
     ロード済みデータからコアモデルを構築・一元管理するクラス。
 

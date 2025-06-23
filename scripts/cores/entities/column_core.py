@@ -9,7 +9,7 @@
 - ColumnはEdgeのサブクラス。is_column属性で型安全な分岐やラベル出力を実現。
 """
 
-from cores.edgeCore import Edge
+from .edge_core import Edge
 
 
 class Column(Edge):

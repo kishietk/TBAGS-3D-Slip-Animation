@@ -22,7 +22,7 @@ package loaders {
 
 ' ========== CORES ==========
 package cores {
-    class coreConstructer_py as "coreConstructer.py" <<core>> {
+    class CoreFactory_py as "CoreFactory.py" <<core>> {
         ' コア構造（Node, Edge, Panel）生成・管理
     }
     class nodeCore_py as "nodeCore.py" <<core>> {
@@ -132,7 +132,7 @@ class main_py as "main.py" <<entry>> {
 ' ==============================
 main_py --> main_utils_py
 main_utils_py --> loaderManager_py
-main_utils_py --> coreConstructer_py
+main_utils_py --> CoreFactory_py
 main_utils_py --> sceneBuilder_py
 main_utils_py --> materials_py
 main_utils_py --> building_animator_py
@@ -143,13 +143,13 @@ loaderManager_py --> structureParser_py
 loaderManager_py --> nodeAnimLoader_py
 loaderManager_py --> earthquakeAnimLoader_py
 
-coreConstructer_py --> nodeCore_py
-coreConstructer_py --> sandbagCore_py
-coreConstructer_py --> edgeCore_py
-coreConstructer_py --> beamCore_py
-coreConstructer_py --> columnCore_py
-coreConstructer_py --> panelCore_py
-coreConstructer_py --> makePanelsList_py
+CoreFactory_py --> nodeCore_py
+CoreFactory_py --> sandbagCore_py
+CoreFactory_py --> edgeCore_py
+CoreFactory_py --> beamCore_py
+CoreFactory_py --> columnCore_py
+CoreFactory_py --> panelCore_py
+CoreFactory_py --> makePanelsList_py
 
 sceneBuilder_py --> nodes_py
 sceneBuilder_py --> sandbags_py

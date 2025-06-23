@@ -15,7 +15,7 @@ from typing import Tuple, Dict, List, Any, Optional
 
 from utils.blenderScene_utils import clear_scene
 from loaders.loaderManager import LoaderManager
-from cores.coreConstructer import coreConstructer
+from cores.constructors.core_factory import CoreFactory
 from builders.scene_builders.scene_builder import SceneBuilder
 from builders.hierarchy_builders.motion_parent_builder import (
     build_motion_parent,
@@ -113,18 +113,18 @@ def load_all_data(
 def build_core_model(
     nodes_data: Dict[int, Any],
     edges_data: List[Tuple[int, int]],
-) -> coreConstructer:
+) -> CoreFactory:
     """
     役割:
-        コアモデル(coreConstructer)を構築する。
+        コアモデル(CoreFactory)を構築する。
     返り値:
-        coreConstructer インスタンス
+        CoreFactory インスタンス
     """
-    return coreConstructer(nodes_data, edges_data)
+    return CoreFactory(nodes_data, edges_data)
 
 
 def build_blender_objects_from_core(
-    core: coreConstructer,
+    core: CoreFactory,
 ) -> Tuple[
     Dict[int, bpy.types.Object],  # node_objs
     Dict[int, bpy.types.Object],  # sandbag_unit_objs
@@ -186,7 +186,7 @@ def apply_materials_to_all(
 
 
 def setup_animation_handlers(
-    core: coreConstructer,
+    core: CoreFactory,
     anim_data: Dict[int, Any],
     blender_objs: Tuple[
         Dict[int, bpy.types.Object],

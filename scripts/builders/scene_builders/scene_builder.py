@@ -32,7 +32,7 @@ from builders.object_builders import (
     BeamBuilder,
     GroundBuilder,
 )
-from cores.sandbagUnit import pair_sandbag_nodes
+from cores.entities import pair_sandbag_nodes
 from configs import (
     SANDBAG_NODE_KIND_IDS,
     SPHERE_RADIUS,
