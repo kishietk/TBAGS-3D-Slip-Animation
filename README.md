@@ -1,5 +1,7 @@
 # TBAGS-Slip-Animation 構造可視化スクリプト
 
+---
+
 ## 概要
 
 本プロジェクトは**Blender**上で TBAGS 構造（免震サンドバッグ架構等）の  
@@ -13,22 +15,17 @@
 
 ## ディレクトリ構成
 
-scripts/
-├─ main.py # 実行エントリポイント（全パイプライン統括）
-├─ configs/
-│ ├─ constants.py # 物理定数・ID セット・描画用数値等
-│ ├─ kind_labels.py # 部材種別 ID と分類・ラベル管理
-│ └─ paths.py # データ/画像等ファイルパス集中管理
-│
-├─ cores/ # コア構造モデル（Node/Edge/Panel/Beam/Column/SandbagNode 等）
-├─ builders/ # Blender オブジェクト生成（ノード球/サンドバッグ/柱/梁/パネル/屋根/ラベル/材料）
-├─ loaders/ # データローダ（CSV/STR/アニメーション等）
-├─ utils/ # 共通ユーティリティ（ロギング/Blender 初期化等）
-├─ animators/ # アニメーション処理（建物・地面等のフレーム制御）
-│
-├─ data/ # 入出力データ（self.str, animation.csv 等）
-├─ textures/ # 壁・屋根等の画像
-└─ README.md # 本ファイル
+プロジェクトルート
+├─ scripts/
+│ ├─ main.py
+│ ├─ animators/
+│ ├─ builders/
+│ ├─ configs/
+│ ├─ cores/
+│ ├─ loaders/
+│ └─ utils/
+├─ data/
+└─ textures/
 
 ---
 
@@ -38,15 +35,19 @@ scripts/
 - Python 3.10+（Blender 内蔵）
 - mathutils, logging（Blender 標準同梱）
 - 必須データ：
-    data/
-      animation-kumamoto-no-tbags.csv
-      animation-kumamoto-with-tbags.csv
-      kumamoto-erthquake-disp.csv
-      self-no-tbags.str
-      self-with-tbags.str
-    textures/
-      roof_texture.png
-      wall_texture.png
+  data/
+  animation-kumamoto-no-tbags.csv
+  animation-kumamoto-with-tbags.csv
+  animation-kobe-with-tbags.csv
+  kumamoto-erthquake-disp.csv
+  kobe-erthquake-disp.csv
+  self-no-tbags.str
+  self-with-tbags.str
+  sandbag_template_low.blend
+  textures/
+  roof_texture.png
+  wall_texture.png
+  tbags_texture.jpeg
 
 ---
 
@@ -65,35 +66,28 @@ import runpy
 main_py = r"C:\Users\kishie\Documents\TBAGS-Slip-Animation\scripts\main.py"
 
 # ================================
+
 # データセット選択肢
+
 # sys.argv = [main_py, "--dataset=kumamoto_with_tbags"]
+
 # sys.argv = [main_py, "--dataset=kumamoto_no_tbags"]
+
 # sys.argv = [main_py, "--dataset=kobe_with_tbags"]
 
 # データセット選択肢(未設定)
+
 # sys.argv = [main_py, "--dataset=tohoku_with_tbags"]
+
 # sys.argv = [main_py, "--dataset=tohoku_no_tbags"]
+
 # sys.argv = [main_py, "--dataset=kobe_no_tbags"]
+
 # ================================
 
 sys.argv = [main_py, "--dataset=kobe_with_tbags"]
 
-runpy.run_path(main_py, run_name="__main__")
-
----
-
-## 設計思想・特徴
-
-- **集中管理と分割設計**
-
-  - 定数・ラベル・ファイルパスは`configs/`ディレクトリで一元管理
-  - コア層（Node/Edge/Panel）/Builder 層/Loader 層/Utility 層/Animator 層で明確に責務分割
-  - サンドバッグ兼柱ノード等の特殊部材も、ID 集合・kind_id 分類で柔軟に管理
-
-- **拡張容易性**
-
-  - 定数・ID・ラベルを変更するだけで、新階層や特殊部材に容易対応
-  - Builder/Animator 追加で新部材・機能も増強しやすい
+runpy.run_path(main_py, run_name="**main**")
 
 ---
 
@@ -140,35 +134,3 @@ runpy.run_path(main_py, run_name="__main__")
 
 - マルチエントリポイントやバッチ処理時にグローバル状態管理が煩雑
 - → CLI/GUI/API 等への多様な起動方法を設計
-
----
-
-## カスタマイズ・拡張ガイド
-
-- **部材種別・ラベル・ID 追加**  
-  → `configs/kind_labels.py`や`constants.py`を編集
-- **マテリアルや見た目調整**  
-  → `builders/materials.py`で色・質感を変更
-- **アニメーション仕様の変更**  
-  → `animators/`配下のアニメ制御ロジックを修正
-- **Blender バージョン対応/拡張**  
-  → Blender API 変更時は API ラッパ層や Service 追加で対応
-
----
-
-## 開発・デバッグメモ
-
-- 全関数・クラスに docstring ＋型ヒントあり
-- デバッグ/進捗追跡は`utils/logging_utils.py`から全工程で可能
-- ファイル読み込みエラー等は try/except ＋ログ記録で即時通知
-- 設計・コーディングガイドは各モジュールの先頭コメントや`/docs/system.puml`（PlantUML 図）も参照
-
----
-
-## 補足・参考
-
-- システム設計可視化（PlantUML）は`/docs/system.puml`または下記参照
-- 本 README・設計は 2025 年 6 月時点  
-  ※新機能追加・構成変更時は随時アップデート推奨
-
----
