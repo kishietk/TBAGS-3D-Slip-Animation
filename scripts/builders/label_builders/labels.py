@@ -46,9 +46,11 @@ def create_label(
     """
     from math import radians
 
+    # オフセットがリストやタプルなら Vector に変換
     if not isinstance(offset, Vector):
         offset = Vector(offset)
 
+    # テキストオブジェクトを新規作成
     bpy.ops.object.text_add()
     text_obj = bpy.context.object
     text_obj.name = f"{name_prefix}_{obj.name}"
@@ -59,16 +61,21 @@ def create_label(
     text_obj.data.size = abs_size
 
     if use_constraint:
+        # Child Of 制約で追従させる
         con = text_obj.constraints.new(type="CHILD_OF")
         con.target = obj
         con.use_scale_x = False
         con.use_scale_y = False
         con.use_scale_z = False
+
+        # 一度ワールド行列を更新してからオフセットを適用
         text_obj.location = offset
         bpy.context.view_layer.update()
         text_obj.matrix_world.translation = obj.matrix_world @ offset
     else:
+        # 通常の親子付けでローカル位置をセット
         text_obj.parent = obj
         text_obj.location = offset
 
+    log.debug(f"Label '{text}' created for object '{obj.name}'")
     return text_obj

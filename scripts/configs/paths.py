@@ -98,7 +98,12 @@ EDGES_FILE = EARTHQUAKE_DATASETS[DEFAULT_KEY]["edges_file"]
 # =======================
 WALL_IMG = os.path.join(TEXTURE_DIR, "wall_texture.png")
 ROOF_IMG = os.path.join(TEXTURE_DIR, "roof_texture.png")
+TBAGS_TEXTURE = os.path.join(TEXTURE_DIR, "tbags_texture.jpeg")
 
+# =======================
+# T-BAGS モデル 
+# =======================
+TBAGS_MODEL = os.path.join(DATA_DIR, "sandbag_template_low.blend")
 
 # =======================
 # ログ関数
@@ -109,7 +114,9 @@ def log_dataset_selection(key):
     """
     d = EARTHQUAKE_DATASETS.get(key)
     if d:
-        lines = [f"地震：{d['base'].capitalize()},  T-BAGS：{'あり' if d['tbags'] else 'なし'}"]
+        lines = [
+            f"地震：{d['base'].capitalize()},  T-BAGS：{'あり' if d['tbags'] else 'なし'}"
+        ]
     else:
         lines = [f"[ERROR] 不明なデータセットキー: {key}"]
     return "\n".join(lines)

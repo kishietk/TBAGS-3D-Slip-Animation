@@ -1,3 +1,5 @@
+# utils/main_utils.py
+
 """
 ファイル名: utils/main_utils.py
 
@@ -8,14 +10,19 @@
 """
 
 import bpy
+import argparse
+from typing import Tuple, Dict, List, Any, Optional
+
 from utils.blenderScene_utils import clear_scene
 from loaders.loaderManager import LoaderManager
 from cores.coreConstructer import coreConstructer
-from builders.sceneBuilder import build_blender_objects
-from builders.motionParentBuilder import build_motion_parent, set_parent
-from builders.materials import apply_all_materials
-from animators.ground_animator import register_ground_anim_handler
-from animators.building_animator import on_frame_building
+from builders.scene_builders.scene_builder import SceneBuilder
+from builders.hierarchy_builders.motion_parent_builder import (
+    build_motion_parent,
+    set_parent,
+)
+from builders.material_builders import apply_all_materials
+from animators import register_ground_anim_handler, on_frame_building
 from loaders.earthquakeAnimLoader import load_earthquake_motion_csv
 from configs import (
     ANIM_FPS,
@@ -24,18 +31,15 @@ from configs import (
     EARTHQUAKE_ANIM_CSV,
     log_dataset_selection,
 )
-import argparse
 from utils.logging_utils import setup_logging
 
 log = setup_logging("main_utils")
 
 
-def parse_args():
+def parse_args() -> argparse.Namespace:
     """
     役割:
         コマンドライン引数（地震データセット指定など）をパースして返す。
-    引数:
-        なし
     返り値:
         argparse.Namespace（引数の値を持つオブジェクト）
     """
@@ -52,13 +56,16 @@ def parse_args():
     return args
 
 
-def get_dataset_from_args(args, datasets_dict):
+def get_dataset_from_args(
+    args: argparse.Namespace,
+    datasets_dict: Dict[str, Any],
+) -> Dict[str, Any]:
     """
     役割:
-        引数の'dataset'が辞書に存在すれば該当データセット辞書を返す。なければValueErrorを投げる。
+        引数の 'dataset' が辞書に存在すれば該当データセット辞書を返す。なければ ValueError を投げる。
     引数:
-        args: argparseで取得したNamespace
-        datasets_dict: データセットの辞書（paths.EARTHQUAKE_DATASETSなど）
+        args: argparse で取得した Namespace
+        datasets_dict: データセットの辞書（paths.EARTHQUAKE_DATASETS など）
     返り値:
         dict: 指定データセットの内容
     例外:
@@ -69,14 +76,10 @@ def get_dataset_from_args(args, datasets_dict):
     return datasets_dict[args.dataset]
 
 
-def setup_scene():
+def setup_scene() -> None:
     """
     役割:
-        Blenderシーンの初期化とアニメーション設定（FPS・フレーム範囲）。
-    引数:
-        なし
-    返り値:
-        なし
+        Blender シーンの初期化とアニメーション設定（FPS・フレーム範囲）。
     """
     clear_scene()
     scene = bpy.context.scene
@@ -85,15 +88,14 @@ def setup_scene():
     scene.frame_end = ANIM_FPS * ANIM_SECONDS
 
 
-def load_all_data(node_csv, node_anim_csv, earthquake_anim_csv):
+def load_all_data(
+    node_csv: str,
+    node_anim_csv: str,
+    earthquake_anim_csv: str,
+) -> Tuple[Dict[int, Any], List[Tuple[int, int]], Dict[int, Any], Any]:
     """
     役割:
         必要な全データ（ノード、エッジ、アニメーション、地震基準面）を指定パスでロードする。
-        ※ ノード・エッジは1つのSTRファイルからまとめてロード
-    引数:
-        node_csv (str): ノード+エッジを含むSTRファイルパス
-        node_anim_csv (str): ノードアニメーションCSVパス
-        earthquake_anim_csv (str): 地震アニメーションCSVパス
     返り値:
         nodes_data, edges_data, anim_data, eq_motion_data
     """
@@ -108,48 +110,71 @@ def load_all_data(node_csv, node_anim_csv, earthquake_anim_csv):
     return nodes_data, edges_data, anim_data, eq_anim_data
 
 
-def build_core_model(nodes_data, edges_data):
+def build_core_model(
+    nodes_data: Dict[int, Any],
+    edges_data: List[Tuple[int, int]],
+) -> coreConstructer:
     """
     役割:
         コアモデル(coreConstructer)を構築する。
-    引数:
-        nodes_data: ノード情報（辞書）
-        edges_data: エッジ情報（リスト）
     返り値:
-        coreConstructerインスタンス
+        coreConstructer インスタンス
     """
     return coreConstructer(nodes_data, edges_data)
 
 
-def build_blender_objects_from_core(core):
+def build_blender_objects_from_core(
+    core: coreConstructer,
+) -> Tuple[
+    Dict[int, bpy.types.Object],  # node_objs
+    Dict[int, bpy.types.Object],  # sandbag_unit_objs
+    List[bpy.types.Object],  # panel_objs
+    Optional[bpy.types.Object],  # roof_obj
+    List[Tuple[int, int, int, int]],  # roof_quads
+    List[bpy.types.Object],  # member_objs
+    Optional[bpy.types.Object],  # ground_obj
+]:
     """
     役割:
-        コアモデルからBlender用のオブジェクト群を一括生成する。
-    引数:
-        core: coreConstructerインスタンス
+        コアモデルから Blender 用のオブジェクト群を一括生成する。
     返り値:
-        node_objs, sandbag_objs, panel_objs, roof_obj, roof_quads, member_objs, ground_obj
+        node_objs, sandbag_unit_objs, panel_objs, roof_obj, roof_quads, member_objs, ground_obj
     """
-    return build_blender_objects(
+    builder = SceneBuilder(
         nodes=core.get_nodes(),
         column_edges=core.get_columns(),
         beam_edges=core.get_beams(),
         panels=core.get_panels(),
+        # その他オプションは SceneBuilder のデフォルトを利用
     )
+    return builder.run()
 
 
-def apply_materials_to_all(blender_objs):
+def apply_materials_to_all(
+    blender_objs: Tuple[
+        Dict[int, bpy.types.Object],
+        Dict[int, bpy.types.Object],
+        List[bpy.types.Object],
+        Optional[bpy.types.Object],
+        List[Tuple[int, int, int, int]],
+        List[bpy.types.Object],
+        Optional[bpy.types.Object],
+    ],
+) -> None:
     """
     役割:
-        すべてのBlenderオブジェクトにマテリアルを一括適用する。
-    引数:
-        blender_objs: 各種オブジェクト群（タプル等）
-    返り値:
-        なし
+        すべての Blender オブジェクトにマテリアルを一括適用する。
     """
-    node_objs, sandbag_objs, panel_objs, roof_obj, _, member_objs, ground_obj = (
-        blender_objs
-    )
+    (
+        node_objs,
+        sandbag_objs,
+        panel_objs,
+        roof_obj,
+        _,
+        member_objs,
+        ground_obj,
+    ) = blender_objs
+
     apply_all_materials(
         node_objs=node_objs,
         sandbag_objs=sandbag_objs,
@@ -161,20 +186,22 @@ def apply_materials_to_all(blender_objs):
 
 
 def setup_animation_handlers(
-    core,
-    anim_data,
-    blender_objs,
-    earthquake_anim_data=load_earthquake_motion_csv(EARTHQUAKE_ANIM_CSV),
-):
+    core: coreConstructer,
+    anim_data: Dict[int, Any],
+    blender_objs: Tuple[
+        Dict[int, bpy.types.Object],
+        Dict[int, bpy.types.Object],
+        List[bpy.types.Object],
+        Optional[bpy.types.Object],
+        List[Tuple[int, int, int, int]],
+        List[bpy.types.Object],
+        Optional[bpy.types.Object],
+    ],
+    earthquake_anim_data: Any = load_earthquake_motion_csv(EARTHQUAKE_ANIM_CSV),
+) -> None:
     """
     役割:
         アニメーションハンドラをセットアップする（建物・地面のアニメイベントを登録）。
-    引数:
-        core: coreConstructerインスタンス
-        anim_data: アニメーションデータ
-        blender_objs: 各種オブジェクト群（タプル等）
-    返り値:
-        なし
     """
     (
         node_objs,
@@ -186,7 +213,7 @@ def setup_animation_handlers(
         ground_obj,
     ) = blender_objs
 
-    # モーション親
+    # モーション親オブジェクト生成＆親子付け
     motion_parent = build_motion_parent()
     set_parent(
         motion_parent,
@@ -198,7 +225,7 @@ def setup_animation_handlers(
         ground_obj=ground_obj,
     )
 
-    # ノード種別分け
+    # ノード種別ごとにアニメーションデータを分割
     nodes = core.get_nodes()
     base_node_pos = {
         n.id: n.pos
@@ -215,10 +242,10 @@ def setup_animation_handlers(
     }
     node_anim_data = {nid: v for nid, v in anim_data.items() if nid in base_node_pos}
 
-    # ハンドラクリア＆再登録
+    # フレームチェンジハンドラをクリア＆再登録
     bpy.app.handlers.frame_change_pre.clear()
 
-    # 地面モーション（建物全体揺れ）
+    # 地面アニメーションハンドラ
     register_ground_anim_handler(
         motion_parent=motion_parent,
         earthquake_anim_data=earthquake_anim_data,

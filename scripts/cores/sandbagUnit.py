@@ -1,18 +1,15 @@
+# cores/sandbagUnit.py
+
 """
 ファイル名: cores/sandbagUnit.py
 
 責務:
-- 2つのサンドバッグノード（kind_idで区別）から1つのSandbagUnitオブジェクトを構成。
-- サンドバッグノードのグルーピング・一意ID・重心計算・属性アクセスを一元管理。
-- サンドバッグのペアリング（ノード2つ→ユニット化）ロジックもここで提供。
-
-設計方針:
-- kind_idでサンドバッグノードを抽出し、(x, y)が等しい2つのノードをZ昇順でセット化。
-- 一意IDはノードID連結。
-- 必要に応じて重心座標やZ最大・最小値なども計算。
+    - 2つのサンドバッグノードから1つのSandbagUnitを構成
+    - ノードのグループ化、ユニットID生成、重心計算、座標アクセスを提供
+    - ペアリングロジックを含むユーティリティ関数pair_sandbag_nodes
 """
 
-from typing import List, Dict
+from typing import List, Dict, Tuple
 from mathutils import Vector
 from configs.kind_labels import SANDBAG_NODE_KIND_IDS
 from cores.nodeCore import Node
@@ -20,54 +17,67 @@ from cores.nodeCore import Node
 
 class SandbagUnit:
     """
-    役割:
-        2つのsandbagノードで構成されるサンドバッグユニット。
-    属性:
-        nodes (List[Node]): 2つのサンドバッグノード
-        id (str): 一意ID（ノードID連結）
+    2ノードで構成されるサンドバッグユニット。
+
+    Attributes:
+        nodes (List[Node]): ユニットを構成する2つのノード
+        id (str): 一意ID（"nodeA_nodeB"）
         centroid (Vector): 2点の中点
-        z_values (List[float]): Z座標リスト
+        z_values (List[float]): 各ノードのZ座標リスト
     """
 
-    def __init__(self, nodes: List):
-        assert len(nodes) == 2, "SandbagUnitは2ノード必要"
-        self.nodes = sorted(nodes, key=lambda n: n.pos.z)
-        self.id = "_".join(str(n.id) for n in self.nodes)
-        self.centroid = sum((n.pos for n in self.nodes), Vector()) / 2
-        self.z_values = [n.pos.z for n in self.nodes]
+    def __init__(self, nodes: List[Node]):
+        assert len(nodes) == 2, "SandbagUnit requires exactly 2 nodes"
+        # Z座標順にソートし、重心とIDを生成
+        sorted_nodes = sorted(nodes, key=lambda n: n.pos.z)
+        self.nodes: List[Node] = sorted_nodes
+        self.id: str = f"{sorted_nodes[0].id}_{sorted_nodes[1].id}"
+        # 中点計算
+        pos_sum = sorted_nodes[0].pos + sorted_nodes[1].pos
+        self.centroid: Vector = pos_sum / 2
+        # Z座標リスト
+        self.z_values: List[float] = [n.pos.z for n in sorted_nodes]
 
-    def __repr__(self):
-        ids = [n.id for n in self.nodes]
-        return (
-            f"SandbagUnit(id={self.id}, nodes={ids}, centroid={tuple(self.centroid)})"
-        )
+    def __repr__(self) -> str:
+        node_ids = [n.id for n in self.nodes]
+        return f"SandbagUnit(id={self.id}, nodes={node_ids}, centroid={tuple(self.centroid)})"
 
 
-def pair_sandbag_nodes(nodes: Dict[int, "Node"]) -> List[SandbagUnit]:
+# TODO:
+# - Nodeクラスとの依存を減らすため、posプロパティの抽象化を検討
+# - 単体テストの導入: 異常系（奇数ノード、kind_id外）に対する挙動確認
+# - 座標丸め精度(rnd)とグルーピングキーのパラメータ化
+
+
+def pair_sandbag_nodes(nodes: Dict[int, Node]) -> List[SandbagUnit]:
     """
-    役割:
-        kind_idでサンドバッグノードを抽出し、(x, y)が等しいものを高さZ順で2つペアリングしてSandbagUnitを作成。
-    引数:
-        nodes: 全ノード辞書
-    返り値:
-        List[SandbagUnit]: サンドバッグユニットのリスト
+    サンドバッグノードを(X,Y)でグループ化し、高さ順に2つずつペアにしてユニット生成。
+
+    Args:
+        nodes: 全ノードID->Nodeマップ
+    Returns:
+        List[SandbagUnit]: ペアリングされたサンドバッグユニットのリスト
+
+    Note:
+        - X,Y座標は小数第4位で丸め処理
+        - 余りのノードは無視される
     """
     from collections import defaultdict
 
-    xy_groups = defaultdict(list)
-    for n in nodes.values():
-        if getattr(n, "kind_id", None) in SANDBAG_NODE_KIND_IDS:
-            # 座標の微小誤差を吸収して(X,Y)一致グループ化
-            key = (round(n.pos.x, 4), round(n.pos.y, 4))
-            xy_groups[key].append(n)
+    xy_groups: Dict[Tuple[float, float], List[Node]] = defaultdict(list)
+    # サンドバッグノードのみ抽出
+    for node in nodes.values():
+        if node.kind_id in SANDBAG_NODE_KIND_IDS:
+            key = (round(node.pos.x, 4), round(node.pos.y, 4))
+            xy_groups[key].append(node)
 
-    sandbag_units = []
+    units: List[SandbagUnit] = []
     for group in xy_groups.values():
+        # Z座標でソート
         group.sort(key=lambda n: n.pos.z)
-        # 2つずつペアにする
+        # 2ノードずつペアリング
         for i in range(0, len(group) - 1, 2):
             pair = group[i : i + 2]
             if len(pair) == 2:
-                sandbag_units.append(SandbagUnit(pair))
-            # 余り1ノードは無視または警告可
-    return sandbag_units
+                units.append(SandbagUnit(pair))
+    return units
