@@ -6,7 +6,7 @@
 責務:
 - コアモデル（Node/SandbagNode/Panel…）から Blender 用表示オブジェクト群を一括生成。
 - kind_id で通常ノード／サンドバッグノードを自動仕分けし、各 Builder クラスに委譲。
-- 生成物（ノード球、サンドバッグ個体、サンドバッグユニット、パネル、屋根、柱、梁、地面）を返却。
+- 生成物（ノード球、サンドバッグ基点Empty、サンドバッグユニット、パネル、屋根、柱、梁、地面）を返却。
 
 注意:
 - column_edges, beam_edges は Edge 情報を渡す。
@@ -58,11 +58,11 @@ class SceneBuilder(BuilderBase):
 
     def build(self) -> Tuple[
         Dict[int, Any],  # node_objs
-        Dict[int, Any],  # sandbag_objs
+        Dict[int, Any],  # sandbag_base_objs (Empty)
         List[Any],  # panel_objs
         Any,  # roof_obj
         List[Tuple[int, int, int, int]],  # roof_quads
-        List[Tuple[Any, int, int]],  # member_objs as (object, start_id, end_id)
+        List[Tuple[Any, int, int]],  # member_objs
         Any,  # ground_obj
     ]:
         # 0) ノード iterable 作成
@@ -84,13 +84,14 @@ class SceneBuilder(BuilderBase):
         # 1) 通常ノード球体生成
         node_objs = NodeBuilder(normal_nodes, radius=SPHERE_RADIUS).run()
 
-        # 2) サンドバッグ個体生成
+        # 2) サンドバッグ基点 Empty 生成 ← 修正点
         cube_size = (
             self.sandbag_face_size[0],
             self.sandbag_face_size[1],
             self.sandbag_bar_thickness,
         )
-        sandbag_objs = SandbagBuilder(sandbag_nodes, cube_size=cube_size).run()
+        # run() が返す Dict[int, Object] は「基点 Empty」を指します
+        sandbag_base_objs = SandbagBuilder(sandbag_nodes, cube_size=cube_size).run()
 
         # 3) サンドバッグユニット生成
         sandbag_units_list = pair_sandbag_nodes({**normal_nodes, **sandbag_nodes})
@@ -98,7 +99,7 @@ class SceneBuilder(BuilderBase):
             int(unit.id): [n.id for n in unit.nodes] for unit in sandbag_units_list
         }
         sandbag_unit_objs = (
-            SandbagUnitsBuilder(units_map, sandbag_objs).run() if units_map else {}
+            SandbagUnitsBuilder(units_map, sandbag_base_objs).run() if units_map else {}
         )
 
         # 4) パネル生成
@@ -126,7 +127,7 @@ class SceneBuilder(BuilderBase):
         summary = (
             f"SceneBuilder Summary: "
             f"Nodes={len(node_objs)}, "
-            f"Sandbags={len(sandbag_objs)}, "
+            f"Sandbag Empties={len(sandbag_base_objs)}, "
             f"Units={len(sandbag_unit_objs)}, "
             f"Panels={len(panel_objs)}, "
             f"RoofQuads={len(roof_quads)}, "
@@ -137,7 +138,7 @@ class SceneBuilder(BuilderBase):
 
         return (
             node_objs,
-            sandbag_objs,
+            sandbag_base_objs,
             panel_objs,
             roof_obj,
             roof_quads,

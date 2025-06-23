@@ -70,15 +70,25 @@ class MaterialApplicator(BuilderBase):
 
         # 壁パネル
         for obj in self.panel_objs:
+            if not obj.data or not hasattr(obj.data, "materials"):
+                log.warning(
+                    f"{obj.name} にマテリアルスロットがないためスキップします。"
+                )
+                continue
             obj.data.materials.clear()
             obj.data.materials.append(mat_wall)
             counts["パネル"] += 1
 
         # 屋根
         if self.roof_obj:
-            self.roof_obj.data.materials.clear()
-            self.roof_obj.data.materials.append(mat_roof)
-            counts["屋根"] += 1
+            if self.roof_obj.data and hasattr(self.roof_obj.data, "materials"):
+                self.roof_obj.data.materials.clear()
+                self.roof_obj.data.materials.append(mat_roof)
+                counts["屋根"] += 1
+            else:
+                log.warning(
+                    f"{self.roof_obj.name} にマテリアルスロットがないためスキップします。"
+                )
 
         # member_objs がタプルの場合にオブジェクトのみを抽出
         member_objs_clean: List[bpy.types.Object] = []
@@ -90,6 +100,11 @@ class MaterialApplicator(BuilderBase):
 
         # 柱・梁
         for obj in member_objs_clean:
+            if not obj.data or not hasattr(obj.data, "materials"):
+                log.warning(
+                    f"{obj.name} にマテリアルスロットがないためスキップします。"
+                )
+                continue
             obj.data.materials.clear()
             if obj.name.startswith("Column_"):
                 obj.data.materials.append(mat_col)
@@ -98,28 +113,42 @@ class MaterialApplicator(BuilderBase):
                 obj.data.materials.append(mat_beam)
                 counts["梁"] += 1
             else:
-                # 規則外は梁扱い
                 obj.data.materials.append(mat_beam)
                 counts["梁"] += 1
                 log.warning(f"{obj.name} が柱・梁規則に一致せず、梁マテリアル適用")
 
         # ノード球
         for obj in self.node_objs.values():
+            if not obj.data or not hasattr(obj.data, "materials"):
+                log.warning(
+                    f"{obj.name} にマテリアルスロットがないためスキップします。"
+                )
+                continue
             obj.data.materials.clear()
             obj.data.materials.append(mat_node)
             counts["ノード"] += 1
 
         # サンドバッグ
         for obj in self.sandbag_objs.values():
+            if not obj.data or not hasattr(obj.data, "materials"):
+                log.warning(
+                    f"{obj.name} にマテリアルスロットがないためスキップします。"
+                )
+                continue
             obj.data.materials.clear()
             obj.data.materials.append(mat_sandbag)
             counts["サンドバッグ"] += 1
 
         # 地面
         if self.ground_obj:
-            self.ground_obj.data.materials.clear()
-            self.ground_obj.data.materials.append(mat_ground)
-            counts["地面"] += 1
+            if self.ground_obj.data and hasattr(self.ground_obj.data, "materials"):
+                self.ground_obj.data.materials.clear()
+                self.ground_obj.data.materials.append(mat_ground)
+                counts["地面"] += 1
+            else:
+                log.warning(
+                    f"{self.ground_obj.name} にマテリアルスロットがないためスキップします。"
+                )
 
         # ログ出力
         summary = "、".join(f"{k}:{v}" for k, v in counts.items() if v > 0)
