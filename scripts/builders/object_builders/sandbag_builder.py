@@ -1,190 +1,145 @@
-# builders/object_builders/sandbag_builder.py
-
 """
 ファイル名: builders/object_builders/sandbag_builder.py
 
 責務:
-- コアの SandbagNode／Node オブジェクト群を受け取り、
-  各位置に直方体サンドバッグを生成する。
-- ノードID→Blender Object（基点Empty）辞書を返却し、後段のユニットビルダーやアニメーション処理と連携しやすい設計。
+    - SandbagUnitごとの情報を受け取り、各ユニットにつき1オブジェクト（Empty＋Mesh）を生成
+    - 代表ノードと非代表ノード両方の座標をカスタムプロパティとして保持し、アニメーション処理で利用しやすい設計
 
 TODO:
-- 入力型（Node／dict／tuple）統一、型ヒント強化
-- 立方体サイズ・座標のバリデーション追加
-- 物理シミュレーション設定との分離
+    - units_infoの入力型をTypedDictまたはdataclass化して型安全性を強化
+    - cube_sizeの値バリデーション（非負チェックなど）を追加
+    - テンプレートファイルパスやボーン名の外部設定化
+    - unit_idやnode_idの型統一、エラーハンドリング強化
+    - 単体テスト追加: template複製失敗時およびキューブ生成フォールバックの検証
 """
 
 import bpy
 from mathutils import Vector
-from typing import Dict, Tuple
+from typing import Dict, List, Any, Tuple
 from utils.logging_utils import setup_logging
 from builders.base import BuilderBase
-from cores.nodeCore import Node
 from configs.paths import TBAGS_MODEL
-from configs.kind_labels import SANDBAG_NODE_KIND_IDS
 
 log = setup_logging("SandbagBuilder")
 
 
 class SandbagBuilder(BuilderBase):
+    """
+    SandbagUnit情報をもとに1オブジェクトを生成し、
+    unit_id→Emptyオブジェクト辞書を返却するビルダークラス。
+    """
+
     def __init__(
         self,
-        nodes: Dict[int, Node],
+        units_info: List[Dict[str, Any]],
         cube_size: Tuple[float, float, float],
     ):
-        """
-        初期化:
-            nodes: ノードID→Node（または pos 属性を持つオブジェクト）マップ
-            cube_size: (X, Y, Z) 各辺サイズ
-        """
         super().__init__()
-        self.nodes = nodes
+        self.units_info = units_info
         self.cube_size = cube_size
         self.log = log
 
-    def build(self) -> Dict[int, bpy.types.Object]:
+    def build(self) -> Dict[Any, bpy.types.Object]:
         """
-        役割:
-            各ノード位置にサンドバッグを生成し、ノードID→基点Empty辞書を返す。
+        各SandbagUnitにつき1オブジェクトを生成し、
+        {unit_id: EmptyObject}の辞書を返す。
         """
-        objs: Dict[int, bpy.types.Object] = {}
-        for nid, node in self.nodes.items():
-            # Node の kind_id でテンプレート対象を判定
-            if getattr(node, "kind_id", None) not in SANDBAG_NODE_KIND_IDS:
-                self.log.debug(f"Node {nid} is not a sandbag node, skipping template.")
-                continue
+        objs: Dict[Any, bpy.types.Object] = {}
+        for info in self.units_info:
+            uid = info.get("unit_id")
+            rep = info.get("rep_node")
+            other = info.get("other_node")
 
-            # 位置取得
-            pos = getattr(node, "pos", None) or getattr(node, "location", None)
+            pos = getattr(rep, "pos", None) or getattr(rep, "location", None)
             if pos is None:
-                self.log.warning(f"Node {nid} に位置情報がありません。スキップします。")
+                self.log.warning(f"unit {uid}: 代表ノード位置未設定、スキップします。")
                 continue
-
-            # Vector 型に変換
             if not isinstance(pos, Vector):
                 try:
                     pos = Vector(pos)
                 except Exception as e:
-                    self.log.error(f"Node {nid} の位置 Vector 変換失敗: {e}")
+                    self.log.error(f"unit {uid}: 位置Vector変換失敗: {e}")
                     continue
 
             try:
-                # テンプレートから Empty＋Mesh を複製
-                empty, _ = self._append_from_template(nid, pos)
-                objs[nid] = empty
+                empty, _ = self._append_from_template(uid, pos)
             except Exception as e:
-                self.log.warning(
-                    f"Node {nid} テンプレート複製失敗: {e} フォールバックでキューブを生成します。"
+                self.log.debug(
+                    f"unit {uid}: テンプレート複製失敗({e})、キューブ生成します。"
                 )
-                cube = self._create_cube(nid, pos)
-                objs[nid] = cube
+                empty = self._create_cube(uid, pos)
 
-        self.log.info(f"{len(objs)} 件のサンドバッグ用 Empty を生成しました。")
+            empty["sandbag_unit_id"] = uid
+            empty["rep_node_id"] = getattr(rep, "id", None)
+            empty["other_node_id"] = getattr(other, "id", None)
+            empty["bone_pos_rep"] = tuple(pos)
+
+            other_pos = getattr(other, "pos", None) or getattr(other, "location", None)
+            if other_pos is None:
+                other_pos = pos
+            if not isinstance(other_pos, Vector):
+                try:
+                    other_pos = Vector(other_pos)
+                except Exception:
+                    other_pos = pos
+            empty["bone_pos_other"] = tuple(other_pos)
+
+            objs[uid] = empty
+
+        self.log.info(
+            f"{len(objs)} 件のサンドバッグユニットオブジェクトを生成しました。"
+        )
         return objs
 
-    def _append_from_template(self, node_id: int, location: Vector):
+    def _append_from_template(
+        self, unit_id: Any, location: Vector
+    ) -> Tuple[bpy.types.Object, bpy.types.Object]:
         """
-        テンプレート.blend からサンドバッグを複製し、Empty とメインMesh を返却
+        TBAGS_MODELテンプレートから複製し、
+        (Empty, MainMesh)を返す。
         """
-        # テンプレートから読み込み
-        with bpy.data.libraries.load(TBAGS_MODEL, link=False) as (data_from, data_to):
-            data_to.objects = data_from.objects
-            data_to.armatures = data_from.armatures
-        originals = data_to.objects
+        with bpy.data.libraries.load(TBAGS_MODEL, link=False) as (src, dst):
+            dst.objects = src.objects
+            dst.armatures = src.armatures
+        originals = dst.objects
 
-        node_name = f"Node_{node_id}"
-        base = str(node_id)
-        bottom = None
-        if base.startswith("1"):
-            bottom = "3" + base[1:]
-        elif base.startswith("5"):
-            bottom = "11" + base[1:]
-        elif base.startswith("2"):
-            bottom = "4" + base[1:]
-        elif base.startswith("6"):
-            bottom = "12" + base[1:]
-
-        # Empty（基点）作成
-        empty = bpy.data.objects.new(f"TBAGS_{node_name}", None)
+        empty = bpy.data.objects.new(f"SandbagUnit_{unit_id}", None)
         bpy.context.scene.collection.objects.link(empty)
         empty.location = location
 
-        orig_to_copy: Dict[bpy.types.Object, bpy.types.Object] = {}
-        linked_armatures = []
         linked_meshes = []
-        # 複製・リンク
+        linked_armatures = []
         for orig in originals:
             if orig is None:
                 continue
-            new_obj = orig.copy()
+            obj_copy = orig.copy()
             if orig.data:
-                new_obj.data = orig.data.copy()
-            bpy.context.scene.collection.objects.link(new_obj)
-            new_obj.parent = empty
-            new_obj.parent_type = "OBJECT"
-            orig_to_copy[orig] = new_obj
-            if new_obj.type == "ARMATURE":
-                linked_armatures.append((orig, new_obj))
-            elif new_obj.type == "MESH":
-                linked_meshes.append((orig, new_obj))
+                obj_copy.data = orig.data.copy()
+            bpy.context.scene.collection.objects.link(obj_copy)
+            obj_copy.parent = empty
+            obj_copy.parent_type = "OBJECT"
+            if obj_copy.type == "MESH":
+                linked_meshes.append(obj_copy)
+            elif obj_copy.type == "ARMATURE":
+                linked_armatures.append(obj_copy)
 
-        # ボーン・頂点グループリネーム
-        if bottom:
-            bone_map = {"top": base, "bottom": bottom}
-            # Armature リネーム
-            for orig_arm, new_arm in linked_armatures:
-                bpy.context.view_layer.objects.active = new_arm
-                bpy.ops.object.mode_set(mode="EDIT")
-                for old_name, new_name in bone_map.items():
-                    if old_name in new_arm.data.edit_bones:
-                        new_arm.data.edit_bones[old_name].name = new_name
-                bpy.ops.object.mode_set(mode="OBJECT")
-            # Mesh の vertex group と親子付け修正
-            for orig_mesh, new_mesh in linked_meshes:
-                for vg in new_mesh.vertex_groups:
-                    if vg.name in bone_map:
-                        vg.name = bone_map[vg.name]
-                for mod in new_mesh.modifiers:
-                    if mod.type == "ARMATURE" and mod.object in orig_to_copy:
-                        mod.object = orig_to_copy[mod.object]
-                        new_mesh.parent = mod.object
-                        new_mesh.parent_type = "ARMATURE"
-
-        # メインMesh を取得して返却（Empty の基点と組で返す）
-        main_mesh = (
-            linked_meshes[0][1]
+        main = (
+            linked_meshes[0]
             if linked_meshes
-            else (linked_armatures[0][1] if linked_armatures else empty)
+            else (linked_armatures[0] if linked_armatures else empty)
         )
-        self.log.debug(f"Template mesh for Node {node_id}: {main_mesh.name}")
-        return empty, main_mesh
+        return empty, main
 
-    def _create_cube(self, node_id: int, location: Vector):
+    def _create_cube(self, unit_id: Any, location: Vector) -> bpy.types.Object:
         """
-        フォールバック: 立方体プリミティブでサンドバッグを生成
+        フォールバック: キューブプリミティブを生成し返却。
         """
         bpy.ops.mesh.primitive_cube_add(size=1.0, location=location)
-        obj = bpy.context.object
-        obj.name = f"Sandbag_{node_id}"
+        cube = bpy.context.object
+        cube.name = f"SandbagUnit_{unit_id}"
         sx, sy, sz = self.cube_size
-        obj.scale = (sx / 2, sy / 2, sz / 2)
+        cube.scale = (sx / 2, sy / 2, sz / 2)
         self.log.debug(
-            f"Fallback cube Sandbag_{node_id} created at {tuple(location)} size={self.cube_size}"
+            f"フォールバックキューブ {cube.name} を生成: size={self.cube_size}"
         )
-        return obj
-
-
-# def duplicate_sandbags_hierarchy(obj, parent=None, location_offset=Vector((0,0,0)), name_prefix="Copy_"):
-#     """
-#     オブジェクトの再帰的複製ユーティリティ（未使用）
-#     """
-#     obj_copy = obj.copy()
-#     obj_copy.data = obj.data.copy() if obj.data else None
-#     obj_copy.name = name_prefix + obj.name
-#     bpy.context.collection.objects.link(obj_copy)
-#     obj_copy.location += location_offset
-#     if parent:
-#         obj_copy.parent = parent
-#     for child in obj.children:
-#         duplicate_sandbags_hierarchy(child, obj_copy, location_offset, name_prefix)
-#     return obj_copy
+        return cube
