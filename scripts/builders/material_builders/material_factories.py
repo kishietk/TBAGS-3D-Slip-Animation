@@ -170,6 +170,37 @@ def create_sandbag_material() -> bpy.types.Material:
     log.debug("Sandbag material created")
     return mat
 
+def create_sandbag_texture_material(
+    img_path: str,
+    alpha: float = 1.0,
+    tile: float = 4.0
+) -> bpy.types.Material:
+    """
+    サンドバッグ専用テクスチャマテリアル。
+    img_path の画像を読み込んで Principled BSDF に繰り返し(tile)を設定。
+    tile が大きいほど細かくタイルされる（デフォルト 4 回繰り返し）。
+    """
+    # まず基本のテクスチャノードツリーを作成
+    mat = create_texture_material("SandbagTex", img_path, alpha)
+    nt = mat.node_tree
+
+    # Image Texture ノードを探す
+    tex_node = next(n for n in nt.nodes if n.type == "TEX_IMAGE")
+
+    # テクスチャ座標ノード＋マッピングノードを追加
+    coord_node = nt.nodes.new(type="ShaderNodeTexCoord")
+    mapping_node = nt.nodes.new(type="ShaderNodeMapping")
+    # 繰り返し回数を設定
+    mapping_node.inputs["Scale"].default_value = (tile, tile, tile)
+
+    # ノードを接続
+    links = nt.links
+    # UV 座標 → マッピング → イメージテクスチャ
+    links.new(coord_node.outputs["UV"], mapping_node.inputs["Vector"])
+    links.new(mapping_node.outputs["Vector"], tex_node.inputs["Vector"])
+
+    log.debug(f"Sandbag texture material created with tile={tile}")
+    return mat
 
 def create_ground_material(
     name: str = GROUND_MAT_NAME, color: tuple = GROUND_MAT_COLOR

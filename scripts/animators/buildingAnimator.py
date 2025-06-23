@@ -1,14 +1,3 @@
-# animators/building_animator.py
-
-"""
-ファイル名: animators/building_animator.py
-
-責務:
-- 建物本体（ノード・サンドバッグユニット・パネル・屋根・柱・梁）のアニメーション処理のみを担う。
-- Blenderフレームごとに各部材の位置・形状を更新。
-- 地面（Ground）は ground_animator.py で完全分離。
-"""
-
 import bpy
 import bmesh
 from typing import List, Tuple, Dict, Any, Optional
@@ -49,10 +38,12 @@ def on_frame_building(
             disp = sandbag_anim_data.get(nid, {}).get(
                 scene.frame_current, Vector((0, 0, 0))
             )
-            # ローカル座標で初期Zに対する変位を反映
-            face.location.x = disp.x
-            face.location.y = disp.y
-            initial_z = face.get("initial_z", face.location.z)
+            # ベース位置 + 相対変位 を世界座標として設定
+            base = base_sandbag_pos.get(nid, Vector((0, 0, 0)))
+            face.location.x = base.x + disp.x
+            face.location.y = base.y + disp.y
+            # Z は初期ZまたはベースZからの相対
+            initial_z = face.get("initial_z", base.z)
             face.location.z = initial_z + disp.z
 
     # --- パネル再構築 (通常／サンドバッグ両対応) ---
@@ -101,9 +92,8 @@ def on_frame_building(
                             scene.frame_current, Vector((0, 0, 0))
                         )
                     )
-                    vert_map[nid] = (
-                        bm.verts.new(coord) if nid not in vert_map else vert_map[nid]
-                    )
+                    if nid not in vert_map:
+                        vert_map[nid] = bm.verts.new(coord)
             for bl, br, tr, tl in roof_quads:
                 face = bm.faces.new([vert_map[n] for n in (bl, br, tr, tl)])
                 for loop, uv in zip(face.loops, [(0, 0), (1, 0), (1, 1), (0, 1)]):
@@ -118,7 +108,7 @@ def on_frame_building(
     for obj, a, b in member_objs:
         try:
 
-            def loc(nid):
+            def get_loc(nid: int) -> Vector:
                 if nid in node_objs:
                     return node_objs[nid].location
                 return base_sandbag_pos.get(
@@ -127,7 +117,7 @@ def on_frame_building(
                     scene.frame_current, Vector((0, 0, 0))
                 )
 
-            p1, p2 = loc(a), loc(b)
+            p1, p2 = get_loc(a), get_loc(b)
             mid, vec = (p1 + p2) * 0.5, p2 - p1
             length = vec.length
             obj.location = mid
@@ -141,7 +131,6 @@ def on_frame_building(
                 obj.rotation_mode = "QUATERNION"
                 obj.rotation_quaternion = Quaternion((1, 0, 0, 0))
 
-            # スケールを「元の長さ」で割って倍率を設定
             orig = obj.get("orig_depth", length)
             sx, sy, _ = obj.scale
             obj.scale = (sx, sy, length / orig)

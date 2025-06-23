@@ -19,8 +19,10 @@ from .material_factories import (
     create_beam_material,
     create_node_material,
     create_sandbag_material,
+    create_sandbag_texture_material,
     create_ground_material,
 )
+from configs.paths import TBAGS_TEXTURE
 
 log = setup_logging("MaterialApplicator")
 
@@ -57,6 +59,21 @@ class MaterialApplicator(BuilderBase):
         mat_sandbag = create_sandbag_material()
         mat_ground = create_ground_material()
 
+        # サンドバッグ用テクスチャマテリアルを事前生成（タイル数=6に設定）
+        try:
+            mat_sandbag_tex = create_sandbag_texture_material(
+                img_path=TBAGS_TEXTURE,
+                alpha=1.0,
+                tile=6.0
+            )
+            use_tex = True
+        except Exception as e:
+            log.warning(
+                f"Sandbag texture load failed ({TBAGS_TEXTURE}): {e} — 緑マテリアルを使用します。"
+            )
+            mat_sandbag_tex = None
+            use_tex = False
+
         # カウント用
         counts = {
             "パネル": 0,
@@ -70,7 +87,7 @@ class MaterialApplicator(BuilderBase):
 
         # 壁パネル
         for obj in self.panel_objs:
-            if not obj.data or not hasattr(obj.data, "materials"):
+            if not getattr(obj, "data", None) or not hasattr(obj.data, "materials"):
                 log.warning(
                     f"{obj.name} にマテリアルスロットがないためスキップします。"
                 )
@@ -81,7 +98,9 @@ class MaterialApplicator(BuilderBase):
 
         # 屋根
         if self.roof_obj:
-            if self.roof_obj.data and hasattr(self.roof_obj.data, "materials"):
+            if getattr(self.roof_obj, "data", None) and hasattr(
+                self.roof_obj.data, "materials"
+            ):
                 self.roof_obj.data.materials.clear()
                 self.roof_obj.data.materials.append(mat_roof)
                 counts["屋根"] += 1
@@ -100,7 +119,7 @@ class MaterialApplicator(BuilderBase):
 
         # 柱・梁
         for obj in member_objs_clean:
-            if not obj.data or not hasattr(obj.data, "materials"):
+            if not getattr(obj, "data", None) or not hasattr(obj.data, "materials"):
                 log.warning(
                     f"{obj.name} にマテリアルスロットがないためスキップします。"
                 )
@@ -109,17 +128,13 @@ class MaterialApplicator(BuilderBase):
             if obj.name.startswith("Column_"):
                 obj.data.materials.append(mat_col)
                 counts["柱"] += 1
-            elif obj.name.startswith("Beam_"):
-                obj.data.materials.append(mat_beam)
-                counts["梁"] += 1
             else:
                 obj.data.materials.append(mat_beam)
                 counts["梁"] += 1
-                log.warning(f"{obj.name} が柱・梁規則に一致せず、梁マテリアル適用")
 
         # ノード球
         for obj in self.node_objs.values():
-            if not obj.data or not hasattr(obj.data, "materials"):
+            if not getattr(obj, "data", None) or not hasattr(obj.data, "materials"):
                 log.warning(
                     f"{obj.name} にマテリアルスロットがないためスキップします。"
                 )
@@ -128,20 +143,26 @@ class MaterialApplicator(BuilderBase):
             obj.data.materials.append(mat_node)
             counts["ノード"] += 1
 
-        # サンドバッグ
-        for obj in self.sandbag_objs.values():
-            if not obj.data or not hasattr(obj.data, "materials"):
-                log.warning(
-                    f"{obj.name} にマテリアルスロットがないためスキップします。"
-                )
+        # サンドバッグ: Empty 以下の全 Mesh にマテリアル適用
+        for base in self.sandbag_objs.values():
+            if base.type != "EMPTY":
                 continue
-            obj.data.materials.clear()
-            obj.data.materials.append(mat_sandbag)
-            counts["サンドバッグ"] += 1
+            for mesh_obj in base.children_recursive:
+                if mesh_obj.type != "MESH" or not getattr(mesh_obj, "data", None):
+                    continue
+                mat_to_use = mat_sandbag_tex if use_tex else mat_sandbag
+                try:
+                    mesh_obj.data.materials.clear()
+                    mesh_obj.data.materials.append(mat_to_use)
+                    counts["サンドバッグ"] += 1
+                except Exception as e:
+                    log.warning(f"{mesh_obj.name} へのマテリアル適用に失敗: {e}")
 
         # 地面
         if self.ground_obj:
-            if self.ground_obj.data and hasattr(self.ground_obj.data, "materials"):
+            if getattr(self.ground_obj, "data", None) and hasattr(
+                self.ground_obj.data, "materials"
+            ):
                 self.ground_obj.data.materials.clear()
                 self.ground_obj.data.materials.append(mat_ground)
                 counts["地面"] += 1
