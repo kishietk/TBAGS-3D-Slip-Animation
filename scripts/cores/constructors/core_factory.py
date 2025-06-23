@@ -26,7 +26,7 @@ from configs import WALL_NODE_KIND_IDS, COLUMNS_KIND_IDS, BEAMS_KIND_IDS
 from cores.entities import Node, Edge, Beam, Column, Panel, Sandbag
 from .make_panel_unit import make_panel_unit
 from .make_sandbag_unit import make_sandbag_unit
-from loaders.structureParser import NodeData, EdgeData
+from parsers import NodeData, EdgeData
 
 log = setup_logging("CoreFactory")
 

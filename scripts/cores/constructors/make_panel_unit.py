@@ -13,28 +13,12 @@
 """
 
 from typing import Dict, List, NamedTuple
-from loaders.structureParser import NodeData
+from parsers import NodeData, EdgeData
 from configs import EPS_XY_MATCH
 from utils.logging_utils import setup_logging
+from parsers import PanelData
 
 log = setup_logging("makePanelsList")
-
-
-class PanelData(NamedTuple):
-    """
-    役割:
-        パネル（面）を定義するデータ構造体。
-    属性:
-        node_ids (List[int]): 4点ノードID（[a, b, d, c]順）
-        kind (str): パネル種別
-        floor (str): 階情報等
-        attributes (dict): 任意属性
-    """
-
-    node_ids: List[int]
-    kind: str = "wall"
-    floor: str = ""
-    attributes: dict = {}
 
 
 def make_panel_unit(
