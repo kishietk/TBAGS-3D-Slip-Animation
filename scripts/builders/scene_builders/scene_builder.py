@@ -19,6 +19,7 @@ TODO:
     - column_edges, beam_edges は Edge 情報を渡す
     - nodes 引数は内部でdict or listに統一されるが、将来的にTypedDict導入検討
 """
+import bpy
 from typing import Any, Dict, List, Tuple, Union, Optional
 from utils.logging_utils import setup_logging
 from builders.base import BuilderBase
@@ -39,6 +40,7 @@ from configs import (
     SANDBAG_FACE_SIZE,
     SANDBAG_BAR_THICKNESS,
 )
+from builders.object_builders import duplicate_sandbags_to_nodes
 
 log = setup_logging("SceneBuilder")
 
@@ -133,6 +135,23 @@ class SceneBuilder(BuilderBase):
         )
         prepared = prepare_sandbag_units({**normal_nodes, **sandbag_nodes})
         sandbag_base_objs = SandbagBuilder(prepared, cube_size=cube_size).build()
+
+        # 例：複製グループ定義（この部分は外部から渡しても良い）
+        SB_GROUPS = {
+            1143: [1148, 1153, 1158],  # 代表1143→他3つに複製
+            # 他グループも追加可
+        }
+        # シーン上のSandbagUnit_代表IDオブジェクトを取得
+        for rep_id, copy_ids in SB_GROUPS.items():
+            template_obj = bpy.data.objects.get(f"SandbagUnit_{rep_id}")
+            if template_obj is None:
+                log.warning(f"代表サンドバッグ {rep_id} が見つかりません")
+                continue
+            # node_mapの定義が必要（node_id→Nodeオブジェクト）
+            node_map = {n.id: n for n in normal_nodes.values()}
+            # 代表追従サンドバッグの複製＆配置
+            duplicate_sandbags_to_nodes(template_obj, copy_ids, node_map)
+            # ↑↑ ここまで追加 ↑↑
 
         # 3. サンドバッグユニットCollection化
         units_map: Dict[Any, List[int]] = {

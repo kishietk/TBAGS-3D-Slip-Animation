@@ -12,6 +12,7 @@ from .panel_builder import PanelBuilder
 from .roof_builder import RoofBuilder
 from .sandbag_builder import SandbagBuilder
 from .sandbag_units_builder import SandbagUnitsBuilder
+from .duplicate_sandbags_to_nodes import duplicate_sandbags_to_nodes
 
 __all__ = [
     "BeamBuilder",
@@ -21,5 +22,6 @@ __all__ = [
     "PanelBuilder",
     "RoofBuilder",
     "SandbagBuilder",
+    "duplicate_sandbags_to_nodes",
     "SandbagUnitsBuilder",
 ]

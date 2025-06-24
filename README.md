@@ -20,6 +20,7 @@
 │ ├─ cores/
 │ ├─ loaders/
 │ └─ utils/
+│ └─ parsers/
 ├─ data/
 └─ textures/
 

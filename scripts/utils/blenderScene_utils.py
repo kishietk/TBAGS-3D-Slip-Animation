@@ -31,3 +31,61 @@ def clear_scene() -> None:
         bpy.data.textures.remove(block, do_unlink=True)
     for block in bpy.data.images:
         bpy.data.images.remove(block, do_unlink=True)
+
+
+def duplicate_object_hierarchy(
+    obj, location=None, new_name=None, link_to_collection=True
+):
+    """
+    指定obj以下の階層をまるごと複製し、locationでワールド位置指定、名前変更可。
+    子も階層ごとに親子付け再構築。新規objを返す。
+    """
+    obj_copy = obj.copy()
+    if obj.data:
+        obj_copy.data = obj.data.copy()
+    if new_name:
+        obj_copy.name = new_name
+    if location is not None:
+        obj_copy.location = location
+    if link_to_collection:
+        bpy.context.collection.objects.link(obj_copy)
+    child_copies = []
+    for child in obj.children:
+        child_copy = duplicate_object_hierarchy(
+            child, link_to_collection=link_to_collection
+        )
+        child_copy.parent = obj_copy
+        child_copies.append(child_copy)
+    return obj_copy
+
+
+def bake_and_remove_constraints_on_duplicated_armatures(
+    frame_start=None, frame_end=None, only_selected=False
+):
+    # 1. 対象アーマチュアのリスト
+    if only_selected:
+        armatures = [
+            obj for obj in bpy.context.selected_objects if obj.type == "ARMATURE"
+        ]
+    else:
+        armatures = [obj for obj in bpy.data.objects if obj.type == "ARMATURE"]
+
+    if not armatures:
+        return
+
+    # 2. フレーム範囲の自動取得（未指定時は全アニメ範囲）
+    if frame_start is None or frame_end is None:
+        scene = bpy.context.scene
+        frame_start = scene.frame_start
+        frame_end = scene.frame_end
+
+    # 3. Bake（見た目通りの動きをキーフレーム化、Constraint自動削除）
+    bpy.ops.nla.bake(
+        frame_start=frame_start,
+        frame_end=frame_end,
+        only_selected=only_selected,
+        visual_keying=True,
+        clear_constraints=True,
+        use_current_action=True,
+        bake_types={"POSE"},
+    )
