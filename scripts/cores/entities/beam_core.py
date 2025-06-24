@@ -1,5 +1,5 @@
 """
-ファイル名: cores/beamCore.py
+ファイル名: cores/beam_core.py
 
 責務:
 - Edgeクラスを継承した「梁（Beam）」コアクラスを定義する。
@@ -10,7 +10,7 @@
 - is_beam属性は型判定や他用途にも活用
 """
 
-from cores.edgeCore import Edge
+from .edge_core import Edge
 
 
 class Beam(Edge):

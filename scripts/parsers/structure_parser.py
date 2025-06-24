@@ -14,25 +14,14 @@ TODO:
 """
 
 import re
-from typing import Dict, List, Tuple, NamedTuple, Optional
+from typing import Dict, List, Tuple
 from mathutils import Vector
 from configs.kind_labels import NODE_SECTION_KIND_IDS, KIND_LABELS, EDGE_NODE_KIND_IDS
 from configs.constants import VALID_NODE_IDS
 from utils.logging_utils import setup_logging
+from .types import NodeData, EdgeData
 
 log = setup_logging("structureParser")
-
-
-class NodeData(NamedTuple):
-    pos: Vector
-    kind_id: int
-
-
-class EdgeData(NamedTuple):
-    node_a: int
-    node_b: int
-    kind_id: int
-    kind_label: str
 
 
 def parse_structure_str(path: str) -> Tuple[Dict[int, NodeData], List[EdgeData]]:

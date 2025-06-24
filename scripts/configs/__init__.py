@@ -9,3 +9,4 @@ config.py
 from .paths import *
 from .constants import *
 from .kind_labels import *
+from .common_patterns import *
