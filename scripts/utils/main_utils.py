@@ -13,8 +13,8 @@ import bpy
 import argparse
 from typing import Tuple, Dict, List, Any, Optional
 
-from utils.blenderScene_utils import clear_scene
-from loaders.loaderManager import LoaderManager
+from .blender_scene_utils import clear_scene
+from loaders import LoaderManager
 from cores.constructors.core_factory import CoreFactory
 from builders.scene_builders.scene_builder import SceneBuilder
 from builders.hierarchy_builders.motion_parent_builder import (
@@ -23,7 +23,7 @@ from builders.hierarchy_builders.motion_parent_builder import (
 )
 from builders.material_builders import apply_all_materials
 from animators import register_ground_anim_handler, on_frame_building
-from loaders.earthquakeAnimLoader import load_earthquake_motion_csv
+from loaders import load_earthquake_motion_csv
 from configs import (
     ANIM_FPS,
     ANIM_SECONDS,
@@ -31,7 +31,7 @@ from configs import (
     EARTHQUAKE_ANIM_CSV,
     log_dataset_selection,
 )
-from utils.logging_utils import setup_logging
+from utils import setup_logging
 
 log = setup_logging("main_utils")
 

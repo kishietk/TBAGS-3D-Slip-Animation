@@ -12,7 +12,7 @@ if project_dir not in sys.path:
     sys.path.insert(0, project_dir)
 
 from configs import paths
-from utils.main_utils import (
+from utils import (
     parse_args,
     get_dataset_from_args,
     setup_scene,

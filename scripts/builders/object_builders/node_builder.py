@@ -13,7 +13,7 @@ TODO:
 import bpy
 from mathutils import Vector
 from typing import Dict
-from utils.logging_utils import setup_logging
+from utils import setup_logging
 from cores.entities import Node
 from builders.base import BuilderBase
 

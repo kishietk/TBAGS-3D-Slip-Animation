@@ -12,7 +12,7 @@ TODO:
 
 import bpy
 from mathutils import Vector
-from utils.logging_utils import setup_logging
+from utils import setup_logging
 
 log = setup_logging("labels")
 

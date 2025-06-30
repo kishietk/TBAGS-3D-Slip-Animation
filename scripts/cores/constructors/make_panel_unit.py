@@ -15,7 +15,7 @@
 from typing import Dict, List, NamedTuple
 from parsers import NodeData, EdgeData
 from configs import EPS_XY_MATCH
-from utils.logging_utils import setup_logging
+from utils import setup_logging
 from parsers import PanelData
 
 log = setup_logging("makePanelsList")

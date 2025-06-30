@@ -10,7 +10,7 @@
 
 import bpy
 from typing import Dict, List, Optional, Union, Tuple
-from utils.logging_utils import setup_logging
+from utils import setup_logging
 from builders.base import BuilderBase
 from .material_factories import (
     create_wall_material,

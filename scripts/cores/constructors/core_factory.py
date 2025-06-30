@@ -21,7 +21,7 @@ TODO:
 """
 
 from typing import Dict, List, Optional, Union
-from utils.logging_utils import setup_logging
+from utils import setup_logging
 from configs import WALL_NODE_KIND_IDS, COLUMNS_KIND_IDS, BEAMS_KIND_IDS
 from cores.entities import Node, Edge, Beam, Column, Panel, Sandbag
 from .make_panel_unit import make_panel_unit

@@ -18,7 +18,7 @@ TODO:
 import bpy
 from mathutils import Vector
 from typing import Dict, Tuple, List, Optional
-from utils.logging_utils import setup_logging
+from utils import setup_logging
 from builders.base import BuilderBase
 from configs import EPS_XY_MATCH
 

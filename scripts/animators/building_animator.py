@@ -17,7 +17,7 @@ import bpy
 import bmesh
 from typing import List, Tuple, Dict, Any, Optional
 from mathutils import Vector, Quaternion
-from utils.logging_utils import setup_logging
+from utils import setup_logging
 from configs import EPS_AXIS, UV_MAP_NAME
 
 log = setup_logging("building_animator")

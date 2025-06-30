@@ -20,7 +20,7 @@ import csv
 from collections import defaultdict
 from typing import Dict
 from mathutils import Vector
-from utils.logging_utils import setup_logging
+from utils import setup_logging
 from configs import (
     NODE_ANIM_CSV,
     VALID_NODE_IDS,

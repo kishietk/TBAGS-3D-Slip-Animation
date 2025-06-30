@@ -14,7 +14,7 @@ TODO:
 
 import bpy
 from configs import GROUND_LOCATION
-from utils.logging_utils import setup_logging
+from utils import setup_logging
 
 log = setup_logging("motion_parent_builder")
 

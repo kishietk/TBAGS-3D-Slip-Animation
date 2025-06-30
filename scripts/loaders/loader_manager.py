@@ -17,10 +17,10 @@ TODO:
 from typing import Dict, List, Tuple
 from mathutils import Vector
 from configs import NODE_CSV, NODE_ANIM_CSV, EARTHQUAKE_ANIM_CSV
-from parsers import NodeData, EdgeData,parse_structure_str
-from loaders.nodeAnimLoader import load_animation_data
-from loaders.earthquakeAnimLoader import load_earthquake_motion_csv
-from utils.logging_utils import setup_logging
+from parsers import NodeData, EdgeData, parse_structure_str
+from .node_anim_loader import load_animation_data
+from .earthquake_anim_loader import load_earthquake_motion_csv
+from utils import setup_logging
 
 log = setup_logging("LoaderManager")
 

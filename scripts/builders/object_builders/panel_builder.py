@@ -15,7 +15,7 @@ TODO:
 
 import bpy
 from typing import List, Any
-from utils.logging_utils import setup_logging
+from utils import setup_logging
 from builders.base import BuilderBase
 
 log = setup_logging("PanelBuilder")

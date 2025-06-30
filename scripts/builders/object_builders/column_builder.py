@@ -16,7 +16,7 @@ TODO:
 import bpy
 from mathutils import Vector, Matrix
 from typing import Dict, Set, Tuple
-from utils.logging_utils import setup_logging
+from utils import setup_logging
 from builders.base import BuilderBase
 
 log = setup_logging("ColumnBuilder")

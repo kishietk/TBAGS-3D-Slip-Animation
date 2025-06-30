@@ -20,7 +20,7 @@ TODO:
     - nodes 引数は内部でdict or listに統一されるが、将来的にTypedDict導入検討
 """
 from typing import Any, Dict, List, Tuple, Union, Optional
-from utils.logging_utils import setup_logging
+from utils import setup_logging
 from builders.base import BuilderBase
 from builders.object_builders import (
     NodeBuilder,

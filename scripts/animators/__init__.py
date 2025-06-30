@@ -1,2 +1,2 @@
-from .buildingAnimator import *
-from .groundAnimator import *
+from .building_animator import *
+from .ground_animator import *

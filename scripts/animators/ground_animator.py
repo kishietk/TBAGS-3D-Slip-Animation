@@ -18,7 +18,7 @@ TODO:
 import bpy
 from mathutils import Vector
 from typing import Optional, Dict
-from utils.logging_utils import setup_logging
+from utils import setup_logging
 
 log = setup_logging("ground_animator")
 

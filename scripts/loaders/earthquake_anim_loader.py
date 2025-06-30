@@ -14,10 +14,10 @@ TODO:
 import csv
 from typing import Dict
 from mathutils import Vector
-from utils.logging_utils import setup_logging
+from utils import setup_logging
 from configs import ANIM_FPS, DISP_SCALE, EARTHQUAKE_ANIM_CSV
 
-log = setup_logging("earthquakeAnimLoader")
+log = setup_logging("earthquake_anim_loader")
 
 
 def load_earthquake_motion_csv(path: str = EARTHQUAKE_ANIM_CSV) -> Dict[int, Vector]:

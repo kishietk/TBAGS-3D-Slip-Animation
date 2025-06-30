@@ -18,7 +18,7 @@ from typing import Dict, List, Tuple
 from mathutils import Vector
 from configs.kind_labels import NODE_SECTION_KIND_IDS, KIND_LABELS, EDGE_NODE_KIND_IDS
 from configs.constants import VALID_NODE_IDS
-from utils.logging_utils import setup_logging
+from utils import setup_logging
 from .types import NodeData, EdgeData
 
 log = setup_logging("structureParser")

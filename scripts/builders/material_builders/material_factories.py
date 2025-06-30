@@ -9,7 +9,7 @@
 """
 
 import bpy
-from utils.logging_utils import setup_logging
+from utils import setup_logging
 from configs import (
     WALL_IMG,
     ROOF_IMG,
