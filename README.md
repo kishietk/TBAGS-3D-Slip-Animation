@@ -19,6 +19,7 @@
 │ ├─ configs/
 │ ├─ cores/
 │ ├─ loaders/
+│ ├─ parsers/
 │ └─ utils/
 ├─ data/
 └─ textures/
