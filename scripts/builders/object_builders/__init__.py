@@ -11,7 +11,6 @@ from .node_builder import NodeBuilder
 from .panel_builder import PanelBuilder
 from .roof_builder import RoofBuilder
 from .sandbag_builder import SandbagBuilder
-from .sandbag_units_builder import SandbagUnitsBuilder
 
 __all__ = [
     "BeamBuilder",
@@ -21,5 +20,4 @@ __all__ = [
     "PanelBuilder",
     "RoofBuilder",
     "SandbagBuilder",
-    "SandbagUnitsBuilder",
 ]

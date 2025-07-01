@@ -1,30 +1,38 @@
-# cores/entities/sandbag_unit.py
+# cores/entities/sandbag_core.py
 
+from dataclasses import dataclass, field
 from typing import List
-from mathutils import Vector
 from .node_core import Node
+from mathutils import Vector
 
 
+@dataclass
 class Sandbag:
     """
     2ノードで構成されるサンドバッグユニットのデータモデル。
     Attributes:
-        nodes (List[NodeCore])
-        id (str)
-        centroid (Vector)
-        z_values (List[float])
+        nodes: z座標でソート済みの Node リスト（長さ 2）
+        id: "{低いノードID}_{高いノードID}"
+        centroid: 2点の重心ベクトル
+        z_values: [低いノードの z, 高いノードの z]
     """
 
-    def __init__(self, nodes: List[Node]):
-        assert len(nodes) == 2, "requires exactly 2 nodes"
-        sorted_nodes = sorted(nodes, key=lambda n: n.pos.z)
-        self.nodes = sorted_nodes
-        self.id = f"{sorted_nodes[0].id}_{sorted_nodes[1].id}"
-        self.centroid = (sorted_nodes[0].pos + sorted_nodes[1].pos) / 2
-        self.z_values = [n.pos.z for n in sorted_nodes]
+    nodes: List[Node]
+    id: str = field(init=False)
+    centroid: Vector = field(init=False)
+    z_values: List[float] = field(init=False)
 
-    def __repr__(self) -> str:
-        ids = [n.id for n in self.nodes]
-        return (
-            f"SandbagUnit(id={self.id}, nodes={ids}, centroid={tuple(self.centroid)})"
-        )
+    def __post_init__(self):
+        # ノード数チェック＆ソート
+        assert len(self.nodes) == 2, "Sandbag requires exactly 2 nodes"
+        self.nodes.sort(key=lambda n: n.pos.z)
+
+        # ID 生成
+        low, high = self.nodes
+        self.id = f"{low.id}_{high.id}"
+
+        # 重心計算
+        self.centroid = (low.pos + high.pos) / 2
+
+        # z値リスト
+        self.z_values = [low.pos.z, high.pos.z]

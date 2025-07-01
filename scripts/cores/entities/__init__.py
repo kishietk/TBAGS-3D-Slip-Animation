@@ -13,5 +13,5 @@ __all__ = [
     "Edge",
     "Node",
     "Panel",
-    "SandbagUnit",
+    "Sandbag",
 ]

@@ -7,18 +7,16 @@
 
 TODO:
     - units_infoの入力型をTypedDictまたはdataclass化して型安全性を強化
-    - cube_sizeの値バリデーション（非負チェックなど）を追加
     - テンプレートファイルパスやボーン名の外部設定化
     - unit_idやnode_idの型統一、エラーハンドリング強化
-    - 単体テスト追加: template複製失敗時およびキューブ生成フォールバックの検証
 """
-
 import bpy
 from mathutils import Vector
 from typing import Dict, List, Any, Tuple
 from utils import setup_logging, to_vector
 from builders.base import BuilderBase
 from configs.paths import TBAGS_MODEL
+from .cube_builder import create_cube
 
 log = setup_logging("SandbagBuilder")
 
@@ -32,11 +30,9 @@ class SandbagBuilder(BuilderBase):
     def __init__(
         self,
         units_info: List[Dict[str, Any]],
-        cube_size: Tuple[float, float, float] = (1.0, 1.0, 1.0),
     ):
         super().__init__()
         self.units_info = units_info
-        self.cube_size = cube_size
         self.log = log
 
     def build(self) -> Dict[Any, bpy.types.Object]:
@@ -67,16 +63,17 @@ class SandbagBuilder(BuilderBase):
                 self.log.warning(
                     f"unit {uid}: テンプレート複製失敗({e})、キューブ生成します。"
                 )
-                empty = self._create_cube(uid, pos)
+                empty = create_cube(uid, pos)
 
+            # カスタムプロパティ設定
             empty["sandbag_unit_id"] = uid
             empty["rep_node_id"] = getattr(rep, "id", None)
             empty["other_node_id"] = getattr(other, "id", None)
             empty["bone_pos_rep"] = tuple(pos)
 
-            other_pos = getattr(other, "pos", None) or getattr(other, "location", None)
-            if other_pos is None:
-                other_pos = pos
+            other_pos = (
+                getattr(other, "pos", None) or getattr(other, "location", None) or pos
+            )
             if not isinstance(other_pos, Vector):
                 try:
                     other_pos = Vector(other_pos)
@@ -92,7 +89,9 @@ class SandbagBuilder(BuilderBase):
         return objs
 
     def _append_from_template(
-        self, unit_id: Any, location: Vector
+        self, 
+        unit_id: Any, 
+        location: Vector
     ) -> Tuple[bpy.types.Object, bpy.types.Object]:
         """
         TBAGS_MODELテンプレートから複製し、
@@ -107,8 +106,8 @@ class SandbagBuilder(BuilderBase):
         bpy.context.scene.collection.objects.link(empty)
         empty.location = location
 
-        linked_meshes = []
-        linked_armatures = []
+        linked_meshes: List[bpy.types.Object] = []
+        linked_armatures: List[bpy.types.Object] = []
         for orig in originals:
             if orig is None:
                 continue
@@ -129,17 +128,3 @@ class SandbagBuilder(BuilderBase):
             else (linked_armatures[0] if linked_armatures else empty)
         )
         return empty, main
-
-    def _create_cube(self, unit_id: Any, location: Vector) -> bpy.types.Object:
-        """
-        フォールバック: キューブプリミティブを生成し返却。
-        """
-        bpy.ops.mesh.primitive_cube_add(size=1.0, location=location)
-        cube = bpy.context.object
-        cube.name = f"SandbagUnit_{unit_id}"
-        sx, sy, sz = self.cube_size
-        cube.scale = (sx / 2, sy / 2, sz / 2)
-        self.log.debug(
-            f"フォールバックキューブ {cube.name} を生成: size={self.cube_size}"
-        )
-        return cube

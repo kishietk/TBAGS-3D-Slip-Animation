@@ -1,31 +1,14 @@
-# cores/CoreFactory.py
-
-"""
-ファイル名: cores/CoreFactory.py
-
-責務:
-    - ロード済みノード/エッジ情報からコア構造グラフを自動構築・管理。
-        （Node, Edge, Beam, Column, Panel, Sandbag）
-    - 各コア要素のリスト/辞書取得API提供およびサマリー生成。
-
-設計方針:
-    - NodeData/EdgeDataをNode/Edge系オブジェクトに変換
-    - kind_idにより要素種別（Wall, Column, Beam, Sandbag）分類を一元化
-    - Sandbagは2ノードペアリングで生成
-
-TODO:
-    - 例外処理強化: 無効なkind_idや欠損データへの耐性を追加
-    - パラメータ化: 使用するkind_idリストや丸め精度など設定ファイル化
-    - 単体テスト追加: 各コンストラクタ・APIメソッドの正常系/異常系検証
-    - Lazy-loading対応検討: 大規模データ時のメモリ最適化
-"""
-
-from typing import Dict, List, Optional, Union
+from typing import Dict, List
 from utils import setup_logging
-from configs import WALL_NODE_KIND_IDS, COLUMNS_KIND_IDS, BEAMS_KIND_IDS
+from configs import (
+    WALL_NODE_KIND_IDS,
+    COLUMNS_KIND_IDS,
+    BEAMS_KIND_IDS,
+)
 from cores.entities import Node, Edge, Beam, Column, Panel, Sandbag
 from .make_panel_unit import make_panel_unit
-from .make_sandbag_unit import make_sandbag_unit
+from .make_sandbag_cores import make_sandbag_cores
+from .node_classification import split_nodes_by_kind
 from parsers import NodeData, EdgeData
 
 log = setup_logging("CoreFactory")
@@ -36,24 +19,35 @@ class CoreFactory:
     ロード済みデータからコアモデルを構築・一元管理するクラス。
 
     Attributes:
-        nodes (Dict[int, Node])
-        edges (List[Edge])
-        panels (List[Panel])
-        sandbags (List[Sandbag])
+        nodes: Dict[int, Node]
+        edges: List[Edge]
+        panels: List[Panel]
+        normal_nodes: Dict[int, Node]
+        sandbag_nodes: Dict[int, Node]
+        sandbags: List[Sandbag]
     """
 
     def __init__(
         self,
         nodes_data: Dict[int, NodeData],
         edges_data: List[EdgeData],
-        panel_node_kind_ids: Optional[List[int]] = None,
     ) -> None:
-        self.panel_node_kind_ids = panel_node_kind_ids or WALL_NODE_KIND_IDS
-        self.nodes: Dict[int, Node] = {}
-        self.edges: List[Edge] = []
-        self.panels: List[Panel] = []
-        self.sandbags: List[Sandbag] = []
+        # コア要素初期化（内部用属性）
+        self._nodes: Dict[int, Node] = {}
+        self._edges: List[Edge] = []
+        self._panels: List[Panel] = []
+        self._normal_nodes: Dict[int, Node] = {}
+        self._sandbag_nodes: Dict[int, Node] = {}
+        self._sandbags: List[Sandbag] = []
+
+        # データ構築
         self._construct_core_all(nodes_data, edges_data)
+
+        # ノード分類とサンドバッグ作成
+        self._normal_nodes, self._sandbag_nodes = split_nodes_by_kind(
+            self._nodes.values()
+        )
+        self._sandbags = make_sandbag_cores(self._sandbag_nodes)
 
     def _construct_core_all(
         self,
@@ -61,13 +55,16 @@ class CoreFactory:
         edges_data: List[EdgeData],
     ) -> None:
         log.info("=================[コアモデルを構築]=========================")
-        self.nodes = self._construct_core_nodes(nodes_data)
-        self.edges = self._construct_core_edges(edges_data, self.nodes)
-        self.panels = self._construct_core_panels(self.nodes, self.panel_node_kind_ids)
-        self.sandbags = make_sandbag_unit(self.nodes)
+        self._nodes = self._construct_core_nodes(nodes_data)
+        self._edges = self._construct_core_edges(edges_data, self._nodes)
+        # パネルは常に WALL_NODE_KIND_IDS で生成
+        self._panels = make_panel_unit(
+            node_map=self._nodes,
+            panel_node_kind_ids=WALL_NODE_KIND_IDS,
+        )
         log.info(
-            f"Nodes={len(self.nodes)}, Edges={len(self.edges)}, "
-            f"Panels={len(self.panels)}, Sandbags={len(self.sandbags)}"
+            f"Nodes={len(self._nodes)}, Edges={len(self._edges)}, "
+            f"Panels={len(self._panels)}"
         )
 
     def _construct_core_nodes(
@@ -89,68 +86,54 @@ class CoreFactory:
         for e in edges_data:
             a = node_map.get(e.node_a)
             b = node_map.get(e.node_b)
-            kind_id = e.kind_id
-            kind_label = e.kind_label
-            if kind_id in COLUMNS_KIND_IDS:
-                edges.append(Column(a, b, kind_id, kind_label))
-            elif kind_id in BEAMS_KIND_IDS:
-                edges.append(Beam(a, b, kind_id, kind_label))
+            if e.kind_id in COLUMNS_KIND_IDS:
+                edges.append(Column(a, b, e.kind_id, e.kind_label))
+            elif e.kind_id in BEAMS_KIND_IDS:
+                edges.append(Beam(a, b, e.kind_id, e.kind_label))
             else:
-                edges.append(Edge(a, b, kind_id, kind_label))
+                edges.append(Edge(a, b, e.kind_id, e.kind_label))
         return edges
 
-    def _construct_core_panels(
-        self,
-        node_map: Dict[int, Node],
-        panel_node_kind_ids: List[int],
-    ) -> List[Panel]:
-        panel_data = make_panel_unit(
-            node_map=node_map,
-            panel_node_kind_ids=panel_node_kind_ids,
-        )
-        panels: List[Panel] = []
-        for pd in panel_data:
-            nodes = [node_map[nid] for nid in pd.node_ids]
-            panels.append(
-                Panel(nodes, kind=pd.kind, floor=pd.floor, attributes=pd.attributes)
-            )
-        return panels
+    # Public API: プロパティを通じて内部属性を公開
+    @property
+    def nodes(self) -> Dict[int, Node]:
+        return self._nodes
 
-    # Public API methods
+    @property
+    def edges(self) -> List[Edge]:
+        return self._edges
 
-    def get_nodes(self, ids: Optional[List[int]] = None) -> List[Node]:
-        return (
-            list(self.nodes.values())
-            if ids is None
-            else [self.nodes[i] for i in ids if i in self.nodes]
-        )
-
-    def get_edges(self, kind_ids: Optional[List[int]] = None) -> List[Edge]:
-        return (
-            self.edges
-            if kind_ids is None
-            else [e for e in self.edges if e.kind_id in kind_ids]
-        )
-
-    def get_columns(self) -> List[tuple[int, int]]:
+    @property
+    def columns(self) -> List[tuple[int, int]]:
         return [
             (e.node_a.id, e.node_b.id)
-            for e in self.edges
+            for e in self._edges
             if e.kind_id in COLUMNS_KIND_IDS
         ]
 
-    def get_beams(self) -> List[tuple[int, int]]:
+    @property
+    def beams(self) -> List[tuple[int, int]]:
         return [
             (e.node_a.id, e.node_b.id)
-            for e in self.edges
+            for e in self._edges
             if e.kind_id in BEAMS_KIND_IDS
         ]
 
-    def get_panels(self) -> List[Panel]:
-        return self.panels
+    @property
+    def panels(self) -> List[Panel]:
+        return self._panels
 
-    def get_sandbags(self) -> List[Sandbag]:
-        return self.sandbags
+    @property
+    def normal_nodes(self) -> Dict[int, Node]:
+        return self._normal_nodes
+
+    @property
+    def sandbag_nodes(self) -> Dict[int, Node]:
+        return self._sandbag_nodes
+
+    @property
+    def sandbags(self) -> List[Sandbag]:
+        return self._sandbags
 
     def summary(self) -> str:
         return (

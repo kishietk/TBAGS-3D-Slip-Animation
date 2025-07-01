@@ -76,10 +76,6 @@ CYLINDER_VERTS = 4
 EPS_XY_MATCH = 1e-3
 EPS_AXIS = 1e-6
 
-# 工字サンドバッグ表示用パラメータ
-SANDBAG_FACE_SIZE      = Vector((3.0, 3.0))  
-SANDBAG_BAR_THICKNESS  = 0.2
-
 # ----------------------------
 # 地面（Ground）パラメータ
 # ----------------------------
@@ -116,7 +112,3 @@ ROOF_ALPHA = 0.6
 TYPE_HEADER = "(TYPE)"
 CMP_HEADER = "(CMP)"
 ID_HEADER = "(ID)"
-
-# --- 追加の設計指針 ---
-# ・パス/ラベル/種別は別ファイルで管理
-# ・外部データ化/将来の多階層/グループ管理はdict型やEnum化で柔軟対応
