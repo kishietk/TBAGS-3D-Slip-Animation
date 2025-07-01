@@ -1,4 +1,5 @@
 from typing import Any, Dict, List, Tuple, Optional
+from typing import Union
 from utils import setup_logging
 from builders.base import BuilderBase
 from builders.object_builders import (
@@ -43,7 +44,7 @@ class SceneBuilder(BuilderBase):
     ]:
         # 1. コアモデルから分類済みデータ取得
         normal_nodes = self.core.normal_nodes
-        panel_data = self.core.panels
+        panels = self.core.panels
         column_edges = self.core.columns
         beam_edges = self.core.beams
 
@@ -58,7 +59,7 @@ class SceneBuilder(BuilderBase):
         sandbag_base_objs = SandbagBuilder(units_info).build()
 
         # 4. パネル生成
-        panel_objs = PanelBuilder(panel_data).run() if panel_data else []
+        panel_objs = PanelBuilder(panels).build() if panels else []
 
         # 5. 屋根生成
         positions = {n.id: n.pos for n in normal_nodes.values()}
