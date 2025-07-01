@@ -1,4 +1,4 @@
-# utils/main_utils.py
+# main_utils.py
 
 """
 ファイル名: utils/main_utils.py
@@ -13,7 +13,7 @@ import bpy
 import argparse
 from typing import Tuple, Dict, List, Any, Optional
 
-from .blender_scene_utils import clear_scene
+from utils import clear_scene, setup_logging
 from loaders import LoaderManager
 from cores.constructors.core_factory import CoreFactory
 from builders.scene_builders.scene_builder import SceneBuilder
@@ -31,7 +31,6 @@ from configs import (
     EARTHQUAKE_ANIM_CSV,
     log_dataset_selection,
 )
-from utils import setup_logging
 
 log = setup_logging("main_utils")
 

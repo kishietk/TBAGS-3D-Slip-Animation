@@ -16,7 +16,7 @@ TODO:
 import bpy
 from mathutils import Vector
 from typing import Dict, List, Any, Tuple
-from utils import setup_logging
+from utils import setup_logging, to_vector
 from builders.base import BuilderBase
 from configs.paths import TBAGS_MODEL
 
@@ -32,7 +32,7 @@ class SandbagBuilder(BuilderBase):
     def __init__(
         self,
         units_info: List[Dict[str, Any]],
-        cube_size: Tuple[float, float, float],
+        cube_size: Tuple[float, float, float] = (1.0, 1.0, 1.0),
     ):
         super().__init__()
         self.units_info = units_info
@@ -49,8 +49,8 @@ class SandbagBuilder(BuilderBase):
             uid = info.get("unit_id")
             rep = info.get("rep_node")
             other = info.get("other_node")
+            pos = to_vector(rep)
 
-            pos = getattr(rep, "pos", None) or getattr(rep, "location", None)
             if pos is None:
                 self.log.warning(f"unit {uid}: 代表ノード位置未設定、スキップします。")
                 continue
@@ -64,7 +64,7 @@ class SandbagBuilder(BuilderBase):
             try:
                 empty, _ = self._append_from_template(uid, pos)
             except Exception as e:
-                self.log.debug(
+                self.log.warning(
                     f"unit {uid}: テンプレート複製失敗({e})、キューブ生成します。"
                 )
                 empty = self._create_cube(uid, pos)

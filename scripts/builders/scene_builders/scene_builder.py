@@ -139,9 +139,9 @@ class SceneBuilder(BuilderBase):
             info["unit_id"]: [info["rep_node"].id, info["other_node"].id]
             for info in prepared
         }
-        sandbag_unit_objs = (
-            SandbagUnitsBuilder(units_map, sandbag_base_objs).run() if units_map else {}
-        )
+        # sandbag_unit_objs = (
+        #     SandbagUnitsBuilder(units_map, sandbag_base_objs).run() if units_map else {}
+        # )
 
         # 4. パネル生成
         panel_objs = PanelBuilder(self.panels_data).run() if self.panels_data else []
@@ -165,7 +165,7 @@ class SceneBuilder(BuilderBase):
         # サマリー出力
         summary = (
             f"SceneBuilder Summary: Nodes={len(node_objs)}, "
-            f"SandbagEmpties={len(sandbag_base_objs)}, Units={len(sandbag_unit_objs)}, "
+            # f"SandbagEmpties={len(sandbag_base_objs)}, Units={len(sandbag_unit_objs)}, "
             f"Panels={len(panel_objs)}, RoofQuads={len(roof_quads)}, "
             f"Members={len(member_objs)}, Ground={'Yes' if ground_obj else 'No'}"
         )
