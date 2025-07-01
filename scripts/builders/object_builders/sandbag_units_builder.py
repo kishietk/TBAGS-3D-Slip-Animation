@@ -22,7 +22,6 @@ class SandbagUnitsBuilder(BuilderBase):
         units: dict[int, list[int]],
         sandbags_objs: dict[int, bpy.types.Object],
     ):
-
         """初期化: units は {unit_id: [sandbag_id,...]} 形式とする。"""
         super().__init__()
         self.units = units
@@ -39,13 +38,22 @@ class SandbagUnitsBuilder(BuilderBase):
         """
         collections: dict[int, bpy.types.Collection] = {}
         for uid, sb_ids in self.units.items():
-            col = bpy.data.collections.new(f"SandbagUnit_{uid}")
-            bpy.context.scene.collection.children.link(col)
+            col_name = f"SandbagUnit_{uid}"
+            # 既存コレクションがあれば再利用
+            if col_name in bpy.data.collections:
+                col = bpy.data.collections[col_name]
+            else:
+                col = bpy.data.collections.new(col_name)
+                bpy.context.scene.collection.children.link(col)
+
             for sbid in sb_ids:
                 obj = self.sandbags_objs.get(sbid)
                 if obj:
-                    col.objects.link(obj)
+                    # 重複リンク回避
+                    if col.name not in [c.name for c in obj.users_collection]:
+                        col.objects.link(obj)
+
             collections[uid] = col
-            self.log.debug(f"Unit_{uid} collection created with {len(sb_ids)} sandbags")
+            self.log.debug(f"{col_name} created/updated with {len(sb_ids)} sandbags")
         self.log.info(f"{len(collections)} sandbag units built.")
         return collections

@@ -1,3 +1,4 @@
+# scripts/main.py
 """
 責務:
 - プロジェクトの実行起点。
@@ -21,7 +22,11 @@ from utils import (
     build_blender_objects_from_core,
     apply_materials_to_all,
     setup_animation_handlers,
+    setup_logging,
 )
+from utils.sandbag_cloner import clone_sandbags
+
+log = setup_logging("Main")
 
 
 def main():
@@ -32,14 +37,21 @@ def main():
     earthquake_anim_csv = dataset["earthquake_anim_csv"]
 
     setup_scene()
+
     nodes_data, edges_data, anim_data, eq_anim_data = load_all_data(
         node_csv=node_csv,
         node_anim_csv=node_anim_csv,
         earthquake_anim_csv=earthquake_anim_csv,
     )
+
     core = build_core_model(nodes_data, edges_data)
     blender_objs = build_blender_objects_from_core(core)
     apply_materials_to_all(blender_objs)
+
+    # ここで必ず複製処理を呼び出し
+    log.info("=== メイン処理：サンドバッグ複製処理へ移行 ===")
+    clone_sandbags()
+
     setup_animation_handlers(core, anim_data, blender_objs, eq_anim_data)
 
 

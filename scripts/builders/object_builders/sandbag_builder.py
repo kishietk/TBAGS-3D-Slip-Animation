@@ -39,6 +39,24 @@ class SandbagBuilder(BuilderBase):
         self.cube_size = cube_size
         self.log = log
 
+        # ── テンプレートを最初に一度だけ読み込んでキャッシュしておく
+        self._template_objects = []
+        try:
+            with bpy.data.libraries.load(TBAGS_MODEL, link=False) as (src, dst):
+                dst.objects = src.objects
+                dst.armatures = src.armatures
+            # 実際のオリジナルオブジェクトをキャッシュ
+            for name in dst.objects:
+                if name in bpy.data.objects:
+                    self._template_objects.append(bpy.data.objects[name])
+            self.log.debug(
+                f"Sandbag template loaded: {len(self._template_objects)} objects"
+            )
+        except Exception as e:
+            self.log.warning(
+                f"Sandbag template load failed: {e}, fallback will be used."
+            )
+
     def build(self) -> Dict[Any, bpy.types.Object]:
         """
         各SandbagUnitにつき1オブジェクトを生成し、
@@ -61,13 +79,34 @@ class SandbagBuilder(BuilderBase):
                     self.log.error(f"unit {uid}: 位置Vector変換失敗: {e}")
                     continue
 
+            # ── テンプレートコピー（キャッシュ版）＋Empty作成
             try:
-                empty, _ = self._append_from_template(uid, pos)
+                empty = bpy.data.objects.new(f"SandbagUnit_{uid}", None)
+                bpy.context.scene.collection.objects.link(empty)
+                empty.location = pos
+                # アニメーションデータ用のDataBlockを確実に作成
+                empty.animation_data_create()
+                # キャッシュしたテンプレートオブジェクトをコピー
+                if self._template_objects:
+                    for src in self._template_objects:
+                        dup = src.copy()
+                        if src.data:
+                            dup.data = src.data.copy()
+                        bpy.context.scene.collection.objects.link(dup)
+                        dup.parent = empty
+                        dup.parent_type = "OBJECT"
+                else:
+                    raise RuntimeError("no template cached")
             except Exception as e:
                 self.log.debug(
                     f"unit {uid}: テンプレート複製失敗({e})、キューブ生成します。"
                 )
                 empty = self._create_cube(uid, pos)
+                # フォールバック後もアニメーションDataBlockを用意
+                empty.animation_data_create()
+
+            # ── 追加: clone_sandbags() が参照する kind_id プロパティを設定
+            empty["kind_id"] = getattr(rep, "kind_id", None)
 
             empty["sandbag_unit_id"] = uid
             empty["rep_node_id"] = getattr(rep, "id", None)
@@ -90,45 +129,6 @@ class SandbagBuilder(BuilderBase):
             f"{len(objs)} 件のサンドバッグユニットオブジェクトを生成しました。"
         )
         return objs
-
-    def _append_from_template(
-        self, unit_id: Any, location: Vector
-    ) -> Tuple[bpy.types.Object, bpy.types.Object]:
-        """
-        TBAGS_MODELテンプレートから複製し、
-        (Empty, MainMesh)を返す。
-        """
-        with bpy.data.libraries.load(TBAGS_MODEL, link=False) as (src, dst):
-            dst.objects = src.objects
-            dst.armatures = src.armatures
-        originals = dst.objects
-
-        empty = bpy.data.objects.new(f"SandbagUnit_{unit_id}", None)
-        bpy.context.scene.collection.objects.link(empty)
-        empty.location = location
-
-        linked_meshes = []
-        linked_armatures = []
-        for orig in originals:
-            if orig is None:
-                continue
-            obj_copy = orig.copy()
-            if orig.data:
-                obj_copy.data = orig.data.copy()
-            bpy.context.scene.collection.objects.link(obj_copy)
-            obj_copy.parent = empty
-            obj_copy.parent_type = "OBJECT"
-            if obj_copy.type == "MESH":
-                linked_meshes.append(obj_copy)
-            elif obj_copy.type == "ARMATURE":
-                linked_armatures.append(obj_copy)
-
-        main = (
-            linked_meshes[0]
-            if linked_meshes
-            else (linked_armatures[0] if linked_armatures else empty)
-        )
-        return empty, main
 
     def _create_cube(self, unit_id: Any, location: Vector) -> bpy.types.Object:
         """

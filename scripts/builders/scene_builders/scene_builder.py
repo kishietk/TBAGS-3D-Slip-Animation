@@ -132,7 +132,7 @@ class SceneBuilder(BuilderBase):
             self.sandbag_bar_thickness,
         )
         prepared = prepare_sandbag_units({**normal_nodes, **sandbag_nodes})
-        sandbag_base_objs = SandbagBuilder(prepared, cube_size=cube_size).build()
+        sandbag_base_objs = SandbagBuilder(prepared, cube_size=cube_size).run()
 
         # 3. サンドバッグユニットCollection化
         units_map: Dict[Any, List[int]] = {
