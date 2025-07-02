@@ -94,9 +94,19 @@ def set_parent(
             _assign_parent(obj, "ノード")
 
     # サンドバッグ
+    # if sandbag_objs:
+    #     for obj in sandbag_objs.values():
+    #         _assign_parent(obj, "サンドバッグ")
+    # サンドバッグ
     if sandbag_objs:
-        for obj in sandbag_objs.values():
-            _assign_parent(obj, "サンドバッグ")
+        for sb in sandbag_objs.values():
+            # Option A で返しているのは dict {"empty":..., "armature_twist":..., "armature_bend":...}
+            if isinstance(sb, dict):
+                for sub_obj in sb.values():
+                    _assign_parent(sub_obj, "サンドバッグ")
+            else:
+                _assign_parent(sb, "サンドバッグ")
+
 
     # パネル
     if panel_objs:

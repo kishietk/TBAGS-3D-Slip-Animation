@@ -1,5 +1,4 @@
 from typing import Any, Dict, List, Tuple, Optional
-from typing import Union
 from utils import setup_logging
 from builders.base import BuilderBase
 from builders.object_builders import (
@@ -13,13 +12,23 @@ from builders.object_builders import (
 )
 from configs import SPHERE_RADIUS
 from cores.constructors.core_factory import CoreFactory
+import bpy
 
 log = setup_logging("SceneBuilder")
 
 
 class SceneBuilder(BuilderBase):
     """
-    CoreFactory で生成済みのコアモデルから、Blender シーン用オブジェクトをビルドするクラス
+    CoreFactory で生成済みのコアモデルから、Blender シーン用オブジェクトをビルドするクラス。
+
+    build() メソッドは以下を返す:
+        - node_objs: Dict[node_id, bpy.types.Object]
+        - sandbag_base_objs: Dict[unit_id, {'empty': EmptyObj, 'armature': ArmatureObj}]
+        - panel_objs: List[bpy.types.Object]
+        - roof_obj: bpy.types.Object
+        - roof_quads: List[Tuple[int, int, int, int]]
+        - member_objs: List[Tuple[bpy.types.Object, int, int]]
+        - ground_obj: Optional[bpy.types.Object]
     """
 
     def __init__(
@@ -34,13 +43,13 @@ class SceneBuilder(BuilderBase):
     def build(
         self,
     ) -> Tuple[
-        Dict[int, Any],  # node_objs
-        Dict[Any, Any],  # sandbag_base_objs
-        List[Any],  # panel_objs
-        Any,  # roof_obj
+        Dict[int, bpy.types.Object],  # node_objs
+        Dict[Any, Dict[str, bpy.types.Object]],  # sandbag_base_objs
+        List[bpy.types.Object],  # panel_objs
+        bpy.types.Object,  # roof_obj
         List[Tuple[int, int, int, int]],  # roof_quads
-        List[Tuple[Any, int, int]],  # member_objs
-        Any,  # ground_obj
+        List[Tuple[bpy.types.Object, int, int]],  # member_objs
+        Optional[bpy.types.Object],  # ground_obj
     ]:
         # 1. コアモデルから分類済みデータ取得
         normal_nodes = self.core.normal_nodes
@@ -51,7 +60,7 @@ class SceneBuilder(BuilderBase):
         # 2. 通常ノード球体生成
         node_objs = NodeBuilder(normal_nodes, radius=SPHERE_RADIUS).run()
 
-        # 3. サンドバッグ生成
+        # 3. サンドバッグ生成 (Empty+Armature)
         units_info = [
             {"unit_id": sb.id, "rep_node": sb.nodes[0], "other_node": sb.nodes[1]}
             for sb in self.core.sandbags
@@ -81,6 +90,7 @@ class SceneBuilder(BuilderBase):
         # サマリー出力
         summary = (
             f"SceneBuilder Summary: Nodes={len(node_objs)}, "
+            f"Sandbags={len(sandbag_base_objs)}, "
             f"Panels={len(panel_objs)}, RoofQuads={len(roof_quads)}, "
             f"Members={len(member_objs)}, Ground={'Yes' if ground_obj else 'No'}"
         )

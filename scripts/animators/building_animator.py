@@ -19,6 +19,7 @@ from typing import List, Tuple, Dict, Any, Optional
 from mathutils import Vector, Quaternion
 from utils import setup_logging
 from configs import EPS_AXIS, UV_MAP_NAME
+from utils.bone_name_resolver import get_rep_and_other_bones
 
 log = setup_logging("building_animator")
 
@@ -30,7 +31,7 @@ def on_frame_building(
     roof_quads: List[Tuple[int, int, int, int]],
     member_objs: List[Tuple[bpy.types.Object, int, int]],
     node_objs: Dict[int, bpy.types.Object],
-    sandbag_objs: Dict[Any, bpy.types.Object],
+    sandbag_objs: Dict[Any, Dict[str, bpy.types.Object]],
     anim_data: Dict[int, Dict[int, Vector]],
     sandbag_anim_data: Dict[int, Dict[int, Vector]],
     base_node_pos: Dict[int, Vector],
@@ -47,7 +48,7 @@ def on_frame_building(
         roof_quads: 屋根面のノードIDタプルリスト
         member_objs: (オブジェクト, start_id, end_id) の柱／梁リスト
         node_objs: ノードID→球オブジェクトマップ
-        sandbag_objs: サンドバッグEmpty/Armatureマップ
+        sandbag_objs: サンドバッグEmpty/Armatureマップ (unit_id→{'empty': Empty, 'armature': Armature})
         anim_data: ノードアニメーションオフセット
         sandbag_anim_data: サンドバッグノードアニメーションオフセット
         base_node_pos: 初期ノード座標
@@ -61,12 +62,20 @@ def on_frame_building(
                 scene.frame_current, Vector()
             )
 
-    # サンドバッグユニットアニメーション更新
-    for obj in sandbag_objs.values():
-        rep_id = obj.get("rep_node_id")
-        other_id = obj.get("other_node_id")
+    # サンドバッグユニットアニメーション更新（Armature駆動）
+    for unit in sandbag_objs.values():
+        empty = unit.get("empty")
+        twist_arm = unit.get("armature_twist")
+        bend_arm = unit.get("armature_bend")
+        # 必要なオブジェクトが揃っていなければスキップ
+        if not all((empty, twist_arm, bend_arm)):
+            continue
+
+        rep_id = empty.get("rep_node_id")
+        other_id = empty.get("other_node_id")
         if rep_id is None or other_id is None:
             continue
+
         base_rep = base_sandbag_pos.get(rep_id, Vector())
         base_other = base_sandbag_pos.get(other_id, Vector())
         disp_rep = sandbag_anim_data.get(rep_id, {}).get(scene.frame_current, Vector())
@@ -76,23 +85,15 @@ def on_frame_building(
         pos_rep = base_rep + disp_rep
         pos_other = base_other + disp_other
 
-        try:
-            if obj.type == "ARMATURE":
-                arm = obj
-                pb_rep = arm.pose.bones.get("Bone_Rep")
-                if pb_rep:
-                    pb_rep.location = (
-                        arm.matrix_world.inverted() @ pos_rep - pb_rep.bone.head_local
-                    )
-                pb_oth = arm.pose.bones.get("Bone_Other")
-                if pb_oth:
-                    pb_oth.location = (
-                        arm.matrix_world.inverted() @ pos_other - pb_oth.bone.head_local
-                    )
-            else:
-                obj.location = pos_rep
-        except Exception as e:
-            log.error(f"Sandbag animation update failed for {obj.name}: {e}")
+        # Twist／Bend それぞれの Armature を更新
+        for arm in (twist_arm, bend_arm):
+            try:
+                pb_rep, pb_oth = get_rep_and_other_bones(arm)
+                inv = arm.matrix_world.inverted()
+                pb_rep.location = inv @ pos_rep - pb_rep.bone.head_local
+                pb_oth.location = inv @ pos_other - pb_oth.bone.head_local
+            except Exception as e:
+                log.error(f"[Sandbag {arm.name}] Bone更新失敗: {e}")
 
     # パネル更新
     for obj in panel_objs:
