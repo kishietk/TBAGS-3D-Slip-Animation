@@ -118,6 +118,22 @@ class SandbagBuilder(BuilderBase):
                     f"unit {uid}: Armatureが見つかりません。Emptyを代用します。"
                 )
 
+            # ───────────────────────────────────────
+            # 【★ここを追加】Empty配下のメッシュにArmatureモディファイアをセット
+            # ───────────────────────────────────────
+            for child in empty.children:
+                if child.type == "MESH":
+                    # ねじり用アーマチュア
+                    mod_twist = child.modifiers.new(
+                        name="ArmatureTwist", type="ARMATURE"
+                    )
+                    mod_twist.object = twist_arm
+                    # 曲げ用アーマチュア
+                    mod_bend = child.modifiers.new(
+                        name="ArmatureBend", type="ARMATURE"
+                    )
+                    mod_bend.object = bend_arm
+
             # ---------------------------------------
             # Empty のカスタムプロパティを両Armatureにコピー
             # ---------------------------------------
@@ -173,6 +189,8 @@ class SandbagBuilder(BuilderBase):
             bpy.context.scene.collection.objects.link(obj_copy)
             obj_copy.parent = empty
             obj_copy.parent_type = "OBJECT"
+            obj_copy.location = (0.0, 0.0, 0.0)
+            obj_copy.matrix_parent_inverse = empty.matrix_world.inverted()
 
             if obj_copy.type == "MESH":
                 linked_meshes.append(obj_copy)
