@@ -23,7 +23,7 @@ class SceneBuilder(BuilderBase):
 
     build() メソッドは以下を返す:
         - node_objs: Dict[node_id, bpy.types.Object]
-        - sandbag_base_objs: Dict[unit_id, {'empty': EmptyObj, 'armature': ArmatureObj}]
+        - sandbag_base_objs: Dict[unit_id, {'empty': EmptyObj, 'armature_twist': ArmatureObj, 'armature_bend': ArmatureObj}]
         - panel_objs: List[bpy.types.Object]
         - roof_obj: bpy.types.Object
         - roof_quads: List[Tuple[int, int, int, int]]
@@ -43,29 +43,26 @@ class SceneBuilder(BuilderBase):
     def build(
         self,
     ) -> Tuple[
-        Dict[int, bpy.types.Object],  # node_objs
-        Dict[Any, Dict[str, bpy.types.Object]],  # sandbag_base_objs
-        List[bpy.types.Object],  # panel_objs
-        bpy.types.Object,  # roof_obj
-        List[Tuple[int, int, int, int]],  # roof_quads
-        List[Tuple[bpy.types.Object, int, int]],  # member_objs
-        Optional[bpy.types.Object],  # ground_obj
+        Dict[int, bpy.types.Object],
+        Dict[Any, Dict[str, bpy.types.Object]],
+        List[bpy.types.Object],
+        bpy.types.Object,
+        List[Tuple[int, int, int, int]],
+        List[Tuple[bpy.types.Object, int, int]],
+        Optional[bpy.types.Object],
     ]:
         # 1. コアモデルから分類済みデータ取得
         normal_nodes = self.core.normal_nodes
         panels = self.core.panels
         column_edges = self.core.columns
         beam_edges = self.core.beams
+        sandbags = self.core.sandbags
 
         # 2. 通常ノード球体生成
         node_objs = NodeBuilder(normal_nodes, radius=SPHERE_RADIUS).run()
 
-        # 3. サンドバッグ生成 (Empty+Armature)
-        units_info = [
-            {"unit_id": sb.id, "rep_node": sb.nodes[0], "other_node": sb.nodes[1]}
-            for sb in self.core.sandbags
-        ]
-        sandbag_base_objs = SandbagBuilder(units_info).build()
+        # 3. サンドバッグ生成 (Empty + Armature)
+        sandbag_objs = SandbagBuilder(sandbags).build()
 
         # 4. パネル生成
         panel_objs = PanelBuilder(panels).build() if panels else []
@@ -90,7 +87,7 @@ class SceneBuilder(BuilderBase):
         # サマリー出力
         summary = (
             f"SceneBuilder Summary: Nodes={len(node_objs)}, "
-            f"Sandbags={len(sandbag_base_objs)}, "
+            f"Sandbags={len(sandbag_objs)}, "
             f"Panels={len(panel_objs)}, RoofQuads={len(roof_quads)}, "
             f"Members={len(member_objs)}, Ground={'Yes' if ground_obj else 'No'}"
         )
@@ -98,7 +95,7 @@ class SceneBuilder(BuilderBase):
 
         return (
             node_objs,
-            sandbag_base_objs,
+            sandbag_objs,
             panel_objs,
             roof_obj,
             roof_quads,

@@ -205,6 +205,7 @@ def setup_animation_handlers(
     register_ground_anim_handler(
         motion_parent=motion_parent,
         earthquake_anim_data=earthquake_anim_data,
+        enabled = False
     )
 
     # 建物部材アニメーションをフレーム毎に実行

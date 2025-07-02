@@ -27,9 +27,11 @@ def group_sandbag_pairs(nodes: Dict[int, Node]) -> List[Tuple[Node, Node]]:
     for group in xy_groups.values():
         # Z 座標でソート
         group.sort(key=lambda n: n.pos.z)
-        # 隣接ペアを作成
+        # 隣接ペアを「高い→低い」の順で作成
         for i in range(0, len(group) - 1, 2):
-            pairs.append((group[i], group[i + 1]))
+            higher = group[i + 1]
+            lower  = group[i]
+            pairs.append((higher, lower))
     return pairs
 
 
