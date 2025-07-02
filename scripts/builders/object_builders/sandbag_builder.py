@@ -36,17 +36,27 @@ class SandbagBuilder(BuilderBase):
         """
         results: Dict[Any, Dict[str, bpy.types.Object]] = {}
 
+        log.debug(f"Starting build: {len(self.sandbags)} sandbags to process")
         for sandbag in self.sandbags:
             sandbag_id = sandbag.id
+            # デバッグ: どのノードが来ているか確認
+            node_info = [(n.id, n.pos) for n in sandbag.nodes]
+            log.debug(f"[Build] Sandbag {sandbag_id} nodes data: {node_info}")
             try:
                 # 1) 位置取得
                 low_pos, high_pos = self._get_positions(sandbag)
+                log.debug(
+                    f"[Build] Sandbag {sandbag_id} positions: low={low_pos}, high={high_pos}"
+                )
 
                 # 2) Empty＋テンプレート複製（失敗時はキューブ）
                 empty = self._create_empty_container(sandbag_id, low_pos)
 
                 # 3) アーマチュア（上面／下面）検出
                 top_arm, bottom_arm = self._find_armatures(empty, sandbag_id)
+                log.debug(
+                    f"[Build] Sandbag {sandbag_id} armatures: top={top_arm.name}, bottom={bottom_arm.name}"
+                )
 
                 # 4) メッシュへモディファイア追加
                 self._apply_modifiers(empty, top_arm, bottom_arm)
@@ -60,18 +70,28 @@ class SandbagBuilder(BuilderBase):
                     "armature_top": top_arm,
                     "armature_bottom": bottom_arm,
                 }
+                log.debug(f"[Build] Sandbag {sandbag_id} built successfully")
 
             except Exception as e:
                 log.warning(f"サンドバッグ[{sandbag_id}]: ビルド失敗({e})")
 
-        log.info(f"{len(results)} 件のサンドバッグを生成しました。")
+        log.debug(
+            f"Build complete: {len(results)} / {len(self.sandbags)} sandbags generated."
+        )
         return results
 
     def _get_positions(self, sandbag: Sandbag) -> Tuple[Vector, Vector]:
-        low_node, high_node = sandbag.nodes
+        """
+        Sandbag.nodes は [高いノード, 低いノード] の順で提供される
+        """
+        high_node, low_node = sandbag.nodes
+        log.debug(f"[GetPos] high_node.id={high_node.id}, pos={high_node.pos}")
+        log.debug(f"[GetPos] low_node.id={low_node.id}, pos={low_node.pos}")
         low_pos = to_vector(low_node.pos)
         high_pos = to_vector(high_node.pos) or low_pos
+        log.debug(f"[GetPos] converted low_pos={low_pos}, high_pos={high_pos}")
         if low_pos is None:
+            log.error(f"[GetPos] Sandbag {sandbag.id} low_node.pos is None")
             raise ValueError("low_node の位置未設定")
         return low_pos, high_pos
 
@@ -96,7 +116,7 @@ class SandbagBuilder(BuilderBase):
                 f"サンドバッグ[{uid}]: アーマチュア1つのみ。上下同じものを使用します。"
             )
             return arms[0], arms[0]
-        log.warning(f"サンドバッグ[{uid}]: アーマチュアなし。Emptyを代用します。")
+        log.warning(f"サンドバッグ[{uid}]: アーマチュアなし。Empty代用")
         return empty, empty
 
     def _apply_modifiers(
@@ -107,10 +127,10 @@ class SandbagBuilder(BuilderBase):
     ) -> None:
         for child in empty.children:
             if child.type == "MESH":
-                mod_top = child.modifiers.new(name="ArmatureTop", type="ARMATURE")
-                mod_top.object = top_arm
-                mod_bot = child.modifiers.new(name="ArmatureBottom", type="ARMATURE")
-                mod_bot.object = bottom_arm
+                m_top = child.modifiers.new("ArmatureTop", "ARMATURE")
+                m_top.object = top_arm
+                m_bot = child.modifiers.new("ArmatureBottom", "ARMATURE")
+                m_bot.object = bottom_arm
 
     def _assign_properties(
         self,
@@ -119,25 +139,17 @@ class SandbagBuilder(BuilderBase):
         low_pos: Vector,
         high_pos: Vector,
     ) -> None:
-        # 1) Empty にまずセット
-        empty["sandbag_id"] = sandbag.id
-        empty["low_node_id"] = sandbag.nodes[0].id
-        empty["high_node_id"] = sandbag.nodes[1].id
-        empty["bone_low_pos"] = tuple(low_pos)
-        empty["bone_high_pos"] = tuple(high_pos)
-
-        # 2) 子オブジェクトのうち ARMATURE に同じプロパティをコピー
-        props = [
-            "sandbag_id",
-            "low_node_id",
-            "high_node_id",
-            "bone_low_pos",
-            "bone_high_pos",
-        ]
-        for child in empty.children:
-            if child.type == "ARMATURE":
-                for prop in props:
-                    child[prop] = empty[prop]
+        high_node, low_node = sandbag.nodes
+        props = {
+            "sandbag_id": sandbag.id,
+            "low_node_id": low_node.id,
+            "high_node_id": high_node.id,
+            "bone_low_pos": tuple(low_pos),
+            "bone_high_pos": tuple(high_pos),
+        }
+        for target in [empty] + [c for c in empty.children if c.type == "ARMATURE"]:
+            for k, v in props.items():
+                target[k] = v
 
     def _append_from_template(
         self,
@@ -152,29 +164,19 @@ class SandbagBuilder(BuilderBase):
         bpy.context.scene.collection.objects.link(empty)
         empty.location = location
 
-        linked_meshes: List[bpy.types.Object] = []
-        linked_armatures: List[bpy.types.Object] = []
-
+        meshes, arms = [], []
         for orig in dst.objects:
             if orig is None:
                 continue
-            obj_copy = orig.copy()
+            copy = orig.copy()
             if orig.data:
-                obj_copy.data = orig.data.copy()
-            bpy.context.scene.collection.objects.link(obj_copy)
-            obj_copy.parent = empty
-            obj_copy.parent_type = "OBJECT"
-            obj_copy.location = (0.0, 0.0, 0.0)
-            obj_copy.matrix_parent_inverse = empty.matrix_world.inverted()
+                copy.data = orig.data.copy()
+            bpy.context.scene.collection.objects.link(copy)
+            copy.parent = empty
+            copy.parent_type = "OBJECT"
+            copy.location = (0, 0, 0)
+            copy.matrix_parent_inverse = empty.matrix_world.inverted()
+            (meshes if copy.type == "MESH" else arms).append(copy)
 
-            if obj_copy.type == "MESH":
-                linked_meshes.append(obj_copy)
-            elif obj_copy.type == "ARMATURE":
-                linked_armatures.append(obj_copy)
-
-        main = (
-            linked_meshes[0]
-            if linked_meshes
-            else (linked_armatures[0] if linked_armatures else empty)
-        )
+        main = meshes[0] if meshes else (arms[0] if arms else empty)
         return empty, main

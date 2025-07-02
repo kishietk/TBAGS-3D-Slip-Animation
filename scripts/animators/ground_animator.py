@@ -26,6 +26,7 @@ log = setup_logging("ground_animator")
 def register_ground_anim_handler(
     motion_parent: bpy.types.Object,
     earthquake_anim_data: Optional[Dict[int, Vector]] = None,
+    enabled: bool = True,
 ) -> None:
     """
     役割:
@@ -44,12 +45,12 @@ def register_ground_anim_handler(
 
     def _on_frame(scene):
         disp = Vector((0, 0, 0))
-        if earthquake_anim_data is not None:
+        if enabled and earthquake_anim_data is not None:
             disp = earthquake_anim_data.get(scene.frame_current, Vector((0, 0, 0)))
         if motion_parent:
             motion_parent.location = disp
             log.debug(
-                f"motion_parent.location set to {tuple(disp)} at frame {scene.frame_current}"
+                f"motion_parent.location set to {tuple(disp)} at frame {scene.frame_current} (enabled={enabled})"
             )
 
     bpy.app.handlers.frame_change_pre.append(_on_frame)
