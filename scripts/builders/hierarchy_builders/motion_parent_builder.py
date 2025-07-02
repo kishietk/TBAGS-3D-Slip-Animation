@@ -83,6 +83,7 @@ def set_parent(
     def _assign_parent(obj, label=""):
         if obj:
             obj.parent = parent_obj
+            obj.parent_type = "OBJECT"
             log.debug(
                 f"{label}オブジェクト「{obj.name}」を「{parent_obj.name}」に親子付けしました。"
             )
@@ -97,8 +98,7 @@ def set_parent(
     if sandbag_objs:
         for sb in sandbag_objs.values():
             empty = sb["empty"] if isinstance(sb, dict) else sb
-            empty.parent = parent_obj
-            empty.parent_type = "OBJECT"
+            _assign_parent(empty, "サンドバッグ")
 
     # パネル
     if panel_objs:
@@ -122,3 +122,10 @@ def set_parent(
     # ログ出力
     summary = "、".join([f"{label}:{n}" for label, n in counts.items() if n > 0])
     log.info(f"親子関係を設定：[{summary}]")
+
+    # motion_parent位置をground_obj位置に合わせる
+    if ground_obj:
+        parent_obj.location = ground_obj.location.copy()
+        log.debug(
+            f"{parent_obj.name}の位置を地面オブジェクト({ground_obj.name})の位置{tuple(ground_obj.location)}に合わせました。"
+        )

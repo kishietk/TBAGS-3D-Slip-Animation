@@ -62,7 +62,7 @@ class SceneBuilder(BuilderBase):
 
         # 3. サンドバッグ生成 (Empty+Armature)
         units_info = [
-            {"unit_id": sb.id, "rep_node": sb.nodes[0], "other_node": sb.nodes[1]}
+            {"unit_id": sb.id, "rep_node": sb.nodes[1], "other_node": sb.nodes[0]}
             for sb in self.core.sandbags
         ]
         sandbag_base_objs = SandbagBuilder(units_info).build()

@@ -4,7 +4,7 @@ from typing import Any, Tuple
 from utils import setup_logging
 from configs import SANDBAG_OBJ_PREFIX, CUBE_DEFAULT_SIZE
 
-log = setup_logging("SandbagBuilder")
+log = setup_logging("create_cube")
 
 
 def create_cube(

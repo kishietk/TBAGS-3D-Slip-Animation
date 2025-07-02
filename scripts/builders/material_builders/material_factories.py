@@ -173,7 +173,7 @@ def create_sandbag_material() -> bpy.types.Material:
 def create_sandbag_texture_material(
     img_path: str,
     alpha: float = 1.0,
-    tile: float = 4.0
+    tile: float = 1.0
 ) -> bpy.types.Material:
     """
     サンドバッグ専用テクスチャマテリアル。

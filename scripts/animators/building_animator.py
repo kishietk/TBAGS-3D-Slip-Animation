@@ -38,62 +38,106 @@ def on_frame_building(
     base_sandbag_pos: Dict[Any, Vector],
     core: Optional[Any] = None,
 ) -> None:
-    """
-    シーン更新ごとに呼び出され、各種オブジェクトの位置・形状をアニメーションデータに基づき更新する。
-
-    Args:
-        scene: 現在のBlenderシーン
-        panel_objs: パネルオブジェクトリスト
-        roof_obj: 屋根オブジェクト
-        roof_quads: 屋根面のノードIDタプルリスト
-        member_objs: (オブジェクト, start_id, end_id) の柱／梁リスト
-        node_objs: ノードID→球オブジェクトマップ
-        sandbag_objs: サンドバッグEmpty/Armatureマップ (unit_id→{'empty': Empty, 'armature': Armature})
-        anim_data: ノードアニメーションオフセット
-        sandbag_anim_data: サンドバッグノードアニメーションオフセット
-        base_node_pos: 初期ノード座標
-        base_sandbag_pos: 初期サンドバッグ座標
-        core: 将来拡張用（未使用）
-    """
     # ノード球位置更新
     for nid, obj in node_objs.items():
-        if nid in base_node_pos:
-            obj.location = base_node_pos[nid] + anim_data.get(nid, {}).get(
-                scene.frame_current, Vector()
-            )
+        base_pos = base_node_pos.get(nid, Vector())
+        anim_offset = anim_data.get(nid, {}).get(scene.frame_current, Vector())
+        obj.location = base_pos + anim_offset
+
+    # Ground(親)の位置を取得（motion_parentの名前はプロジェクトに合わせて修正OK）
+    motion_parent = bpy.data.objects.get("EarthquakeMotionParent")
+    motion_parent_loc = motion_parent.location if motion_parent else Vector((0, 0, 0))
 
     # サンドバッグユニットアニメーション更新（Armature駆動）
     for unit in sandbag_objs.values():
         empty = unit.get("empty")
-        twist_arm = unit.get("armature_twist")
-        bend_arm = unit.get("armature_bend")
-        # 必要なオブジェクトが揃っていなければスキップ
-        if not all((empty, twist_arm, bend_arm)):
+        armature = unit.get("armature_top")  # top/bottomどちらでも同じ
+
+        unit_id = getattr(empty, "sandbag_unit_id", None) or empty.get(
+            "sandbag_unit_id", "???"
+        )
+        top_id = getattr(empty, "rep_node_id", None) or empty.get("rep_node_id", None)
+        bottom_id = getattr(empty, "other_node_id", None) or empty.get(
+            "other_node_id", None
+        )
+
+        if not all((empty, armature)):
+            log.warning(
+                f"[SandbagUnit {unit_id}] EmptyまたはArmature未取得。empty={empty}, armature={armature}"
+            )
+            continue
+        if top_id is None or bottom_id is None:
+            log.warning(
+                f"[SandbagUnit {unit_id}] ノードID未設定: top_id={top_id}, bottom_id={bottom_id}"
+            )
             continue
 
-        rep_id = empty.get("rep_node_id")
-        other_id = empty.get("other_node_id")
-        if rep_id is None or other_id is None:
-            continue
+        # ベース位置取得
+        base_top = base_sandbag_pos.get(top_id, Vector())
+        base_bottom = base_sandbag_pos.get(bottom_id, Vector())
 
-        base_rep = base_sandbag_pos.get(rep_id, Vector())
-        base_other = base_sandbag_pos.get(other_id, Vector())
-        disp_rep = sandbag_anim_data.get(rep_id, {}).get(scene.frame_current, Vector())
-        disp_other = sandbag_anim_data.get(other_id, {}).get(
+        # CSV変位取得
+        raw_disp_top = sandbag_anim_data.get(top_id, {}).get(
             scene.frame_current, Vector()
         )
-        pos_rep = base_rep + disp_rep
-        pos_other = base_other + disp_other
+        log.info(f"[SandbagUnit {unit_id}] raw_disp_top = {raw_disp_top}")
+        # Y成分クリア
+        disp_top = raw_disp_top.copy()
+        disp_top.y = 0
+        log.info(f"[SandbagUnit {unit_id}] disp_top(after clear Y) = {disp_top}")
 
-        # Twist／Bend それぞれの Armature を更新
-        for arm in (twist_arm, bend_arm):
-            try:
-                pb_rep, pb_oth = get_rep_and_other_bones(arm)
-                inv = arm.matrix_world.inverted()
-                pb_rep.location = inv @ pos_rep - pb_rep.bone.head_local
-                pb_oth.location = inv @ pos_other - pb_oth.bone.head_local
-            except Exception as e:
-                log.error(f"[Sandbag {arm.name}] Bone更新失敗: {e}")
+        raw_disp_bottom = sandbag_anim_data.get(bottom_id, {}).get(
+            scene.frame_current, Vector()
+        )
+        log.info(f"[SandbagUnit {unit_id}] raw_disp_bottom = {raw_disp_bottom}")
+        disp_bottom = raw_disp_bottom.copy()
+        disp_bottom.y = 0
+        log.info(f"[SandbagUnit {unit_id}] disp_bottom(after clear Y) = {disp_bottom}")
+
+        # 親オブジェクト変位取得＆Y成分クリア
+        log.info(f"[SandbagUnit {unit_id}] motion_parent_loc = {motion_parent_loc}")
+        mp_loc = motion_parent_loc.copy()
+        mp_loc.y = 0
+        log.info(f"[SandbagUnit {unit_id}] mp_loc(after clear Y) = {mp_loc}")
+
+        # ワールド座標のターゲット位置
+        pos_top = base_top + disp_top + mp_loc
+        log.info(f"[SandbagUnit {unit_id}] pos_top = {pos_top}")
+
+        pos_top = base_top + disp_top + mp_loc
+        # Y座標は常に“生成時ベース”を再セット
+        pos_top.y = base_top.y
+
+        pos_bottom = base_bottom + disp_bottom + mp_loc
+        pos_bottom.y = base_bottom.y
+        
+
+        # ボーン更新
+        try:
+            pb_top, pb_bottom = get_rep_and_other_bones(armature)
+            inv = armature.matrix_world.inverted()
+
+            # ローカルオフセット計算
+            rel_top = inv @ pos_top - pb_top.bone.head_local
+            log.info(f"[SandbagUnit {unit_id}] rel_top(before clear Y) = {rel_top}")
+            rel_bottom = inv @ pos_bottom - pb_bottom.bone.head_local
+            log.info(
+                f"[SandbagUnit {unit_id}] rel_bottom(before clear Y) = {rel_bottom}"
+            )
+
+            # 念のためY成分を完全にクリア
+            rel_top.y = 0
+            rel_bottom.y = 0
+            log.info(
+                f"[SandbagUnit {unit_id}] rel_top(after clear Y) = {rel_top}, rel_bottom(after clear Y) = {rel_bottom}"
+            )
+
+            # ボーンに反映
+            pb_top.location = rel_top
+            pb_bottom.location = rel_bottom
+
+        except Exception as e:
+            log.error(f"[Sandbag {getattr(armature, 'name', '?')}] Bone更新失敗: {e}")
 
     # パネル更新
     for obj in panel_objs:

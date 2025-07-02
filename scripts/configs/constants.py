@@ -32,9 +32,9 @@ GROUND_OBJ_PREFIX = "Ground_"
 # ----------------------------
 # 構造物・幾何パラメータ（ビルダー生成プリミティブ用）
 # ----------------------------
-SPHERE_RADIUS = 0.24  # ノード球体の半径
-MEMBER_THICK = 0.4  # 梁・柱・部材の既定太さ
-CYLINDER_VERTS = 4  # 円柱プリミティブ分割数
+SPHERE_RADIUS = 0.1  # ノード球体の半径
+MEMBER_THICK = 0.2  # 梁・柱・部材の既定太さ
+CYLINDER_VERTS = 8  # 円柱プリミティブ分割数
 PANEL_VERT_COUNT = 4  # パネル構成頂点数
 CUBE_DEFAULT_SIZE = (1.0, 1.0, 1.0)  # キューブのデフォルトサイズ（xyz）
 CUBE_DEFAULT_LOC = (0.0, 0.0, 0.0)  # キューブのデフォルト位置
@@ -47,10 +47,10 @@ EPS_AXIS = 1e-6
 # ----------------------------
 # 地面（Ground）パラメータ
 # ----------------------------
-GROUND_SIZE_X = 60.0
-GROUND_SIZE_Y = 40.0
+GROUND_SIZE_X = 1.0
+GROUND_SIZE_Y = 1.0
 GROUND_SIZE_XY = (GROUND_SIZE_X, GROUND_SIZE_Y)
-GROUND_LOCATION = (10.0, 5.0, -0.18)
+GROUND_LOCATION = (0.0, 0.0, 0.0)
 GROUND_NAME = "Ground"
 GROUND_MAT_NAME = "GroundMat"
 GROUND_MAT_COLOR = (0.25, 0.42, 0.48, 1)
@@ -68,7 +68,7 @@ LABEL_OFFSET = Vector((0.8, -0.5, 0.5))
 ANIM_FPS = 32
 ANIM_SECONDS = 30
 ANIM_TOTAL_FRAMES = ANIM_FPS * ANIM_SECONDS
-DISP_SCALE = 10
+DISP_SCALE = 1
 
 # ----------------------------
 # データ仕様（CSV/STR等）
