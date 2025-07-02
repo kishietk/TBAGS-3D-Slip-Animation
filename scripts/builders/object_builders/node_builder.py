@@ -16,22 +16,38 @@ from typing import Dict
 from utils import setup_logging
 from cores.entities import Node
 from builders.base import BuilderBase
+from configs import (
+    SPHERE_RADIUS,
+    UV_SPHERE_SEGMENTS,
+    UV_SPHERE_RINGS,
+    NODE_OBJ_PREFIX,
+)
 
 log = setup_logging("NodeBuilder")
 
 
 class NodeBuilder(BuilderBase):
-    def __init__(self, nodes: Dict[int, Node], radius: float):
+    def __init__(
+        self,
+        nodes: Dict[int, Node],
+        radius: float = SPHERE_RADIUS,
+        segments: int = UV_SPHERE_SEGMENTS,
+        rings: int = UV_SPHERE_RINGS,
+        name_prefix: str = NODE_OBJ_PREFIX,
+    ):
         super().__init__()
         self.nodes = nodes
         self.radius = radius
+        self.segments = segments
+        self.rings = rings
+        self.name_prefix = name_prefix
 
     def build(self) -> Dict[int, bpy.types.Object]:
         """
         役割:
             Node.pos から Blender 球体を生成（アニメーション処理なし）。
         引数:
-            なし（コンストラクタで nodes, radius を受け取る）
+            なし（コンストラクタで nodes, radius, segments, rings, name_prefix を受け取る）
         返り値:
             Dict[int, bpy.types.Object]: ノードID→Blenderオブジェクト
         """
@@ -55,13 +71,18 @@ class NodeBuilder(BuilderBase):
 
             # 球体生成
             try:
-                bpy.ops.mesh.primitive_uv_sphere_add(radius=self.radius, location=pos)
+                bpy.ops.mesh.primitive_uv_sphere_add(
+                    radius=self.radius,
+                    location=pos,
+                    segments=self.segments,
+                    ring_count=self.rings,
+                )
                 obj = bpy.context.object
-                obj.name = f"Node_{nid}"
+                obj.name = f"{self.name_prefix}{nid}"
                 objs[nid] = obj
-                log.debug(f"Node_{nid} created at {tuple(pos)}")
+                log.debug(f"{obj.name} created at {tuple(pos)}")
             except Exception as e:
-                log.error(f"NodeBuilder: Node_{nid} の生成失敗: {e}")
+                log.error(f"NodeBuilder: {self.name_prefix}{nid} の生成失敗: {e}")
 
         log.info(f"{len(objs)} nodes built.")
         return objs

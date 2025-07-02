@@ -1,21 +1,13 @@
-# builders/object_builders/ground_builder.py
-
-"""
-ファイル名: builders/object_builders/ground_builder.py
-
-責務:
-- Blender 上に地面用平面メッシュを生成し、シーンに配置する。
-- サイズ（X,Y）・位置・名前をパラメータ化し、BuilderBase の run() から呼び出せるようにラップ。
-
-TODO:
-- テクスチャ／マテリアル初期設定分離
-- 高度な地形生成（凹凸・ノイズなど）用の拡張フック追加
-"""
-
 import bpy
 from typing import Tuple, Optional
 from utils import setup_logging
 from builders.base import BuilderBase
+from configs import (
+    GROUND_SIZE_XY,
+    GROUND_LOCATION,
+    GROUND_NAME,
+    GROUND_PRIMITIVE_SIZE,
+)
 
 log = setup_logging("GroundBuilder")
 
@@ -23,9 +15,9 @@ log = setup_logging("GroundBuilder")
 class GroundBuilder(BuilderBase):
     def __init__(
         self,
-        size: Tuple[float, float] = (10.0, 10.0),
-        location: Tuple[float, float, float] = (0.0, 0.0, 0.0),
-        name: str = "GroundPlane",
+        size: Tuple[float, float] = GROUND_SIZE_XY,
+        location: Tuple[float, float, float] = GROUND_LOCATION,
+        name: str = GROUND_NAME,
     ):
         """
         初期化:
@@ -47,8 +39,10 @@ class GroundBuilder(BuilderBase):
             bpy.types.Object: 生成した平面オブジェクト、失敗時は None
         """
         try:
-            # Blender のデフォルト plane_add は size=2 で辺長2の平面
-            bpy.ops.mesh.primitive_plane_add(size=1.0, location=self.location)
+            # デフォルトプリミティブサイズは定数から
+            bpy.ops.mesh.primitive_plane_add(
+                size=GROUND_PRIMITIVE_SIZE, location=self.location
+            )
             obj = bpy.context.object
             obj.name = self.name
 

@@ -20,13 +20,13 @@ from mathutils import Vector
 from typing import Dict, Tuple, List, Optional
 from utils import setup_logging
 from builders.base import BuilderBase
-from configs import EPS_XY_MATCH
+from configs import EPS_XY_MATCH, ROOF_OBJ_NAME, ROOF_MESH_NAME
 
 log = setup_logging("RoofBuilder")
 
 
 class RoofBuilder(BuilderBase):
-    def __init__(self, nodes: Dict[int, Vector], name: str = "Roof"):
+    def __init__(self, nodes: Dict[int, Vector], name: str = ROOF_OBJ_NAME):
         """初期化: nodes は {node_id: Vector} 形式。"""
         super().__init__()
         self.nodes = nodes

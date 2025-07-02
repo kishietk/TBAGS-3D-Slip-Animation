@@ -17,12 +17,13 @@ import bpy
 from typing import List, Any
 from utils import setup_logging
 from builders.base import BuilderBase
+from configs import PANEL_VERT_COUNT, PANEL_OBJ_PREFIX
 
 log = setup_logging("PanelBuilder")
 
 
 class PanelBuilder(BuilderBase):
-    def __init__(self, panels: List[Any], name_prefix: str = "Panel"):
+    def __init__(self, panels: List[Any], name_prefix: str = PANEL_OBJ_PREFIX):
         """
         初期化:
             panels: List[Panel] オブジェクトのリスト
@@ -51,15 +52,15 @@ class PanelBuilder(BuilderBase):
             try:
                 # ノードから頂点座標を抽出
                 verts = [n.pos for n in panel.nodes]
-                if len(verts) != 4:
+                if len(verts) != PANEL_VERT_COUNT:
                     self.log.warning(
-                        f"Panel {panel.id}: 4ノード以外は生成不可 (nodes={len(verts)})"
+                        f"Panel {panel.id}: {PANEL_VERT_COUNT}ノード以外は生成不可 (nodes={len(verts)})"
                     )
                     continue
 
                 # メッシュ／オブジェクト作成
-                mesh = bpy.data.meshes.new(f"{self.name_prefix}_{panel.id}")
-                obj = bpy.data.objects.new(f"{self.name_prefix}_{panel.id}", mesh)
+                mesh = bpy.data.meshes.new(f"{self.name_prefix}{panel.id}")
+                obj = bpy.data.objects.new(f"{self.name_prefix}{panel.id}", mesh)
                 bpy.context.collection.objects.link(obj)
 
                 # Blender 用座標リストと面情報
@@ -75,7 +76,7 @@ class PanelBuilder(BuilderBase):
                     obj["panel_floor"] = panel.floor
 
                 blender_objs.append(obj)
-                self.log.debug(f"{self.name_prefix}_{panel.id} を生成しました。")
+                self.log.debug(f"{self.name_prefix}{panel.id} を生成しました。")
             except Exception as e:
                 self.log.error(f"PanelBuilder: Panel {panel.id} 生成失敗: {e}")
 

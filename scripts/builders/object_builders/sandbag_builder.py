@@ -3,17 +3,17 @@
 
 責務:
     - SandbagUnitごとの情報を受け取り、各ユニットにつき1つのEmptyと
-      2つのArmature（twist／bend）オブジェクトを生成
+        2つのArmature（twist／bend）オブジェクトを生成
     - 生成したオブジェクトを辞書構造でまとめて返却し、
-      handler側で各Armatureを別々にアニメーション可能とする
+        handler側で各Armatureを別々にアニメーション可能とする
 
 戻り値:
     Dict[unit_id, Dict[str, bpy.types.Object]] 形式の辞書
-      {
+    {
         "empty":           Emptyオブジェクト,
         "armature_twist":  Twist用Armature,
         "armature_bend":   Bend用Armature,
-      }
+    }
 """
 
 import bpy
@@ -22,6 +22,7 @@ from typing import Any, Dict, List, Tuple
 from utils import setup_logging, to_vector
 from builders.base import BuilderBase
 from configs.paths import TBAGS_MODEL
+from configs import SANDBAG_OBJ_PREFIX, CUBE_DEFAULT_SIZE
 from .cube_builder import create_cube
 
 log = setup_logging("SandbagBuilder")
@@ -30,15 +31,14 @@ log = setup_logging("SandbagBuilder")
 class SandbagBuilder(BuilderBase):
     """
     SandbagUnit情報をもとに以下を生成し辞書で返却するビルダークラス:
-
-      {
+    {
         unit_id: {
-          "empty": Empty,
-          "armature_twist": Armature(ねじり用),
-          "armature_bend":  Armature(曲げ用),
+            "empty": Empty,
+            "armature_twist": Armature(ねじり用),
+            "armature_bend":  Armature(曲げ用),
         },
         ...
-      }
+    }
     """
 
     def __init__(
@@ -82,7 +82,8 @@ class SandbagBuilder(BuilderBase):
                 self.log.warning(
                     f"unit {uid}: テンプレート複製失敗({e})、キューブ生成で代替します。"
                 )
-                empty = create_cube(uid, pos)
+                # ← 定数から cube_size, 名前プレフィックス
+                empty = create_cube(uid, pos, cube_size=CUBE_DEFAULT_SIZE)
 
             # -----------------------------
             # Empty に共通カスタムプロパティ設定
@@ -119,7 +120,7 @@ class SandbagBuilder(BuilderBase):
                 )
 
             # ───────────────────────────────────────
-            # 【★ここを追加】Empty配下のメッシュにArmatureモディファイアをセット
+            # Empty配下のメッシュにArmatureモディファイアをセット
             # ───────────────────────────────────────
             for child in empty.children:
                 if child.type == "MESH":
@@ -129,9 +130,7 @@ class SandbagBuilder(BuilderBase):
                     )
                     mod_twist.object = twist_arm
                     # 曲げ用アーマチュア
-                    mod_bend = child.modifiers.new(
-                        name="ArmatureBend", type="ARMATURE"
-                    )
+                    mod_bend = child.modifiers.new(name="ArmatureBend", type="ARMATURE")
                     mod_bend.object = bend_arm
 
             # ---------------------------------------
@@ -172,8 +171,8 @@ class SandbagBuilder(BuilderBase):
             dst.armatures = src.armatures
         originals = dst.objects
 
-        # Emptyを生成＆シーンリンク
-        empty = bpy.data.objects.new(f"SandbagUnit_{unit_id}", None)
+        # Emptyを生成＆シーンリンク（定数で統一）
+        empty = bpy.data.objects.new(f"{SANDBAG_OBJ_PREFIX}{unit_id}", None)
         bpy.context.scene.collection.objects.link(empty)
         empty.location = location
 
