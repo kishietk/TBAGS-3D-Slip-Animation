@@ -1,11 +1,11 @@
-# animators/buildingAnimator.py
+# animators/building_animator.py
 
 """
-ファイル名: animators/buildingAnimator.py
+ファイル名: animators/building_animator.py
 
 責務:
     - 各フレームでノード球、構造部材、パネル、屋根、サンドバッグユニットのアニメーションを更新。
-    - SandbagUnitオブジェクトに設定されたrep_node／other_nodeの座標をBone_Rep/Bone_Otherに反映。
+    - 単一の Armature オブジェクト内の 'top'／'bottom' PoseBone を駆動し、キーフレームを当てる。
 
 TODO:
     - Bone名やEmpty運用時のボーン構成を外部設定化
@@ -19,7 +19,6 @@ from typing import List, Tuple, Dict, Any, Optional
 from mathutils import Vector, Quaternion
 from utils import setup_logging
 from configs import EPS_AXIS, UV_MAP_NAME
-from utils.bone_name_resolver import get_rep_and_other_bones
 
 log = setup_logging("building_animator")
 
@@ -55,6 +54,13 @@ def on_frame_building(
         base_sandbag_pos: 初期サンドバッグ座標
         core: 将来拡張用（未使用）
     """
+    # 1度だけログを出す
+    if scene.frame_current == scene.frame_start:
+        log.info(
+            "=================[アニメーション開始]========================="
+            f"FPS: {scene.render.fps}, Start Frame: {scene.frame_start}, End Frame: {scene.frame_end}"
+        )
+
     # ノード球位置更新
     for nid, obj in node_objs.items():
         if nid in base_node_pos:
@@ -62,40 +68,67 @@ def on_frame_building(
                 scene.frame_current, Vector()
             )
 
-    # サンドバッグユニットアニメーション更新（Armature駆動）
-    for unit in sandbag_objs.values():
-        empty = unit.get("empty")
-        twist_arm = unit.get("armature_twist")
-        bend_arm = unit.get("armature_bend")
+    # サンドバッグユニットアニメーション更新（単一Armature＋PoseBone駆動）
+    for sandbag in sandbag_objs.values():
+        empty = sandbag.get("empty")
+        armature = sandbag.get("armature")  # 単一の Armature オブジェクト
+
         # 必要なオブジェクトが揃っていなければスキップ
-        if not all((empty, twist_arm, bend_arm)):
+        if not (empty and armature):
+            log.error(
+                f"[SandbagAnimator] Sandbag オブジェクトが不足: {empty}, {armature}"
+            )
             continue
 
-        rep_id = empty.get("rep_node_id")
-        other_id = empty.get("other_node_id")
-        if rep_id is None or other_id is None:
+        top_id = empty.get("top_node_id")
+        bottom_id = empty.get("bottom_node_id")
+        if top_id is None or bottom_id is None:
+            log.error(
+                f"[Sandbag {armature.name}] 'top_node_id' または 'bottom_node_id' 未設定"
+            )
             continue
 
-        base_rep = base_sandbag_pos.get(rep_id, Vector())
-        base_other = base_sandbag_pos.get(other_id, Vector())
-        disp_rep = sandbag_anim_data.get(rep_id, {}).get(scene.frame_current, Vector())
-        disp_other = sandbag_anim_data.get(other_id, {}).get(
+        # 基準位置とオフセットの取得
+        base_top = base_sandbag_pos.get(top_id, Vector())
+        base_bottom = base_sandbag_pos.get(bottom_id, Vector())
+        disp_top = sandbag_anim_data.get(top_id, {}).get(scene.frame_current, Vector())
+        disp_bottom = sandbag_anim_data.get(bottom_id, {}).get(
             scene.frame_current, Vector()
         )
-        pos_rep = base_rep + disp_rep
-        pos_other = base_other + disp_other
 
-        # Twist／Bend それぞれの Armature を更新
-        for arm in (twist_arm, bend_arm):
-            try:
-                pb_rep, pb_oth = get_rep_and_other_bones(arm)
-                inv = arm.matrix_world.inverted()
-                pb_rep.location = inv @ pos_rep - pb_rep.bone.head_local
-                pb_oth.location = inv @ pos_other - pb_oth.bone.head_local
-            except Exception as e:
-                log.error(f"[Sandbag {arm.name}] Bone更新失敗: {e}")
+        # 最終位置計算
+        pos_top = base_top + disp_top
+        pos_bottom = base_bottom + disp_bottom
 
-    # パネル更新
+        # デバッグログ: Y座標ずれ確認
+        log.info(
+            f"============[Sandbag:{armature.name}]================== | "
+            f"base_top.y={base_top.y:.4f}, base_bottom.y={base_bottom.y:.4f} | "
+            f"disp_top.y={disp_top.y:.4f}, disp_bottom.y={disp_bottom.y:.4f} | "
+            f"pos_top.y={pos_top.y:.4f}, pos_bottom.y={pos_bottom.y:.4f}"
+            f"base_top.z={base_top.z:.4f}, base_bottom.z={base_bottom.z:.4f} | "
+            f"disp_top.z={disp_top.z:.4f}, disp_bottom.z={disp_bottom.z:.4f} | "
+            f"pos_top.z={pos_top.z:.4f}, pos_bottom.z={pos_bottom.z:.4f}"
+        )
+
+        # ボーン取得と位置設定
+        p_bones = armature.pose.bones
+        pb_top = p_bones.get("top")
+        pb_bottom = p_bones.get("bottom")
+        if not (pb_top and pb_bottom):
+            log.error(
+                f"[Sandbag {armature.name}] 'top' または 'bottom' PoseBone が見つかりません"
+            )
+            continue
+
+        try:
+            inv = armature.matrix_world.inverted()
+            pb_top.location = inv @ pos_top - pb_top.bone.head_local
+            pb_bottom.location = inv @ pos_bottom - pb_bottom.bone.head_local
+        except Exception as e:
+            log.error(f"[Sandbag {armature.name}] Bone更新失敗: {e}")
+
+    # パネル更新（省略）
     for obj in panel_objs:
         ids = obj.get("panel_ids")
         if not ids or len(ids) != 4:
@@ -120,7 +153,7 @@ def on_frame_building(
         bm.to_mesh(mesh)
         bm.free()
 
-    # 屋根更新
+    # 屋根更新（省略）
     if roof_obj and roof_quads:
         mesh = roof_obj.data
         mesh.clear_geometry()
@@ -144,7 +177,7 @@ def on_frame_building(
         bm.to_mesh(mesh)
         bm.free()
 
-    # 柱・梁再配置
+    # 柱・梁再配置（省略）
     up = Vector((0, 0, 1))
     for obj, a, b in member_objs:
         p1 = (
