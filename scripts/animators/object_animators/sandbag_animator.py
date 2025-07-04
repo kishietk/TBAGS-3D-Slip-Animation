@@ -33,14 +33,18 @@ def update_sandbag(
         log.error(f"[Sandbag {armature.name}] Node ID未設定")
         return
 
-    # ワールド上の目標位置を計算
+    # ワールド上の目標位置を計算（親オブジェクトの移動を含む）
     frame = scene.frame_current
-    base_top = base_sandbag_pos.get(top_id, Vector())
-    base_bot = base_sandbag_pos.get(bottom_id, Vector())
+    base_top = base_sandbag_pos[top_id]
+    base_bot = base_sandbag_pos[bottom_id]
     disp_top = sandbag_anim_data.get(top_id, {}).get(frame, Vector())
     disp_bot = sandbag_anim_data.get(bottom_id, {}).get(frame, Vector())
-    pos_top = base_top + disp_top
-    pos_bottom = base_bot + disp_bot
+    # 親オブジェクト（motion_parent）のワールド移動分を取得
+    parent_world_loc = (
+        empty.parent.matrix_world.to_translation() if empty.parent else Vector()
+    )
+    pos_top = base_top + parent_world_loc + disp_top
+    pos_bottom = base_bot + parent_world_loc + disp_bot
 
     try:
         pb_top, pb_bottom = get_rep_and_other_bones(armature)

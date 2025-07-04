@@ -68,8 +68,8 @@ LABEL_OFFSET = Vector((0.8, -0.5, 0.5))
 ANIM_FPS = 32
 ANIM_SECONDS = 30
 ANIM_TOTAL_FRAMES = ANIM_FPS * ANIM_SECONDS
-DISP_SCALE = 1
-GROUND_ANIMATION_ENABLED = False  # 地面アニメーションを有効にするか
+DISP_SCALE = 0.5
+GROUND_ANIMATION_ENABLED = True  # 地面アニメーションを有効にするか
 
 # ----------------------------
 # データ仕様（CSV/STR等）
