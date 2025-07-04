@@ -32,9 +32,9 @@ GROUND_OBJ_PREFIX = "Ground_"
 # ----------------------------
 # 構造物・幾何パラメータ（ビルダー生成プリミティブ用）
 # ----------------------------
-SPHERE_RADIUS = 0.24  # ノード球体の半径
+SPHERE_RADIUS = 0.1  # ノード球体の半径
 MEMBER_THICK = 0.4  # 梁・柱・部材の既定太さ
-CYLINDER_VERTS = 4  # 円柱プリミティブ分割数
+CYLINDER_VERTS = 8  # 円柱プリミティブ分割数
 PANEL_VERT_COUNT = 4  # パネル構成頂点数
 CUBE_DEFAULT_SIZE = (1.0, 1.0, 1.0)  # キューブのデフォルトサイズ（xyz）
 CUBE_DEFAULT_LOC = (0.0, 0.0, 0.0)  # キューブのデフォルト位置
@@ -68,7 +68,7 @@ LABEL_OFFSET = Vector((0.8, -0.5, 0.5))
 ANIM_FPS = 32
 ANIM_SECONDS = 30
 ANIM_TOTAL_FRAMES = ANIM_FPS * ANIM_SECONDS
-DISP_SCALE = 10
+DISP_SCALE = 2
 
 # ----------------------------
 # データ仕様（CSV/STR等）

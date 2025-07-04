@@ -100,25 +100,14 @@ def on_frame_building(
         pos_top = base_top + disp_top
         pos_bottom = base_bottom + disp_bottom
 
-        # デバッグログ: Y座標ずれ確認
-        log.info(
-            f"============[Sandbag:{armature.name}]================== | "
-            f"base_top.y={base_top.y:.4f}, base_bottom.y={base_bottom.y:.4f} | "
-            f"disp_top.y={disp_top.y:.4f}, disp_bottom.y={disp_bottom.y:.4f} | "
-            f"pos_top.y={pos_top.y:.4f}, pos_bottom.y={pos_bottom.y:.4f}"
-            f"base_top.z={base_top.z:.4f}, base_bottom.z={base_bottom.z:.4f} | "
-            f"disp_top.z={disp_top.z:.4f}, disp_bottom.z={disp_bottom.z:.4f} | "
-            f"pos_top.z={pos_top.z:.4f}, pos_bottom.z={pos_bottom.z:.4f}"
-        )
+        # ボーン取得と位置設定（bone_name_resolver 利用）
+        from utils.bone_name_resolver import get_rep_and_other_bones
 
-        # ボーン取得と位置設定
-        p_bones = armature.pose.bones
-        pb_top = p_bones.get("top")
-        pb_bottom = p_bones.get("bottom")
-        if not (pb_top and pb_bottom):
-            log.error(
-                f"[Sandbag {armature.name}] 'top' または 'bottom' PoseBone が見つかりません"
-            )
+        try:
+            # armature から rep（上面）／other（下面）ボーンを柔軟に探す
+            pb_top, pb_bottom = get_rep_and_other_bones(armature)
+        except RuntimeError as e:
+            log.error(f"[Sandbag {armature.name}] ボーン解決失敗: {e}")
             continue
 
         try:

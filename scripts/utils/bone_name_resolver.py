@@ -4,8 +4,7 @@
 bone_name_resolver.py
 
 役割:
-    - Armatureオブジェクト内の「rep」「other」用ボーン名を
-      柔軟に探し出し、PoseBoneを返却するユーティリティ。
+    - Armatureオブジェクト内の「rep」「other」用ボーン名を柔軟に探し出し、PoseBoneを返却するユーティリティ。
 
 使い方:
     from utils.bone_name_resolver import get_rep_and_other_bones
