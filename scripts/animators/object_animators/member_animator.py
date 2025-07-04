@@ -1,0 +1,47 @@
+import bpy
+from typing import List, Tuple, Dict, Any, Optional
+from mathutils import Vector, Quaternion
+from configs import EPS_AXIS
+
+
+def update_members(
+    member_objs: List[Tuple[bpy.types.Object, int, int]],
+    node_objs: Dict[int, bpy.types.Object],
+    base_sandbag_pos: Dict[Any, Vector],
+    sandbag_anim_data: Dict[int, Dict[int, Vector]],
+    scene: bpy.types.Scene,
+) -> None:
+    """
+    柱・梁オブジェクトを再配置・回転・スケール更新する。
+    """
+    frame = scene.frame_current
+    up = Vector((0, 0, 1))
+    for obj, a, b in member_objs:
+        p1 = (
+            node_objs[a].location
+            if a in node_objs
+            else base_sandbag_pos.get(a, Vector())
+            + sandbag_anim_data.get(a, {}).get(frame, Vector())
+        )
+        p2 = (
+            node_objs[b].location
+            if b in node_objs
+            else base_sandbag_pos.get(b, Vector())
+            + sandbag_anim_data.get(b, {}).get(frame, Vector())
+        )
+        mid = (p1 + p2) * 0.5
+        vec = p2 - p1
+        obj.location = mid
+        axis = up.cross(vec)
+        if axis.length > EPS_AXIS:
+            axis.normalize()
+            angle = up.angle(vec)
+            obj.rotation_mode = "AXIS_ANGLE"
+            obj.rotation_axis_angle = (angle, axis.x, axis.y, axis.z)
+        else:
+            obj.rotation_mode = "QUATERNION"
+            obj.rotation_quaternion = Quaternion((1, 0, 0, 0))
+        length = vec.length
+        orig = obj.get("orig_depth", length)
+        sx, sy, _ = obj.scale
+        obj.scale = (sx, sy, length / orig)

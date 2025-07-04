@@ -7,9 +7,9 @@ from configs import (
     BEAMS_KIND_IDS,
 )
 from cores.entities import Node, Edge, Beam, Column, Panel, Sandbag
-from .make_panel_unit import make_panel_unit
-from .make_sandbag_cores import make_sandbag_cores
-from .node_classification import split_nodes_by_kind
+from .constructors.make_panel_unit import make_panel_unit
+from .constructors.make_sandbag_cores import make_sandbag_cores
+from .constructors.node_classification import split_nodes_by_kind
 from parsers import NodeData, EdgeData
 
 log = setup_logging("CoreFactory")

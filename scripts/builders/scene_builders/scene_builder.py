@@ -11,7 +11,7 @@ from builders.object_builders import (
     GroundBuilder,
 )
 from configs import SPHERE_RADIUS
-from cores.constructors.core_factory import CoreFactory
+from cores import CoreFactory
 import bpy
 
 log = setup_logging("SceneBuilder")
