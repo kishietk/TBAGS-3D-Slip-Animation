@@ -37,7 +37,7 @@ class SandbagBuilder(BuilderBase):
             sid = sandbag.id
             # 1) Bone 用位置取得 (top=高側, bottom=低側)
             top_pos, bottom_pos = self._get_positions(sandbag)
-            log.info(f"Added SB [{sid}]: {top_pos}, {bottom_pos}")
+            log.info(f"Added sandbag ( {sandbag.nodes[0].id} - {sandbag.nodes[1].id} )")
 
             # 2) Empty＋テンプレート複製（失敗時はキューブ）
             empty = self._create_empty_container(sid, bottom_pos)

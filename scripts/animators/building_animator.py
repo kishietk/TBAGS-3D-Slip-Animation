@@ -39,20 +39,6 @@ def on_frame_building(
 ) -> None:
     """
     シーン更新ごとに呼び出され、各種オブジェクトの位置・形状をアニメーションデータに基づき更新する。
-
-    Args:
-        scene: 現在のBlenderシーン
-        panel_objs: パネルオブジェクトリスト
-        roof_obj: 屋根オブジェクト
-        roof_quads: 屋根面のノードIDタプルリスト
-        member_objs: (オブジェクト, start_id, end_id) の柱／梁リスト
-        node_objs: ノードID→球オブジェクトマップ
-        sandbag_objs: サンドバッグEmpty/Armatureマップ (unit_id→{'empty': Empty, 'armature': Armature})
-        anim_data: ノードアニメーションオフセット
-        sandbag_anim_data: サンドバッグノードアニメーションオフセット
-        base_node_pos: 初期ノード座標
-        base_sandbag_pos: 初期サンドバッグ座標
-        core: 将来拡張用（未使用）
     """
     # 1度だけログを出す
     if scene.frame_current == scene.frame_start:
@@ -68,12 +54,10 @@ def on_frame_building(
                 scene.frame_current, Vector()
             )
 
-    # サンドバッグユニットアニメーション更新（単一Armature＋PoseBone駆動）
+    # サンドバッグユニットアニメーション更新
     for sandbag in sandbag_objs.values():
         empty = sandbag.get("empty")
-        armature = sandbag.get("armature")  # 単一の Armature オブジェクト
-
-        # 必要なオブジェクトが揃っていなければスキップ
+        armature = sandbag.get("armature")
         if not (empty and armature):
             log.error(
                 f"[SandbagAnimator] Sandbag オブジェクトが不足: {empty}, {armature}"
@@ -88,23 +72,20 @@ def on_frame_building(
             )
             continue
 
-        # 基準位置とオフセットの取得
+        # 位置取得
         base_top = base_sandbag_pos.get(top_id, Vector())
         base_bottom = base_sandbag_pos.get(bottom_id, Vector())
         disp_top = sandbag_anim_data.get(top_id, {}).get(scene.frame_current, Vector())
         disp_bottom = sandbag_anim_data.get(bottom_id, {}).get(
             scene.frame_current, Vector()
         )
-
-        # 最終位置計算
         pos_top = base_top + disp_top
         pos_bottom = base_bottom + disp_bottom
 
-        # ボーン取得と位置設定（bone_name_resolver 利用）
+        # ボーン取得
         from utils.bone_name_resolver import get_rep_and_other_bones
 
         try:
-            # armature から rep（上面）／other（下面）ボーンを柔軟に探す
             pb_top, pb_bottom = get_rep_and_other_bones(armature)
         except RuntimeError as e:
             log.error(f"[Sandbag {armature.name}] ボーン解決失敗: {e}")
@@ -112,8 +93,17 @@ def on_frame_building(
 
         try:
             inv = armature.matrix_world.inverted()
-            pb_top.location = inv @ pos_top - pb_top.bone.head_local
-            pb_bottom.location = inv @ pos_bottom - pb_bottom.bone.head_local
+            # 上面ボーンの tail を合わせる
+            world_off_top = (inv @ pos_top) - pb_top.bone.tail_local
+            rot_inv_top = pb_top.bone.matrix_local.to_3x3().inverted()
+            pb_top.location = rot_inv_top @ world_off_top
+            pb_top.keyframe_insert("location")
+
+            # 下面ボーンの tail を合わせる
+            world_off_bot = (inv @ pos_bottom) - pb_bottom.bone.tail_local
+            rot_inv_bot = pb_bottom.bone.matrix_local.to_3x3().inverted()
+            pb_bottom.location = rot_inv_bot @ world_off_bot
+            pb_bottom.keyframe_insert("location")
         except Exception as e:
             log.error(f"[Sandbag {armature.name}] Bone更新失敗: {e}")
 

@@ -50,10 +50,10 @@ EPS_AXIS = 1e-6
 GROUND_SIZE_X = 60.0
 GROUND_SIZE_Y = 40.0
 GROUND_SIZE_XY = (GROUND_SIZE_X, GROUND_SIZE_Y)
-GROUND_LOCATION = (10.0, 5.0, -0.18)
+GROUND_LOCATION = (10.0, 5.0, -0.2)
 GROUND_NAME = "Ground"
 GROUND_MAT_NAME = "GroundMat"
-GROUND_MAT_COLOR = (0.25, 0.42, 0.48, 1)
+GROUND_MAT_COLOR = (0.25, 0.42, 0.48, 0.5)
 GROUND_PRIMITIVE_SIZE = 1.0  # bpy.ops.mesh.primitive_plane_add(size=...)
 
 # ----------------------------
@@ -68,7 +68,8 @@ LABEL_OFFSET = Vector((0.8, -0.5, 0.5))
 ANIM_FPS = 32
 ANIM_SECONDS = 30
 ANIM_TOTAL_FRAMES = ANIM_FPS * ANIM_SECONDS
-DISP_SCALE = 2
+DISP_SCALE = 1
+GROUND_ANIMATION_ENABLED = False  # 地面アニメーションを有効にするか
 
 # ----------------------------
 # データ仕様（CSV/STR等）

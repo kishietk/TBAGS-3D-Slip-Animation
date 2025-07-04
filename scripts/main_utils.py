@@ -17,6 +17,7 @@ from configs import (
     ANIM_SECONDS,
     EARTHQUAKE_ANIM_CSV,
     log_dataset_selection,
+    GROUND_ANIMATION_ENABLED,
 )
 
 log = setup_logging("main_utils")
@@ -205,7 +206,7 @@ def setup_animation_handlers(
     register_ground_anim_handler(
         motion_parent=motion_parent,
         earthquake_anim_data=earthquake_anim_data,
-        enabled = True
+        enabled=GROUND_ANIMATION_ENABLED,
     )
 
     # 建物部材アニメーションをフレーム毎に実行
