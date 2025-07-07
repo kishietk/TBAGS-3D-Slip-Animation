@@ -1,5 +1,5 @@
 # parsers/__init__.py
-from parsers.structure_parser import parse_structure_str
+from parsers.structure_parser import parse_structure_str, parse_str
 from parsers.types import NodeData, EdgeData, PanelData
 
 __all__ = [
@@ -7,4 +7,5 @@ __all__ = [
     "NodeData",
     "EdgeData",
     "PanelData",
+    "parse_str",
 ]
