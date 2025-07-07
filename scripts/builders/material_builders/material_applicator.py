@@ -144,10 +144,12 @@ class MaterialApplicator(BuilderBase):
             counts["ノード"] += 1
 
         # サンドバッグ: Empty 以下の全 Mesh にマテリアル適用
-        for base in self.sandbag_objs.values():
-            if base.type != "EMPTY":
+        for sb in self.sandbag_objs.values():
+            # sb が dict なら empty 部分だけ取り出す
+            empty = sb["empty"] if isinstance(sb, dict) else sb
+            if getattr(empty, "type", None) != "EMPTY":
                 continue
-            for mesh_obj in base.children_recursive:
+            for mesh_obj in empty.children_recursive:
                 if mesh_obj.type != "MESH" or not getattr(mesh_obj, "data", None):
                     continue
                 mat_to_use = mat_sandbag_tex if use_tex else mat_sandbag

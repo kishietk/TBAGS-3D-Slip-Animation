@@ -95,8 +95,10 @@ def set_parent(
 
     # サンドバッグ
     if sandbag_objs:
-        for obj in sandbag_objs.values():
-            _assign_parent(obj, "サンドバッグ")
+        for sb in sandbag_objs.values():
+            empty = sb["empty"] if isinstance(sb, dict) else sb
+            empty.parent = parent_obj
+            empty.parent_type = "OBJECT"
 
     # パネル
     if panel_objs:

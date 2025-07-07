@@ -1,5 +1,3 @@
-# builders/object_builders/column_builder.py
-
 """
 ファイル名: builders/object_builders/column_builder.py
 
@@ -18,6 +16,7 @@ from mathutils import Vector, Matrix
 from typing import Dict, Set, Tuple
 from utils import setup_logging
 from builders.base import BuilderBase
+from configs import MEMBER_THICK, CYLINDER_VERTS, COLUMN_OBJ_PREFIX
 
 log = setup_logging("ColumnBuilder")
 
@@ -27,8 +26,9 @@ class ColumnBuilder(BuilderBase):
         self,
         positions: Dict[int, Vector],
         edges: Set[Tuple[int, int]],
-        thickness: float = 0.1,
-        name_prefix: str = "Column",
+        thickness: float = MEMBER_THICK,
+        name_prefix: str = COLUMN_OBJ_PREFIX,
+        verts: int = CYLINDER_VERTS,
     ):
         """
         初期化:
@@ -36,23 +36,25 @@ class ColumnBuilder(BuilderBase):
             edges:      (start_id, end_id) の集合
             thickness:  円柱の直径（Blender 単位）
             name_prefix: 作成オブジェクト名のプレフィクス
+            verts:      円柱プリミティブ分割数
         """
         super().__init__()
         self.positions = positions
         self.edges = edges
         self.thickness = thickness
         self.name_prefix = name_prefix
+        self.verts = verts
 
-    def build(self) -> Dict[int, bpy.types.Object]:
+    def build(self) -> Dict[str, bpy.types.Object]:
         """
         役割:
             各エッジをつなぐ円柱を生成し、ID 辞書で返却する。
             辺ごとに一意なキーを作るため “start_end” 形式の文字列をキーに使用。
 
         返り値:
-            Dict[int, bpy.types.Object]: キー “{start}_{end}”→生成された Blender オブジェクト
+            Dict[str, bpy.types.Object]: キー “{start}_{end}”→生成された Blender オブジェクト
         """
-        objs: Dict[int, bpy.types.Object] = {}
+        objs: Dict[str, bpy.types.Object] = {}
         for start, end in self.edges:
             try:
                 p0 = self.positions[start]
@@ -77,14 +79,15 @@ class ColumnBuilder(BuilderBase):
                 angle = up.angle(delta)
                 rot_mat = Matrix.Rotation(angle, 4, axis.normalized())
 
-            # 円柱を追加
+            # 円柱を追加（定数を使用）
             bpy.ops.mesh.primitive_cylinder_add(
                 radius=self.thickness / 2,
                 depth=length,
+                vertices=self.verts,
                 location=mid,
             )
             obj = bpy.context.object
-            obj.name = f"{self.name_prefix}_{start}_{end}"
+            obj.name = f"{self.name_prefix}{start}_{end}"
 
             # 回転適用
             obj.matrix_world @= rot_mat.to_4x4()

@@ -1,145 +1,135 @@
-"""
-ファイル名: builders/object_builders/sandbag_builder.py
-
-責務:
-    - SandbagUnitごとの情報を受け取り、各ユニットにつき1オブジェクト（Empty＋Mesh）を生成
-    - 代表ノードと非代表ノード両方の座標をカスタムプロパティとして保持し、アニメーション処理で利用しやすい設計
-
-TODO:
-    - units_infoの入力型をTypedDictまたはdataclass化して型安全性を強化
-    - cube_sizeの値バリデーション（非負チェックなど）を追加
-    - テンプレートファイルパスやボーン名の外部設定化
-    - unit_idやnode_idの型統一、エラーハンドリング強化
-    - 単体テスト追加: template複製失敗時およびキューブ生成フォールバックの検証
-"""
+# builders/sandbag_builder.py
 
 import bpy
 from mathutils import Vector
-from typing import Dict, List, Any, Tuple
-from utils import setup_logging
+from typing import Any, Dict, List, Tuple
+from utils import setup_logging, to_vector
 from builders.base import BuilderBase
 from configs.paths import TBAGS_MODEL
+from configs import SANDBAG_OBJ_PREFIX, CUBE_DEFAULT_SIZE
+from .cube_builder import create_cube
+from cores.entities.sandbag_core import Sandbag
 
 log = setup_logging("SandbagBuilder")
 
 
 class SandbagBuilder(BuilderBase):
     """
-    SandbagUnit情報をもとに1オブジェクトを生成し、
-    unit_id→Emptyオブジェクト辞書を返却するビルダークラス。
+    List[Sandbag] を受け取り、
+    各サンドバッグごとに Empty と Armature を生成するビルダークラス。
+
+    build() は以下の辞書を返します:
+        Dict[sandbag_id, Dict[str, bpy.types.Object]]
+        {
+            'empty':    Empty オブジェクト,
+            'armature': Armature オブジェクト (単一)
+        }
     """
 
-    def __init__(
-        self,
-        units_info: List[Dict[str, Any]],
-        cube_size: Tuple[float, float, float],
-    ):
+    def __init__(self, sandbags: List[Sandbag]):
         super().__init__()
-        self.units_info = units_info
-        self.cube_size = cube_size
-        self.log = log
+        self.sandbags = sandbags
 
-    def build(self) -> Dict[Any, bpy.types.Object]:
+    def build(self) -> Dict[Any, Dict[str, bpy.types.Object]]:
+        log.info("=================[サンドバックをビルド]=========================")
+        results: Dict[Any, Dict[str, bpy.types.Object]] = {}
+        for sandbag in self.sandbags:
+            sid = sandbag.id
+            # 1) Bone 用位置取得 (top=高側, bottom=低側)
+            top_pos, bottom_pos = self._get_positions(sandbag)
+            log.info(f"Added sandbag: ({sandbag.nodes[0].id}, {sandbag.nodes[1].id})")
+
+            # 2) Empty＋テンプレート複製（失敗時はキューブ）
+            empty = self._create_empty_container(sid, bottom_pos)
+
+            # 3) 単一 Armature 検出
+            armature = self._find_armature(empty, sid)
+
+            # 4) メッシュへ Armature モディファイア追加
+            self._apply_modifiers(empty, armature)
+
+            # 5) プロパティ設定
+            high_node, low_node = sandbag.nodes
+            props = {
+                "sandbag_id": sid,
+                "top_node_id": high_node.id,
+                "bottom_node_id": low_node.id,
+                "bone_top_pos": tuple(top_pos),
+                "bone_bottom_pos": tuple(bottom_pos),
+            }
+            for tgt in (empty, armature):
+                for k, v in props.items():
+                    tgt[k] = v
+
+            # 6) 結果格納
+            results[sid] = {"empty": empty, "armature": armature}
+
+        return results
+
+    def _get_positions(self, sandbag: Sandbag) -> Tuple[Vector, Vector]:
+        high_node, low_node = sandbag.nodes
+        top_pos = to_vector(high_node.pos)
+        bottom_pos = to_vector(low_node.pos) or top_pos
+        if top_pos is None:
+            raise ValueError(f"Sandbag {sandbag.id} high_node.pos is None")
+        return top_pos, bottom_pos
+
+    def _create_empty_container(self, uid: Any, location: Vector) -> bpy.types.Object:
+        try:
+            empty, _ = self._append_from_template(uid, location)
+        except Exception:
+            log.warning(
+                f"サンドバッグ[{uid}]: テンプレート複製失敗、キューブで代替します。"
+            )
+            empty = create_cube(uid, location, cube_size=CUBE_DEFAULT_SIZE)
+        return empty
+
+    def _find_armature(self, empty: bpy.types.Object, uid: Any) -> bpy.types.Object:
         """
-        各SandbagUnitにつき1オブジェクトを生成し、
-        {unit_id: EmptyObject}の辞書を返す。
+        empty 配下を再帰的に検索し、最初の ARMATURE オブジェクトを返す。
+        見つからなければ empty を返す。
         """
-        objs: Dict[Any, bpy.types.Object] = {}
-        for info in self.units_info:
-            uid = info.get("unit_id")
-            rep = info.get("rep_node")
-            other = info.get("other_node")
-
-            pos = getattr(rep, "pos", None) or getattr(rep, "location", None)
-            if pos is None:
-                self.log.warning(f"unit {uid}: 代表ノード位置未設定、スキップします。")
-                continue
-            if not isinstance(pos, Vector):
-                try:
-                    pos = Vector(pos)
-                except Exception as e:
-                    self.log.error(f"unit {uid}: 位置Vector変換失敗: {e}")
-                    continue
-
-            try:
-                empty, _ = self._append_from_template(uid, pos)
-            except Exception as e:
-                self.log.debug(
-                    f"unit {uid}: テンプレート複製失敗({e})、キューブ生成します。"
-                )
-                empty = self._create_cube(uid, pos)
-
-            empty["sandbag_unit_id"] = uid
-            empty["rep_node_id"] = getattr(rep, "id", None)
-            empty["other_node_id"] = getattr(other, "id", None)
-            empty["bone_pos_rep"] = tuple(pos)
-
-            other_pos = getattr(other, "pos", None) or getattr(other, "location", None)
-            if other_pos is None:
-                other_pos = pos
-            if not isinstance(other_pos, Vector):
-                try:
-                    other_pos = Vector(other_pos)
-                except Exception:
-                    other_pos = pos
-            empty["bone_pos_other"] = tuple(other_pos)
-
-            objs[uid] = empty
-
-        self.log.info(
-            f"{len(objs)} 件のサンドバッグユニットオブジェクトを生成しました。"
+        arms = [c for c in empty.children_recursive if c.type == "ARMATURE"]
+        if arms:
+            return arms[0]
+        log.warning(
+            f"サンドバッグ[{uid}]: アーマチュアなし。EmptyをArmatureとして使用します。"
         )
-        return objs
+        return empty
+
+    def _apply_modifiers(
+        self, empty: bpy.types.Object, armature: bpy.types.Object
+    ) -> None:
+        for child in empty.children:
+            if child.type == "MESH":
+                mod = child.modifiers.new("Armature", "ARMATURE")
+                mod.object = armature
 
     def _append_from_template(
         self, unit_id: Any, location: Vector
     ) -> Tuple[bpy.types.Object, bpy.types.Object]:
-        """
-        TBAGS_MODELテンプレートから複製し、
-        (Empty, MainMesh)を返す。
-        """
         with bpy.data.libraries.load(TBAGS_MODEL, link=False) as (src, dst):
             dst.objects = src.objects
             dst.armatures = src.armatures
-        originals = dst.objects
 
-        empty = bpy.data.objects.new(f"SandbagUnit_{unit_id}", None)
+        empty = bpy.data.objects.new(f"{SANDBAG_OBJ_PREFIX}{unit_id}", None)
         bpy.context.scene.collection.objects.link(empty)
         empty.location = location
 
-        linked_meshes = []
-        linked_armatures = []
-        for orig in originals:
+        meshes, arms = [], []
+        for orig in dst.objects:
             if orig is None:
                 continue
-            obj_copy = orig.copy()
+            cp = orig.copy()
             if orig.data:
-                obj_copy.data = orig.data.copy()
-            bpy.context.scene.collection.objects.link(obj_copy)
-            obj_copy.parent = empty
-            obj_copy.parent_type = "OBJECT"
-            if obj_copy.type == "MESH":
-                linked_meshes.append(obj_copy)
-            elif obj_copy.type == "ARMATURE":
-                linked_armatures.append(obj_copy)
+                cp.data = orig.data.copy()
+            bpy.context.scene.collection.objects.link(cp)
+            cp.parent = empty
+            cp.matrix_parent_inverse = empty.matrix_world.inverted()
+            if cp.type == "MESH":
+                meshes.append(cp)
+            elif cp.type == "ARMATURE":
+                arms.append(cp)
 
-        main = (
-            linked_meshes[0]
-            if linked_meshes
-            else (linked_armatures[0] if linked_armatures else empty)
-        )
+        main = arms[0] if arms else (meshes[0] if meshes else empty)
         return empty, main
-
-    def _create_cube(self, unit_id: Any, location: Vector) -> bpy.types.Object:
-        """
-        フォールバック: キューブプリミティブを生成し返却。
-        """
-        bpy.ops.mesh.primitive_cube_add(size=1.0, location=location)
-        cube = bpy.context.object
-        cube.name = f"SandbagUnit_{unit_id}"
-        sx, sy, sz = self.cube_size
-        cube.scale = (sx / 2, sy / 2, sz / 2)
-        self.log.debug(
-            f"フォールバックキューブ {cube.name} を生成: size={self.cube_size}"
-        )
-        return cube

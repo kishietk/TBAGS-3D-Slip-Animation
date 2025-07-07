@@ -1,159 +1,81 @@
-# builders/scene_builders/scene_builder.py
-
-"""
-ファイル名: builders/scene_builders/scene_builder.py
-
-責務:
-    - コアモデル（Node/SandbagUnit/Panel…）から Blender 用表示オブジェクト群を一括生成
-    - kind_id で通常ノード／サンドバッグノードを自動仕分けし、各 Builder クラスに委譲
-    - 生成物（ノード球、サンドバッグ基点Empty、サンドバッグユニット、パネル、屋根、柱、梁、地面）を返却
-
-TODO:
-    - 入力nodesの型（dict or list）を統一し、型ヒント強化
-    - SandbagBuilderの外部設定化（テンプレートパスやユニットキー名など）
-    - パラメータ化: sandbag_face_size/bar_thicknessをコンフィグから参照
-    - 処理セクションの関数分割（prepare, build_base, build_units, summary）による可読性向上
-    - 単体テスト追加: ユニットマップ生成とBuilder実行の正常系/異常系検証
-
-注意:
-    - column_edges, beam_edges は Edge 情報を渡す
-    - nodes 引数は内部でdict or listに統一されるが、将来的にTypedDict導入検討
-"""
-from typing import Any, Dict, List, Tuple, Union, Optional
+from typing import Any, Dict, List, Tuple, Optional
 from utils import setup_logging
 from builders.base import BuilderBase
 from builders.object_builders import (
     NodeBuilder,
     SandbagBuilder,
-    SandbagUnitsBuilder,
     PanelBuilder,
     RoofBuilder,
     ColumnBuilder,
     BeamBuilder,
     GroundBuilder,
 )
-from cores.constructors import make_sandbag_unit
-from configs import (
-    SANDBAG_NODE_KIND_IDS,
-    SPHERE_RADIUS,
-    SANDBAG_FACE_SIZE,
-    SANDBAG_BAR_THICKNESS,
-)
+from configs import SPHERE_RADIUS
+from cores import CoreFactory
+import bpy
 
 log = setup_logging("SceneBuilder")
 
 
-def prepare_sandbag_units(all_nodes: Dict[int, Any]) -> List[Dict[str, Any]]:
-    """
-    SandbagUnitペアから、代表ノード／もう一方のノード情報をまとめた辞書リストを生成
-
-    Args:
-        all_nodes: 全NodeオブジェクトID→インスタンスマップ
-    Returns:
-        List[Dict]: {unit_id, rep_node, other_node} を要素とするリスト
-    """
-    units = make_sandbag_unit(all_nodes)
-    result: List[Dict[str, Any]] = []
-    for unit in units:
-        n1, n2 = sorted(unit.nodes, key=lambda n: n.kind_id)
-        result.append(
-            {
-                "unit_id": unit.id,
-                "rep_node": n1,
-                "other_node": n2,
-            }
-        )
-    return result
-
-
 class SceneBuilder(BuilderBase):
     """
-    Coreモデル→Blenderシーンオブジェクト統括ビルダー
+    CoreFactory で生成済みのコアモデルから、Blender シーン用オブジェクトをビルドするクラス。
+
+    build() メソッドは以下を返す:
+        - node_objs: Dict[node_id, bpy.types.Object]
+        - sandbag_base_objs: Dict[unit_id, {'empty': EmptyObj, 'armature_twist': ArmatureObj, 'armature_bend': ArmatureObj}]
+        - panel_objs: List[bpy.types.Object]
+        - roof_obj: bpy.types.Object
+        - roof_quads: List[Tuple[int, int, int, int]]
+        - member_objs: List[Tuple[bpy.types.Object, int, int]]
+        - ground_obj: Optional[bpy.types.Object]
     """
 
     def __init__(
         self,
-        nodes: Union[Dict[int, Any], List[Any]],
-        column_edges: List[Tuple[int, int]],
-        beam_edges: List[Tuple[int, int]],
-        panels: Optional[List[Any]] = None,
-        sandbag_face_size: Tuple[float, float] = SANDBAG_FACE_SIZE,
-        sandbag_bar_thickness: float = SANDBAG_BAR_THICKNESS,
+        core: CoreFactory,
         include_ground: bool = True,
     ):
         super().__init__()
-        self.nodes_data = nodes
-        self.column_edges = column_edges
-        self.beam_edges = beam_edges
-        self.panels_data = panels or []
-        self.sandbag_face_size = sandbag_face_size
-        self.sandbag_bar_thickness = sandbag_bar_thickness
+        self.core = core
         self.include_ground = include_ground
 
     def build(
         self,
     ) -> Tuple[
-        Dict[int, Any],  # node_objs
-        Dict[Any, Any],  # sandbag_base_objs
-        List[Any],  # panel_objs
-        Any,  # roof_obj
-        List[Tuple[int, int, int, int]],  # roof_quads
-        List[Tuple[Any, int, int]],  # member_objs
-        Any,  # ground_obj
+        Dict[int, bpy.types.Object],
+        Dict[Any, Dict[str, bpy.types.Object]],
+        List[bpy.types.Object],
+        bpy.types.Object,
+        List[Tuple[int, int, int, int]],
+        List[Tuple[bpy.types.Object, int, int]],
+        Optional[bpy.types.Object],
     ]:
-        """
-        全オブジェクト生成のエントリーポイント
-        Returns:
-            node_objs, sandbag_base_objs, panel_objs, roof_obj, roof_quads, member_objs, ground_obj
-        """
-        # ノード iterable に統一
-        iterable = (
-            self.nodes_data.values()
-            if isinstance(self.nodes_data, dict)
-            else self.nodes_data
-        )
+        # 1. コアモデルから分類済みデータ取得
+        normal_nodes = self.core.normal_nodes
+        panels = self.core.panels
+        column_edges = self.core.columns
+        beam_edges = self.core.beams
+        sandbags = self.core.sandbags
 
-        # 通常／サンドバッグノードを分離
-        normal_nodes: Dict[int, Any] = {}
-        sandbag_nodes: Dict[int, Any] = {}
-        for node in iterable:
-            if getattr(node, "kind_id", None) in SANDBAG_NODE_KIND_IDS:
-                sandbag_nodes[node.id] = node
-            else:
-                normal_nodes[node.id] = node
-
-        # 1. 通常ノード球体生成
+        # 2. 通常ノード球体生成
         node_objs = NodeBuilder(normal_nodes, radius=SPHERE_RADIUS).run()
 
-        # 2. サンドバッグ基点生成
-        cube_size = (
-            self.sandbag_face_size[0],
-            self.sandbag_face_size[1],
-            self.sandbag_bar_thickness,
-        )
-        prepared = prepare_sandbag_units({**normal_nodes, **sandbag_nodes})
-        sandbag_base_objs = SandbagBuilder(prepared, cube_size=cube_size).build()
-
-        # 3. サンドバッグユニットCollection化
-        units_map: Dict[Any, List[int]] = {
-            info["unit_id"]: [info["rep_node"].id, info["other_node"].id]
-            for info in prepared
-        }
-        sandbag_unit_objs = (
-            SandbagUnitsBuilder(units_map, sandbag_base_objs).run() if units_map else {}
-        )
+        # 3. サンドバッグ生成 (Empty + Armature)
+        sandbag_objs = SandbagBuilder(sandbags).build()
 
         # 4. パネル生成
-        panel_objs = PanelBuilder(self.panels_data).run() if self.panels_data else []
+        panel_objs = PanelBuilder(panels).build() if panels else []
 
         # 5. 屋根生成
         positions = {n.id: n.pos for n in normal_nodes.values()}
-        positions.update({n.id: n.pos for n in sandbag_nodes.values()})
+        for n in self.core.sandbag_nodes.values():
+            positions[n.id] = n.pos
         roof_obj, roof_quads = RoofBuilder(positions).run()
 
-        # 6. 部材生成
-        col_map = ColumnBuilder(positions, self.column_edges, thickness=0.5).run()
-        beam_map = BeamBuilder(positions, self.beam_edges, thickness=0.5).run()
+        # 6. 部材生成（柱＋梁）
+        col_map = ColumnBuilder(positions, column_edges, thickness=0.5).run()
+        beam_map = BeamBuilder(positions, beam_edges, thickness=0.5).run()
         member_objs = [
             (obj, int(key.split("_")[0]), int(key.split("_")[1]))
             for key, obj in {**col_map, **beam_map}.items()
@@ -165,7 +87,7 @@ class SceneBuilder(BuilderBase):
         # サマリー出力
         summary = (
             f"SceneBuilder Summary: Nodes={len(node_objs)}, "
-            f"SandbagEmpties={len(sandbag_base_objs)}, Units={len(sandbag_unit_objs)}, "
+            f"Sandbags={len(sandbag_objs)}, "
             f"Panels={len(panel_objs)}, RoofQuads={len(roof_quads)}, "
             f"Members={len(member_objs)}, Ground={'Yes' if ground_obj else 'No'}"
         )
@@ -173,7 +95,7 @@ class SceneBuilder(BuilderBase):
 
         return (
             node_objs,
-            sandbag_base_objs,
+            sandbag_objs,
             panel_objs,
             roof_obj,
             roof_quads,
