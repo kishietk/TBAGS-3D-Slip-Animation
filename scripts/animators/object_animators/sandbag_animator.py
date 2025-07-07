@@ -39,6 +39,7 @@ def update_sandbag(
     base_bot = base_sandbag_pos[bottom_id]
     disp_top = sandbag_anim_data.get(top_id, {}).get(frame, Vector())
     disp_bot = sandbag_anim_data.get(bottom_id, {}).get(frame, Vector())
+
     # 親オブジェクト（motion_parent）のワールド移動分を取得
     parent_world_loc = (
         empty.parent.matrix_world.to_translation() if empty.parent else Vector()

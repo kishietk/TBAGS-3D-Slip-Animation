@@ -194,7 +194,9 @@ def setup_animation_handlers(
     # ノード種別ごとにアニメーションデータを分割
     base_node_pos = {n.id: n.pos for n in core.normal_nodes.values()}
     base_sandbag_pos = {n.id: n.pos for n in core.sandbag_nodes.values()}
-    node_anim_data = {nid: v for nid, v in anim_data.items() if nid in base_node_pos}
+    node_anim_data = {
+        nid: v for nid, v in anim_data.items() if nid in base_node_pos
+    }
     sandbag_anim_data = {
         nid: v for nid, v in anim_data.items() if nid in base_sandbag_pos
     }
