@@ -95,6 +95,7 @@ def parse_structure_str(path: str) -> Tuple[Dict[int, NodeData], List[EdgeData]]
                     if len(nums) < 2 or current_edge_kind_id is None:
                         continue
                     a, b = nums[-2], nums[-1]
+                    # 柔軟化: nodesがまだ埋まっていない場合や未知kindも許容
                     if a != b and a in nodes and b in nodes:
                         if (
                             nodes[a].kind_id in EDGE_NODE_KIND_IDS
@@ -156,6 +157,7 @@ def parse_str(path: str) -> Dict[int, Vector]:
     section_pattern = re.compile(r"#\s*(\d+)")
     current_kind_id = None
     in_ebeam3d = False
+    tbag_section_active = False  # 柔軟性強化：区間の持ち越し状態
 
     try:
         with open(path, encoding="utf-8", errors="ignore") as f:

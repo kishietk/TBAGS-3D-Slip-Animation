@@ -1,13 +1,13 @@
-# cores/constructors/core_factory.py
-from typing import Dict, List
+from typing import Dict, List, Tuple, Any
 from utils import setup_logging
 from configs import (
     WALL_NODE_KIND_IDS,
     COLUMNS_KIND_IDS,
     BEAMS_KIND_IDS,
 )
-from cores.entities import Node, Edge, Beam, Column, Panel
-from .constructors.make_panel_unit import make_panel_unit
+from cores.entities import Node, Edge, Panel
+from cores.core_registry import get_core_class
+from utils.make_panel_unit import make_panel_unit
 from parsers import NodeData, EdgeData
 
 log = setup_logging("CoreFactory")
@@ -58,19 +58,25 @@ class CoreFactory:
         return self._edges
 
     @property
-    def columns(self) -> List[tuple[int, int]]:
+    def columns(self) -> List[Edge]:
+        """
+        COLUMNS_KIND_IDS に該当する Edge インスタンスのリストを返す
+        """
         return [
-            (e.node_a.id, e.node_b.id)
+            e
             for e in self._edges
-            if e.kind_id in COLUMNS_KIND_IDS
+            if hasattr(e, "kind_id") and e.kind_id in COLUMNS_KIND_IDS
         ]
 
     @property
-    def beams(self) -> List[tuple[int, int]]:
+    def beams(self) -> List[Edge]:
+        """
+        BEAMS_KIND_IDS に該当する Edge インスタンスのリストを返す
+        """
         return [
-            (e.node_a.id, e.node_b.id)
+            e
             for e in self._edges
-            if e.kind_id in BEAMS_KIND_IDS
+            if hasattr(e, "kind_id") and e.kind_id in BEAMS_KIND_IDS
         ]
 
     @property
@@ -99,12 +105,11 @@ class CoreFactory:
         for e in edges_data:
             a = node_map.get(e.node_a)
             b = node_map.get(e.node_b)
-            if e.kind_id in COLUMNS_KIND_IDS:
-                edges.append(Column(a, b, e.kind_id, e.kind_label))
-            elif e.kind_id in BEAMS_KIND_IDS:
-                edges.append(Beam(a, b, e.kind_id, e.kind_label))
-            else:
-                edges.append(Edge(a, b, e.kind_id, e.kind_label))
+            # レジストリから対応クラスを取得し、無ければデフォルトの Edge を使う
+            cls = get_core_class(getattr(e, "kind_id", None)) or Edge
+            edges.append(
+                cls(a, b, getattr(e, "kind_id", None), getattr(e, "kind_label", ""))
+            )
         return edges
 
     def _construct_core_panels(self) -> List[Panel]:
@@ -112,14 +117,14 @@ class CoreFactory:
             node_map=self._nodes,
             panel_node_kind_ids=WALL_NODE_KIND_IDS,
         )
-        from cores.entities.panel_core import Panel
+        from cores.entities.panel_core import Panel  # 動的import（循環依存対策）
 
         return [
             Panel(
                 nodes=[self._nodes[nid] for nid in pd.node_ids],
-                kind=pd.kind,
-                floor=pd.floor or None,
-                attributes=pd.attributes,
+                kind=getattr(pd, "kind", None),
+                floor=getattr(pd, "floor", None),
+                attributes=getattr(pd, "attributes", {}),
             )
             for pd in panel_data_list
         ]

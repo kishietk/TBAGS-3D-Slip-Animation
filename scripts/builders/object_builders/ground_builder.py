@@ -13,6 +13,15 @@ log = setup_logging("GroundBuilder")
 
 
 class GroundBuilder(BuilderBase):
+    """
+    指定サイズ・位置で平面メッシュ（地面）を生成し、シーンにリンクするビルダー。
+
+    Attributes:
+        size (Tuple[float, float]): (幅, 奥行) で平面のスケールを制御
+        location (Tuple[float, float, float]): (X, Y, Z) で配置位置を指定
+        name (str): 作成オブジェクト名
+    """
+
     def __init__(
         self,
         size: Tuple[float, float] = GROUND_SIZE_XY,
@@ -33,9 +42,9 @@ class GroundBuilder(BuilderBase):
 
     def build(self) -> Optional[bpy.types.Object]:
         """
-        役割:
-            指定サイズ・位置で平面メッシュを生成し、シーンにリンクする。
-        返り値:
+        指定サイズ・位置で平面メッシュを生成し、シーンにリンクする。
+
+        Returns:
             bpy.types.Object: 生成した平面オブジェクト、失敗時は None
         """
         try:

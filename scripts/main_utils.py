@@ -4,7 +4,7 @@ from typing import Tuple, Dict, List, Any, Optional
 
 from utils import clear_scene, setup_logging
 from loaders import LoaderManager, load_earthquake_motion_csv
-from cores import CoreFactory
+from cores.core_factory import CoreFactory
 from builders.scene_builder import SceneBuilder
 from builders.hierarchy_builders.motion_parent_builder import (
     build_motion_parent,
@@ -19,6 +19,7 @@ from configs import (
     log_dataset_selection,
     GROUND_ANIMATION_ENABLED,
 )
+from parsers.types import NodeData, EdgeData  # ← 追加
 
 log = setup_logging("main_utils")
 
@@ -70,7 +71,7 @@ def load_all_data(
     node_csv: str,
     node_anim_csv: str,
     earthquake_anim_csv: str,
-) -> Tuple[Dict[int, Any], List[Tuple[int, int]], Dict[int, Any], Any]:
+) -> Tuple[Dict[int, NodeData], List[EdgeData], Dict[int, Any], Any]:
     """
     役割:
         必要な全データ（ノード、エッジ、アニメーション、地震基準面）を指定パスでロードする。
@@ -87,8 +88,8 @@ def load_all_data(
 
 
 def build_core_model(
-    nodes_data: Dict[int, Any],
-    edges_data: List[Tuple[int, int]],
+    nodes_data: Dict[int, NodeData],
+    edges_data: List[EdgeData],
 ) -> CoreFactory:
     """
     役割:
@@ -188,9 +189,7 @@ def setup_animation_handlers(
 
     # ノード種別ごとにアニメーションデータを分割
     base_node_pos = {n.id: n.pos for n in core.nodes.values()}
-    node_anim_data = {
-        nid: v for nid, v in anim_data.items() if nid in base_node_pos
-    }
+    node_anim_data = {nid: v for nid, v in anim_data.items() if nid in base_node_pos}
 
     # フレームチェンジハンドラをクリア＆再登録
     bpy.app.handlers.frame_change_pre.clear()
