@@ -8,8 +8,6 @@ from configs import UV_MAP_NAME
 def update_panels(
     panel_objs: List[bpy.types.Object],
     node_objs: Dict[int, bpy.types.Object],
-    base_sandbag_pos: Dict[Any, Vector],
-    sandbag_anim_data: Dict[int, Dict[int, Vector]],
     scene: bpy.types.Scene,
 ) -> None:
     """
@@ -24,11 +22,6 @@ def update_panels(
         for nid in ids:
             if nid in node_objs:
                 verts.append(node_objs[nid].location)
-            else:
-                verts.append(
-                    base_sandbag_pos.get(nid, Vector())
-                    + sandbag_anim_data.get(nid, {}).get(frame, Vector())
-                )
         mesh = obj.data
         mesh.clear_geometry()
         bm = bmesh.new()

@@ -42,7 +42,6 @@
     kobe-erthquake-disp.csv
     self-no-tbags.str
     self-with-tbags.str
-    sandbag_template_low.blend
 
   textures/
     roof_texture.png

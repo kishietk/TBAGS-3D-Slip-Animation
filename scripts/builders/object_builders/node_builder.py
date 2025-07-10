@@ -1,35 +1,17 @@
-"""
-ファイル名: builders/object_builders/node_builder.py
-
-責務:
-- Node インスタンスの pos 属性から Blender 球体を生成する。
-- 添え字アクセス（node[...]）は一切行わず、Node 型のみを受け付ける。
-- 例外発生時にはログを残したうえでスキップ。
-
-TODO:
-- どうしても dict/tuple を混在させたい場合は明示的ファクトリ関数を用意する
-"""
-
+# builders/object_builders/node_builder.py
 import bpy
 from mathutils import Vector
-from typing import Dict
+from typing import Dict, Any
 from utils import setup_logging
-from cores.entities import Node
 from builders.base import BuilderBase
-from configs import (
-    SPHERE_RADIUS,
-    UV_SPHERE_SEGMENTS,
-    UV_SPHERE_RINGS,
-    NODE_OBJ_PREFIX,
-)
+from configs import SPHERE_RADIUS, UV_SPHERE_SEGMENTS, UV_SPHERE_RINGS, NODE_OBJ_PREFIX
 
 log = setup_logging("NodeBuilder")
-
 
 class NodeBuilder(BuilderBase):
     def __init__(
         self,
-        nodes: Dict[int, Node],
+        nodes: Dict[int, Any],  # NodeData or similar with .pos
         radius: float = SPHERE_RADIUS,
         segments: int = UV_SPHERE_SEGMENTS,
         rings: int = UV_SPHERE_RINGS,
@@ -43,33 +25,26 @@ class NodeBuilder(BuilderBase):
         self.name_prefix = name_prefix
 
     def build(self) -> Dict[int, bpy.types.Object]:
-        """
-        役割:
-            Node.pos から Blender 球体を生成（アニメーション処理なし）。
-        引数:
-            なし（コンストラクタで nodes, radius, segments, rings, name_prefix を受け取る）
-        返り値:
-            Dict[int, bpy.types.Object]: ノードID→Blenderオブジェクト
-        """
         objs: Dict[int, bpy.types.Object] = {}
+        log.info(f"Starting NodeBuilder.build with {len(self.nodes)} input nodes")
         for nid, node in self.nodes.items():
-            # Node 型チェック
-            if not isinstance(node, Node):
-                log.error(
-                    f"NodeBuilder: nodes[{nid}] が Node ではありません: {type(node)}"
-                )
+            # pos 属性の存在チェック
+            if not hasattr(node, 'pos'):
+                log.warning(f"Skipping node {nid}: missing 'pos' attribute (type={type(node).__name__})")
                 continue
-
-            # Vector 化
-            pos = node.pos
+            pos = getattr(node, 'pos')
+            # Vector 型チェック・変換
             if not isinstance(pos, Vector):
+                log.info(f"Node {nid}: pos is not Vector, attempting conversion: {pos}")
                 try:
                     pos = Vector(pos)
                 except Exception as e:
-                    log.error(f"NodeBuilder: ノード {nid} の位置 Vector 変換失敗: {e}")
+                    log.warning(f"Skipping node {nid}: invalid position data {pos!r}: {e}")
                     continue
-
-            # 球体生成
+            # 座標がゼロベクトルではないかチェック
+            if pos.length == 0:
+                log.warning(f"Node {nid}: position is zero vector, which may indicate missing data")
+            # メッシュ生成
             try:
                 bpy.ops.mesh.primitive_uv_sphere_add(
                     radius=self.radius,
@@ -80,9 +55,12 @@ class NodeBuilder(BuilderBase):
                 obj = bpy.context.object
                 obj.name = f"{self.name_prefix}{nid}"
                 objs[nid] = obj
-                log.debug(f"{obj.name} created at {tuple(pos)}")
+                log.info(f"Built node object '{obj.name}' at {tuple(pos)}")
             except Exception as e:
-                log.error(f"NodeBuilder: {self.name_prefix}{nid} の生成失敗: {e}")
-
-        log.info(f"{len(objs)} nodes built.")
+                log.error(f"Failed to build node {nid}: {e}")
+        # 完了ログ
+        if not objs:
+            log.warning("NodeBuilder.build: completed with 0 built nodes. Verify that input nodes have valid .pos values and are in VALID_NODE_IDS set.")
+        else:
+            log.info(f"NodeBuilder.build: built {len(objs)} nodes successfully.")
         return objs

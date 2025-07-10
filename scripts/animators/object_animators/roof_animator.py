@@ -9,8 +9,6 @@ def update_roof(
     roof_obj: Optional[bpy.types.Object],
     roof_quads: List[Tuple[int, int, int, int]],
     node_objs: Dict[int, bpy.types.Object],
-    base_sandbag_pos: Dict[Any, Vector],
-    sandbag_anim_data: Dict[int, Dict[int, Vector]],
     scene: bpy.types.Scene,
 ) -> None:
     """
@@ -26,12 +24,7 @@ def update_roof(
     vert_map: Dict[int, bmesh.types.BMVert] = {}
     for quad in roof_quads:
         for nid in quad:
-            if nid in node_objs:
-                pos = node_objs[nid].location
-            else:
-                pos = base_sandbag_pos.get(nid, Vector()) + sandbag_anim_data.get(
-                    nid, {}
-                ).get(frame, Vector())
+            pos = node_objs[nid].location
             if nid not in vert_map:
                 vert_map[nid] = bm.verts.new(pos)
     for bl, br, tr, tl in roof_quads:

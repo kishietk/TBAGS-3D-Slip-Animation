@@ -47,13 +47,5 @@ if __name__ == "__main__":
     try:
         main()
 
-        # ── ここからサンドバッグ複製処理 ──
-        from cores.duplicate_sandbags import duplicate_sandbags
-
-        print("[INFO] Start duplicating sandbags...")
-        duplicate_sandbags()
-        print("[INFO] Sandbag duplication done.")
-        # ── 複製処理ここまで ──
-
     except Exception as e:
         print(f"[CRITICAL] Application failed: {e}")

@@ -7,8 +7,6 @@ from configs import EPS_AXIS
 def update_members(
     member_objs: List[Tuple[bpy.types.Object, int, int]],
     node_objs: Dict[int, bpy.types.Object],
-    base_sandbag_pos: Dict[Any, Vector],
-    sandbag_anim_data: Dict[int, Dict[int, Vector]],
     scene: bpy.types.Scene,
 ) -> None:
     """
@@ -17,18 +15,8 @@ def update_members(
     frame = scene.frame_current
     up = Vector((0, 0, 1))
     for obj, a, b in member_objs:
-        p1 = (
-            node_objs[a].location
-            if a in node_objs
-            else base_sandbag_pos.get(a, Vector())
-            + sandbag_anim_data.get(a, {}).get(frame, Vector())
-        )
-        p2 = (
-            node_objs[b].location
-            if b in node_objs
-            else base_sandbag_pos.get(b, Vector())
-            + sandbag_anim_data.get(b, {}).get(frame, Vector())
-        )
+        p1 = node_objs[a].location
+        p2 = node_objs[b].location
         mid = (p1 + p2) * 0.5
         vec = p2 - p1
         obj.location = mid

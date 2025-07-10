@@ -101,11 +101,6 @@ ROOF_IMG = os.path.join(TEXTURE_DIR, "roof_texture.png")
 TBAGS_TEXTURE = os.path.join(TEXTURE_DIR, "tbags_texture.jpeg")
 
 # =======================
-# T-BAGS モデル 
-# =======================
-TBAGS_MODEL = os.path.join(DATA_DIR, "sandbag_template_low.blend")
-
-# =======================
 # ログ関数
 # =======================
 def log_dataset_selection(key):

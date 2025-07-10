@@ -15,7 +15,7 @@ TODO:
 """
 
 import re
-from typing import Dict, List, Tuple, Set
+from typing import Dict, List, Tuple
 from mathutils import Vector
 from configs import (
     NODE_SECTION_KIND_IDS,
@@ -23,7 +23,6 @@ from configs import (
     EDGE_NODE_KIND_IDS,
     VALID_NODE_IDS,
 )
-from configs.node_ids import COPY_SAND_BAG_NODE_IDS
 from utils import setup_logging
 from .types import NodeData, EdgeData
 
@@ -32,75 +31,57 @@ log = setup_logging("structureParser")
 
 def parse_structure_str(path: str) -> Tuple[Dict[int, NodeData], List[EdgeData]]:
     """
-    役割:
-        STRファイルをパースし、ノード・エッジのデータ構造体群を返す。
+    STR ファイルをパースし、ノード・エッジのデータ構造体群を返す。
+    ノード座標は "3D" 行のみを正規表現で抽出し、形式が不正な行はスキップします。
+    エッジは EBEAM3D セクションから抽出。
     """
     nodes: Dict[int, NodeData] = {}
     edges: List[EdgeData] = []
 
-    section_pattern = re.compile(r"#\s*(\d+)")
-    current_kind_id = None
+    coord_pattern = re.compile(
+        r"^\s*(?P<id>\d+)\s+3D\s+(?P<x>-?\d+(?:\.\d+)?)\s+(?P<y>-?\d+(?:\.\d+)?)\s+(?P<z>-?\d+(?:\.\d+)?)(?:\s|$)"
+    )
+
+    in_node_section = False
+    in_edge_section = False
     tbag_section_active = False
-    in_ebeam3d = False
     current_edge_kind_id = None
     current_edge_kind_label = None
 
     try:
         with open(path, encoding="utf-8", errors="ignore") as f:
             for row_idx, line in enumerate(f, start=1):
-                line_strip = line.strip()
+                ls = line.strip()
 
-                # ノード区間判定
-                m_section = section_pattern.match(line_strip)
-                if m_section and not in_ebeam3d:
-                    sec = int(m_section.group(1))
-                    current_kind_id = sec if sec in NODE_SECTION_KIND_IDS else None
-                    tbag_section_active = False
-                    log.debug(f"[{path}] Section #{sec} at row {row_idx}")
+                # ノードセクション開始
+                if ls == "NODE":
+                    in_node_section = True
+                    log.debug(f"[{path}] Enter NODE section at row {row_idx}")
                     continue
 
-                # TBAGSセクション検出
-                if "#Top of Upper level T-BAGS connected to Columns" in line_strip:
+                # TBAGS セクション検出
+                if (
+                    in_node_section
+                    and "#Top of Upper level T-BAGS connected to Columns" in ls
+                ):
                     tbag_section_active = True
                     continue
 
-                # Edge領域開始/終了
-                if "EBEAM3D" in line_strip:
-                    in_ebeam3d = True
+                # エッジセクション開始／終了
+                if "EBEAM3D" in ls:
+                    in_edge_section = True
+                    log.debug(f"[{path}] Enter EBEAM3D section at row {row_idx}")
                     continue
-                if in_ebeam3d and (line_strip.startswith("#=") or "END" in line_strip):
-                    in_ebeam3d = False
+                if in_edge_section and (ls.startswith("#=") or "END" in ls):
+                    in_edge_section = False
                     current_edge_kind_id = None
                     current_edge_kind_label = None
+                    log.debug(f"[{path}] Exit EBEAM3D section at row {row_idx}")
                     continue
 
-                # ノードデータ行
-                if (
-                    not in_ebeam3d
-                    and current_kind_id is not None
-                    and line_strip
-                    and not line_strip.startswith("#")
-                ):
-                    parts = line_strip.split()
-                    if parts[0].isdigit():
-                        nid = int(parts[0])
-                        # ここでは通常ノードとT-BAGSノードのみをVALID_NODE_IDSで判定
-                        if nid not in VALID_NODE_IDS:
-                            continue
-                        try:
-                            x, y, z = map(float, parts[-3:])
-                            kind_id = 0 if tbag_section_active else current_kind_id
-                            nodes[nid] = NodeData(Vector((x, y, z)), kind_id)
-                            log.info(f"Added node: ID={nid}, kind_id={kind_id}")
-                        except Exception as e:
-                            log.error(
-                                f"[{path}] Failed to parse node at row {row_idx}: {e}"
-                            )
-                        continue
-
                 # エッジ種別切り替え
-                if in_ebeam3d and line_strip.startswith("#"):
-                    m_kind = re.match(r"#\s*(\d+)", line_strip)
+                if in_edge_section and ls.startswith("#"):
+                    m_kind = re.match(r"#\s*(\d+)", ls)
                     if m_kind:
                         current_edge_kind_id = int(m_kind.group(1))
                         current_edge_kind_label = KIND_LABELS.get(
@@ -109,8 +90,8 @@ def parse_structure_str(path: str) -> Tuple[Dict[int, NodeData], List[EdgeData]]
                     continue
 
                 # エッジデータ行
-                if in_ebeam3d and not line_strip.startswith("#"):
-                    nums = [int(n) for n in re.findall(r"\d+", line_strip)]
+                if in_edge_section and not ls.startswith("#"):
+                    nums = [int(n) for n in re.findall(r"\d+", ls)]
                     if len(nums) < 2 or current_edge_kind_id is None:
                         continue
                     a, b = nums[-2], nums[-1]
@@ -128,6 +109,29 @@ def parse_structure_str(path: str) -> Tuple[Dict[int, NodeData], List[EdgeData]]
                                 f"Added edge: ({a}, {b}) kind={current_edge_kind_id}"
                             )
                     continue
+
+                # ノードデータ行
+                if in_node_section:
+                    # コメントや空行はスキップ
+                    if not ls or ls.startswith("#"):
+                        continue
+                    m = coord_pattern.match(line)
+                    if not m:
+                        continue
+                    nid = int(m.group("id"))
+                    if nid not in VALID_NODE_IDS:
+                        continue
+
+                    x = float(m.group("x"))
+                    y = float(m.group("y"))
+                    z = float(m.group("z"))
+                    kind_id = (
+                        0
+                        if tbag_section_active
+                        else next(iter(NODE_SECTION_KIND_IDS), 0)
+                    )
+                    nodes[nid] = NodeData(Vector((x, y, z)), kind_id)
+                    log.info(f"Added node: ID={nid}, kind_id={kind_id}")
 
     except Exception as e:
         log.critical(f"[{path}] Critical parse error: {e}")
@@ -151,14 +155,7 @@ def parse_str(path: str) -> Dict[int, Vector]:
     positions: Dict[int, Vector] = {}
     section_pattern = re.compile(r"#\s*(\d+)")
     current_kind_id = None
-    tbag_section_active = False
     in_ebeam3d = False
-
-    # 追加: 複製用に必要なノードID集合を構築
-    needed_ids: Set[int] = set(VALID_NODE_IDS)
-    for proto_id, targets in COPY_SAND_BAG_NODE_IDS.items():
-        needed_ids.add(proto_id)
-        needed_ids.update(targets)
 
     try:
         with open(path, encoding="utf-8", errors="ignore") as f:
@@ -189,9 +186,6 @@ def parse_str(path: str) -> Dict[int, Vector]:
                 parts = line_strip.split()
                 if current_kind_id is not None and parts and parts[0].isdigit():
                     nid = int(parts[0])
-                    # VALID_NODE_IDS か、複製用に必要な needed_ids に含まれるなら読み込む
-                    if nid not in needed_ids:
-                        continue
                     try:
                         x, y, z = map(float, parts[-3:])
                         positions[nid] = Vector((x, y, z))

@@ -1,4 +1,4 @@
-### cores/constructors/core_factory.py
+# cores/constructors/core_factory.py
 from typing import Dict, List
 from utils import setup_logging
 from configs import (
@@ -6,10 +6,8 @@ from configs import (
     COLUMNS_KIND_IDS,
     BEAMS_KIND_IDS,
 )
-from cores.entities import Node, Edge, Beam, Column, Panel, Sandbag
+from cores.entities import Node, Edge, Beam, Column, Panel
 from .constructors.make_panel_unit import make_panel_unit
-from .constructors.make_sandbag_cores import make_sandbag_cores
-from .constructors.node_classification import split_nodes_by_kind
 from parsers import NodeData, EdgeData
 
 log = setup_logging("CoreFactory")
@@ -23,9 +21,6 @@ class CoreFactory:
         nodes: Dict[int, Node]
         edges: List[Edge]
         panels: List[Panel]
-        normal_nodes: Dict[int, Node]
-        sandbag_nodes: Dict[int, Node]
-        sandbags: List[Sandbag]
     """
 
     def __init__(
@@ -33,22 +28,16 @@ class CoreFactory:
         nodes_data: Dict[int, NodeData],
         edges_data: List[EdgeData],
     ) -> None:
-        # コア要素初期化（内部用属性）
+        # コア要素初期化
         self._nodes: Dict[int, Node] = {}
         self._edges: List[Edge] = []
         self._panels: List[Panel] = []
-        self._normal_nodes: Dict[int, Node] = {}
-        self._sandbag_nodes: Dict[int, Node] = {}
-        self._sandbags: List[Sandbag] = []
 
-        # データ構築
-        self._construct_core_all(nodes_data, edges_data)
-
-        # ノード分類とサンドバッグ作成
-        self._normal_nodes, self._sandbag_nodes = split_nodes_by_kind(
-            self._nodes.values()
+        log.info(
+            f"Initializing CoreFactory with {len(nodes_data)} nodes and {len(edges_data)} edges"
         )
-        self._sandbags = make_sandbag_cores(self._sandbag_nodes)
+        self._construct_core_all(nodes_data, edges_data)
+        log.info(f"CoreFactory initialized: {self.summary()}")
 
     def _construct_core_all(
         self,
@@ -88,23 +77,8 @@ class CoreFactory:
     def panels(self) -> List[Panel]:
         return self._panels
 
-    @property
-    def normal_nodes(self) -> Dict[int, Node]:
-        return self._normal_nodes
-
-    @property
-    def sandbag_nodes(self) -> Dict[int, Node]:
-        return self._sandbag_nodes
-
-    @property
-    def sandbags(self) -> List[Sandbag]:
-        return self._sandbags
-
     def summary(self) -> str:
-        return (
-            f"Nodes: {len(self.nodes)}, Edges: {len(self.edges)}, "
-            f"Panels: {len(self.panels)}, Sandbags: {len(self.sandbags)}"
-        )
+        return f"Nodes: {len(self.nodes)}, Edges: {len(self.edges)}, Panels: {len(self.panels)}"
 
     def _construct_core_nodes(
         self,
@@ -134,9 +108,6 @@ class CoreFactory:
         return edges
 
     def _construct_core_panels(self) -> List[Panel]:
-        """
-        PanelData リストを cores.entities.Panel へ変換して返す
-        """
         panel_data_list = make_panel_unit(
             node_map=self._nodes,
             panel_node_kind_ids=WALL_NODE_KIND_IDS,

@@ -126,8 +126,3 @@ COLUMNS_KIND_IDS = [53, 55]
 BEAMS_KIND_IDS = [42, 43, 44, 45, 46, 48, 49, 50, 51]
 EDGE_NODE_KIND_IDS = [0, 1]
 WALL_NODE_KIND_IDS = [0, 1]
-SANDBAG_NODE_KIND_IDS = [0, 2, 3, 4, 5, 7, 8, 9]
-
-# --- 将来拡張指針 ---
-# ・IDセット追加時はここに追記・命名規則を統一
-# ・分類増／仕様変化時も他ファイル改修不要な構造とする

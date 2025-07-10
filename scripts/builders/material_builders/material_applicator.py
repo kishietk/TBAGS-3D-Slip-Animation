@@ -18,11 +18,8 @@ from .material_factories import (
     create_column_material,
     create_beam_material,
     create_node_material,
-    create_sandbag_material,
-    create_sandbag_texture_material,
     create_ground_material,
 )
-from configs.paths import TBAGS_TEXTURE
 
 log = setup_logging("MaterialApplicator")
 
@@ -31,7 +28,6 @@ class MaterialApplicator(BuilderBase):
     def __init__(
         self,
         node_objs: Dict[int, bpy.types.Object],
-        sandbag_objs: Dict[int, bpy.types.Object],
         panel_objs: List[bpy.types.Object],
         roof_obj: Optional[bpy.types.Object],
         member_objs: List[Union[bpy.types.Object, Tuple[bpy.types.Object, int, int]]],
@@ -39,7 +35,6 @@ class MaterialApplicator(BuilderBase):
     ):
         super().__init__()
         self.node_objs = node_objs
-        self.sandbag_objs = sandbag_objs
         self.panel_objs = panel_objs
         self.roof_obj = roof_obj
         self.member_objs = member_objs
@@ -56,23 +51,8 @@ class MaterialApplicator(BuilderBase):
         mat_col = create_column_material()
         mat_beam = create_beam_material()
         mat_node = create_node_material()
-        mat_sandbag = create_sandbag_material()
         mat_ground = create_ground_material()
 
-        # サンドバッグ用テクスチャマテリアルを事前生成（タイル数=6に設定）
-        try:
-            mat_sandbag_tex = create_sandbag_texture_material(
-                img_path=TBAGS_TEXTURE,
-                alpha=1.0,
-                tile=6.0
-            )
-            use_tex = True
-        except Exception as e:
-            log.warning(
-                f"Sandbag texture load failed ({TBAGS_TEXTURE}): {e} — 緑マテリアルを使用します。"
-            )
-            mat_sandbag_tex = None
-            use_tex = False
 
         # カウント用
         counts = {
@@ -81,7 +61,6 @@ class MaterialApplicator(BuilderBase):
             "柱": 0,
             "梁": 0,
             "ノード": 0,
-            "サンドバッグ": 0,
             "地面": 0,
         }
 
@@ -142,23 +121,6 @@ class MaterialApplicator(BuilderBase):
             obj.data.materials.clear()
             obj.data.materials.append(mat_node)
             counts["ノード"] += 1
-
-        # サンドバッグ: Empty 以下の全 Mesh にマテリアル適用
-        for sb in self.sandbag_objs.values():
-            # sb が dict なら empty 部分だけ取り出す
-            empty = sb["empty"] if isinstance(sb, dict) else sb
-            if getattr(empty, "type", None) != "EMPTY":
-                continue
-            for mesh_obj in empty.children_recursive:
-                if mesh_obj.type != "MESH" or not getattr(mesh_obj, "data", None):
-                    continue
-                mat_to_use = mat_sandbag_tex if use_tex else mat_sandbag
-                try:
-                    mesh_obj.data.materials.clear()
-                    mesh_obj.data.materials.append(mat_to_use)
-                    counts["サンドバッグ"] += 1
-                except Exception as e:
-                    log.warning(f"{mesh_obj.name} へのマテリアル適用に失敗: {e}")
 
         # 地面
         if self.ground_obj:

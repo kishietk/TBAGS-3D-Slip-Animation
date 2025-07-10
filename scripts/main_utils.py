@@ -5,7 +5,7 @@ from typing import Tuple, Dict, List, Any, Optional
 from utils import clear_scene, setup_logging
 from loaders import LoaderManager, load_earthquake_motion_csv
 from cores import CoreFactory
-from builders.scene_builders.scene_builder import SceneBuilder
+from builders.scene_builder import SceneBuilder
 from builders.hierarchy_builders.motion_parent_builder import (
     build_motion_parent,
     set_parent,
@@ -101,7 +101,6 @@ def build_blender_objects_from_core(
     core: CoreFactory,
 ) -> Tuple[
     Dict[int, bpy.types.Object],  # node_objs
-    Dict[int, bpy.types.Object],  # sandbag_unit_objs
     List[bpy.types.Object],  # panel_objs
     Optional[bpy.types.Object],  # roof_obj
     List[Tuple[int, int, int, int]],  # roof_quads
@@ -133,7 +132,6 @@ def apply_materials_to_all(
     """
     (
         node_objs,
-        sandbag_objs,
         panel_objs,
         roof_obj,
         _,
@@ -143,7 +141,6 @@ def apply_materials_to_all(
 
     apply_all_materials(
         node_objs=node_objs,
-        sandbag_objs=sandbag_objs,
         panel_objs=panel_objs,
         roof_obj=roof_obj,
         member_objs=member_objs,
@@ -171,7 +168,6 @@ def setup_animation_handlers(
     """
     (
         node_objs,
-        sandbag_objs,
         panel_objs,
         roof_obj,
         roof_quads,
@@ -184,7 +180,6 @@ def setup_animation_handlers(
     set_parent(
         motion_parent,
         node_objs=node_objs,
-        sandbag_objs=sandbag_objs,
         panel_objs=panel_objs,
         roof_obj=roof_obj,
         member_objs=member_objs,
@@ -192,13 +187,9 @@ def setup_animation_handlers(
     )
 
     # ノード種別ごとにアニメーションデータを分割
-    base_node_pos = {n.id: n.pos for n in core.normal_nodes.values()}
-    base_sandbag_pos = {n.id: n.pos for n in core.sandbag_nodes.values()}
+    base_node_pos = {n.id: n.pos for n in core.nodes.values()}
     node_anim_data = {
         nid: v for nid, v in anim_data.items() if nid in base_node_pos
-    }
-    sandbag_anim_data = {
-        nid: v for nid, v in anim_data.items() if nid in base_sandbag_pos
     }
 
     # フレームチェンジハンドラをクリア＆再登録
@@ -220,11 +211,8 @@ def setup_animation_handlers(
             roof_quads=roof_quads,
             member_objs=member_objs,
             node_objs=node_objs,
-            sandbag_objs=sandbag_objs,
             anim_data=node_anim_data,
-            sandbag_anim_data=sandbag_anim_data,
             base_node_pos=base_node_pos,
-            base_sandbag_pos=base_sandbag_pos,
         )
 
     bpy.app.handlers.frame_change_pre.append(_on_frame_building)
