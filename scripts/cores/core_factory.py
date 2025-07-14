@@ -5,7 +5,7 @@ from configs import (
     COLUMNS_KIND_IDS,
     BEAMS_KIND_IDS,
 )
-from cores.entities import Node, Edge, Panel
+from cores.entities import Node, Edge, Roof, Panel as BasePanel
 from cores.core_registry import get_core_class
 from utils.make_panel_unit import make_panel_unit
 from parsers import NodeData, EdgeData
@@ -20,7 +20,7 @@ class CoreFactory:
     Attributes:
         nodes: Dict[int, Node]
         edges: List[Edge]
-        panels: List[Panel]
+        panels: List[BasePanel or Roof]
     """
 
     def __init__(
@@ -31,7 +31,7 @@ class CoreFactory:
         # コア要素初期化
         self._nodes: Dict[int, Node] = {}
         self._edges: List[Edge] = []
-        self._panels: List[Panel] = []
+        self._panels: List[BasePanel] = []
 
         log.info(
             f"Initializing CoreFactory with {len(nodes_data)} nodes and {len(edges_data)} edges"
@@ -80,7 +80,7 @@ class CoreFactory:
         ]
 
     @property
-    def panels(self) -> List[Panel]:
+    def panels(self) -> List[BasePanel]:
         return self._panels
 
     def summary(self) -> str:
@@ -105,26 +105,27 @@ class CoreFactory:
         for e in edges_data:
             a = node_map.get(e.node_a)
             b = node_map.get(e.node_b)
-            # レジストリから対応クラスを取得し、無ければデフォルトの Edge を使う
             cls = get_core_class(getattr(e, "kind_id", None)) or Edge
             edges.append(
                 cls(a, b, getattr(e, "kind_id", None), getattr(e, "kind_label", ""))
             )
         return edges
 
-    def _construct_core_panels(self) -> List[Panel]:
+    def _construct_core_panels(self) -> List[BasePanel]:
         panel_data_list = make_panel_unit(
             node_map=self._nodes,
             panel_node_kind_ids=WALL_NODE_KIND_IDS,
         )
-        from cores.entities.panel_core import Panel  # 動的import（循環依存対策）
 
-        return [
-            Panel(
+        panel_instances: List[BasePanel] = []
+        for pd in panel_data_list:
+            # 屋根パネルは Roof クラス、それ以外は BasePanel
+            cls = Roof if getattr(pd, "kind", None) == "roof" else BasePanel
+            panel = cls(
                 nodes=[self._nodes[nid] for nid in pd.node_ids],
                 kind=getattr(pd, "kind", None),
                 floor=getattr(pd, "floor", None),
                 attributes=getattr(pd, "attributes", {}),
             )
-            for pd in panel_data_list
-        ]
+            panel_instances.append(panel)
+        return panel_instances

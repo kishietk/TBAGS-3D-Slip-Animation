@@ -6,6 +6,7 @@ from .edge_core import Edge
 from .node_core import Node
 from .panel_core import Panel
 from .ground_core import Ground
+from .roof_core import Roof
 
 __all__ = [
     "Beam",
@@ -14,4 +15,5 @@ __all__ = [
     "Node",
     "Panel",
     "Ground",
+    "Roof",
 ]

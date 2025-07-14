@@ -1,5 +1,3 @@
-# builders/object_builders/panel_builder.py
-
 import bpy
 from typing import List
 from utils import setup_logging
@@ -32,8 +30,11 @@ class PanelBuilder(BuilderBase):
             mesh = bpy.data.meshes.new(f"{self.name_prefix}{panel.id}")
             obj = bpy.data.objects.new(f"{self.name_prefix}{panel.id}", mesh)
             bpy.context.collection.objects.link(obj)
+            # 頂点・面の設定
             mesh.from_pydata([tuple(v) for v in verts], [], [(0, 1, 2, 3)])
             mesh.update()
+            # ノードIDをプロパティとして保持（アニメーション更新用）
+            obj["panel_ids"] = [n.id for n in panel.nodes]
             objs.append(obj)
         return objs
 
@@ -44,5 +45,4 @@ def build_panel(scene_builder, panel: Panel, ctx):
     SceneBuilder から要素単位で呼び出されるラッパー。
     PanelBuilder はリスト対応なので、単一要素をリストに詰める。
     """
-    # ctx は辞書ですが使用しません
     return PanelBuilder([panel]).build()

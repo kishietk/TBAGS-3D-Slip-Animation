@@ -1,12 +1,10 @@
-# builders/scene_builder.py
-
 import bpy
 from typing import Any, Dict, List, Tuple, Optional
 from utils import setup_logging
 from builders.base import BuilderBase
 from builders.builder_registry import get_builder
 from builders.object_builders.ground_builder import GroundBuilder
-from cores.entities import Panel
+from cores.entities import Panel, Roof
 from collections.abc import Mapping
 
 log = setup_logging("SceneBuilder")
@@ -73,7 +71,6 @@ class SceneBuilder(BuilderBase):
             if not builder:
                 continue
             created = builder(self, node, self.context)
-            # Builder が返す型に応じて展開
             if isinstance(created, dict):
                 for nid, obj in created.items():
                     node_objs[nid] = obj
@@ -97,8 +94,8 @@ class SceneBuilder(BuilderBase):
         # --- 5. 壁パネル生成 ---
         panel_objs: List[bpy.types.Object] = []
         for panel in panels:
-            # roof パネルは後でまとめて処理する
-            if getattr(panel, "kind", "") == "roof":
+            # Roof インスタンス or kind が roof は後でまとめて処理
+            if isinstance(panel, Roof) or getattr(panel, "kind", "") == "roof":
                 continue
             builder = get_builder(panel)
             if not builder:
@@ -113,13 +110,13 @@ class SceneBuilder(BuilderBase):
         roof_obj: Optional[bpy.types.Object] = None
         roof_quads: List[Tuple[int, int, int, int]] = []
         for panel in panels:
-            if getattr(panel, "kind", "") != "roof":
+            # Roof インスタンス or kind が roof のパネルを処理
+            if not (isinstance(panel, Roof) or getattr(panel, "kind", "") == "roof"):
                 continue
             builder = get_builder(panel)
             if not builder:
                 continue
             created = builder(self, panel, self.context)
-            # build_roof は (obj, quads) を返す
             if isinstance(created, tuple) and created[0] is not None:
                 roof_obj, roof_quads = created
                 break

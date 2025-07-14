@@ -27,11 +27,18 @@ def register_builder(
 def get_builder(core_elem: Any) -> Optional[Callable[..., Any]]:
     """
     指定されたコア要素に対応するビルダ関数を取得する。
-    type の完全一致だけでなく、isinstance によるマッチングも行う。
+    1) type(core_elem) に完全一致するビルダを優先
+    2) その後 isinstance によるマッチング（サブクラス対応）
     一致するビルダがなければ None を返す。
     """
-    # 登録された型を順にチェックし、サブクラスにも対応
+    # 1) まず完全一致を探す
+    exact_fn = BUILDER_REGISTRY.get(type(core_elem))
+    if exact_fn:
+        return exact_fn
+
+    # 2) 次に isinstance チェックでサブクラス対応
     for core_type, fn in BUILDER_REGISTRY.items():
         if isinstance(core_elem, core_type):
             return fn
+
     return None

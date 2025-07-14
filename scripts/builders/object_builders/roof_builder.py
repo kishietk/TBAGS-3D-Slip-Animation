@@ -1,11 +1,10 @@
-# builders/object_builders/roof_builder.py
-
 import bpy
 from mathutils import Vector
 from typing import Dict, Tuple, List, Optional
 from utils import setup_logging
 from builders.base import BuilderBase
-from cores.entities import Panel
+from builders.builder_registry import register_builder
+from cores.entities import Panel, Roof
 from configs import EPS_XY_MATCH, ROOF_OBJ_NAME
 
 log = setup_logging("RoofBuilder")
@@ -71,12 +70,14 @@ class RoofBuilder(BuilderBase):
             return None, quads
 
 
-def build_roof(scene_builder, roof_panel: Panel, ctx):
+@register_builder(Roof)
+def build_roof(scene_builder, roof_panel: Roof, ctx):
     """
-    SceneBuilder から要素単位で呼び出される関数。
-    Panel.kind == 'roof' のものだけ RoofBuilder で処理。
+    SceneBuilder から要素単位で呼び出されるビルダー。
+    Roof クラスまたは Panel.kind == 'roof' のものを RoofBuilder で処理。
     """
-    if roof_panel.kind != "roof":
+    # 型チェック: Roof または kind プロパティで判定
+    if not isinstance(roof_panel, Roof) and getattr(roof_panel, "kind", "") != "roof":
         return None, []
     # ノードID→Vector マッピングを作成
     nodes_map = {n.id: n.pos for n in roof_panel.nodes}
