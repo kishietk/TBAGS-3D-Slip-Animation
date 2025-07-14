@@ -38,8 +38,8 @@
     animation-kumamoto-no-tbags.csv
     animation-kumamoto-with-tbags.csv
     animation-kobe-with-tbags.csv
-    kumamoto-erthquake-disp.csv
-    kobe-erthquake-disp.csv
+    kumamoto-earthquake-disp.csv
+    kobe-earthquake-disp.csv
     self-no-tbags.str
     self-with-tbags.str
 

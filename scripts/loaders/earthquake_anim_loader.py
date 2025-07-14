@@ -15,7 +15,7 @@ import csv
 from typing import Dict
 from mathutils import Vector
 from utils import setup_logging
-from configs import ANIM_FPS, DISP_SCALE, EARTHQUAKE_ANIM_CSV
+from configs import ANIM_FPS, DISP_SCALE, EARTHQUAKE_ANIM_CSV, GROUND_ANIMATION_ENABLED
 
 log = setup_logging("earthquake_anim_loader")
 
@@ -35,6 +35,9 @@ def load_earthquake_motion_csv(path: str = EARTHQUAKE_ANIM_CSV) -> Dict[int, Vec
     例外:
         Exception: ファイルオープンやパース失敗時に発生
     """
+    if GROUND_ANIMATION_ENABLED!= True:
+        return {}
+    
     log.info("=================[地震基準面アニメーションCSVを読み取り]=========================")
     frame_data: Dict[int, Vector] = {}
     try:

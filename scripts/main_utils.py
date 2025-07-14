@@ -19,7 +19,7 @@ from configs import (
     log_dataset_selection,
     GROUND_ANIMATION_ENABLED,
 )
-from parsers.types import NodeData, EdgeData  # ← 追加
+from parsers.types import NodeData, EdgeData
 
 log = setup_logging("main_utils")
 
@@ -195,11 +195,12 @@ def setup_animation_handlers(
     bpy.app.handlers.frame_change_pre.clear()
 
     # 地面アニメーション
-    register_ground_anim_handler(
-        motion_parent=motion_parent,
-        earthquake_anim_data=earthquake_anim_data,
-        enabled=GROUND_ANIMATION_ENABLED,
-    )
+    if GROUND_ANIMATION_ENABLED:
+        register_ground_anim_handler(
+            motion_parent=motion_parent,
+            earthquake_anim_data=earthquake_anim_data,
+            enabled=GROUND_ANIMATION_ENABLED,
+        )
 
     # 建物部材アニメーションをフレーム毎に実行
     def _on_frame_building(scene):
