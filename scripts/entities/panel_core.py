@@ -17,7 +17,7 @@ TODO:
 from typing import List, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from cores.entities import Node, Edge
+    from entities import Node, Edge
 
 
 class Panel:

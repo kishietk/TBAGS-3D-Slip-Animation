@@ -1,7 +1,8 @@
-# cores/__init__.py
+from .core_factory import CoreFactory
+from .core_registry import get_core_class
 
-from . import entities
 
 __all__ = [
-    "entities",
+    "CoreFactory",  
+    "get_core_class",
 ]

@@ -19,7 +19,7 @@ from configs import (
     log_dataset_selection,
     GROUND_ANIMATION_ENABLED,
 )
-from parsers.types import NodeData, EdgeData
+from datamodels import NodeData, EdgeData
 
 log = setup_logging("main_utils")
 

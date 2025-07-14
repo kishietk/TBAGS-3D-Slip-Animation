@@ -1,4 +1,4 @@
-# cores/entities/__init__.py
+# entities/__init__.py
 
 from .beam_core import Beam
 from .column_core import Column

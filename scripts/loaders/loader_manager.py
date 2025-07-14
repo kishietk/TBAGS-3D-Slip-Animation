@@ -17,7 +17,7 @@ TODO:
 from typing import Dict, List, Tuple
 from mathutils import Vector
 from configs import NODE_CSV, NODE_ANIM_CSV, EARTHQUAKE_ANIM_CSV
-from parsers.types import NodeData, EdgeData  # ← typesを明記
+from datamodels import NodeData, EdgeData
 from parsers import parse_structure_str
 from .node_anim_loader import load_animation_data
 from .earthquake_anim_loader import load_earthquake_motion_csv

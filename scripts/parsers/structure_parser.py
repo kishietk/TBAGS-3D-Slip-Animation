@@ -24,7 +24,7 @@ from configs import (
     VALID_NODE_IDS,
 )
 from utils import setup_logging
-from .types import NodeData, EdgeData
+from datamodels import NodeData, EdgeData
 
 log = setup_logging("structureParser")
 
