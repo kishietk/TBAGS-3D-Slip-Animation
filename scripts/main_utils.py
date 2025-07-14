@@ -4,7 +4,7 @@ from typing import Tuple, Dict, List, Any, Optional
 
 from utils import clear_scene, setup_logging
 from loaders import LoaderManager, load_earthquake_motion_csv
-from cores.core_factory import CoreFactory
+from parsers.core_factory import CoreFactory
 from builders.scene_builder import SceneBuilder
 from builders.hierarchy_builders.motion_parent_builder import (
     build_motion_parent,

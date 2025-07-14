@@ -6,7 +6,7 @@ from configs import (
     BEAMS_KIND_IDS,
 )
 from entities import Node, Edge, Roof, Panel as BasePanel
-from cores.core_registry import get_core_class
+from parsers.core_registry import get_core_class
 from utils.make_panel_unit import make_panel_unit
 from parsers import NodeData, EdgeData
 
