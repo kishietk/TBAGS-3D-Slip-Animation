@@ -121,7 +121,7 @@ KIND_LABELS = {
 # ノード種別区間ID（構造や階層の分類目的等）
 NODE_SECTION_KIND_IDS = list(range(1, 11))  # セクション区間番号1～10
 
-# 柱・梁・エッジ・壁・サンドバッグ等、部材種別IDリスト
+# 柱・梁・エッジ・壁、部材種別IDリスト
 COLUMNS_KIND_IDS = [53, 55]
 BEAMS_KIND_IDS = [42, 43, 44, 45, 46, 48, 49, 50, 51]
 EDGE_NODE_KIND_IDS = [0, 1]

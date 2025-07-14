@@ -1,13 +1,17 @@
+# builders/object_builders/ground_builder.py
+
 import bpy
 from typing import Tuple, Optional
 from utils import setup_logging
 from builders.base import BuilderBase
+from builders.builder_registry import register_builder
 from configs import (
     GROUND_SIZE_XY,
     GROUND_LOCATION,
     GROUND_NAME,
     GROUND_PRIMITIVE_SIZE,
 )
+from cores.entities import Ground  # Groundエンティティをimport
 
 log = setup_logging("GroundBuilder")
 
@@ -28,12 +32,6 @@ class GroundBuilder(BuilderBase):
         location: Tuple[float, float, float] = GROUND_LOCATION,
         name: str = GROUND_NAME,
     ):
-        """
-        初期化:
-            size:     (幅, 奥行) で平面のスケールを制御
-            location: (X, Y, Z) で配置位置を指定
-            name:     作成オブジェクト名
-        """
         super().__init__()
         self.size = size
         self.location = location
@@ -50,7 +48,8 @@ class GroundBuilder(BuilderBase):
         try:
             # デフォルトプリミティブサイズは定数から
             bpy.ops.mesh.primitive_plane_add(
-                size=GROUND_PRIMITIVE_SIZE, location=self.location
+                size=GROUND_PRIMITIVE_SIZE,
+                location=self.location,
             )
             obj = bpy.context.object
             obj.name = self.name
@@ -66,3 +65,12 @@ class GroundBuilder(BuilderBase):
         except Exception as e:
             self.log.error(f"GroundBuilder: 地面の生成に失敗しました: {e}")
             return None
+
+
+@register_builder(Ground)
+def build_ground(scene_builder, ground: Ground, ctx):
+    """
+    SceneBuilder の extras から Ground 要素を GroundBuilder に渡すラッパー。
+    """
+    # ctx は辞書ですが使用しません
+    return GroundBuilder().build()

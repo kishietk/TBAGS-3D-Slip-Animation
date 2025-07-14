@@ -47,7 +47,6 @@ class NodeBuilder(BuilderBase):
             Dict[int, bpy.types.Object]: ノードID→生成Blenderオブジェクト
         """
         objs: Dict[int, bpy.types.Object] = {}
-        log.info(f"Starting NodeBuilder.build with {len(self.nodes)} input nodes")
         for nid, node in self.nodes.items():
             # pos 属性の存在チェック
             if not hasattr(node, "pos"):
@@ -88,8 +87,6 @@ class NodeBuilder(BuilderBase):
             log.warning(
                 "NodeBuilder.build: completed with 0 built nodes. Verify that input nodes have valid .pos values."
             )
-        else:
-            log.info(f"NodeBuilder.build: built {len(objs)} nodes successfully.")
         return objs
 
 

@@ -5,6 +5,7 @@ from .column_core import Column
 from .edge_core import Edge
 from .node_core import Node
 from .panel_core import Panel
+from .ground_core import Ground
 
 __all__ = [
     "Beam",
@@ -12,4 +13,5 @@ __all__ = [
     "Edge",
     "Node",
     "Panel",
+    "Ground",
 ]

@@ -23,19 +23,18 @@ class PanelBuilder(BuilderBase):
 
     def build(self) -> List[bpy.types.Object]:
         objs: List[bpy.types.Object] = []
-        log.info(f"Starting PanelBuilder.build with {len(self.panels)} panels")
         for panel in self.panels:
             verts = [n.pos for n in panel.nodes]
             if len(verts) != PANEL_VERT_COUNT:
                 log.warning(f"Panel {panel.id}: invalid node count {len(verts)}")
                 continue
+            # メッシュ作成
             mesh = bpy.data.meshes.new(f"{self.name_prefix}{panel.id}")
             obj = bpy.data.objects.new(f"{self.name_prefix}{panel.id}", mesh)
             bpy.context.collection.objects.link(obj)
             mesh.from_pydata([tuple(v) for v in verts], [], [(0, 1, 2, 3)])
             mesh.update()
             objs.append(obj)
-            log.info(f"Built panel '{obj.name}'")
         return objs
 
 
@@ -45,4 +44,5 @@ def build_panel(scene_builder, panel: Panel, ctx):
     SceneBuilder から要素単位で呼び出されるラッパー。
     PanelBuilder はリスト対応なので、単一要素をリストに詰める。
     """
+    # ctx は辞書ですが使用しません
     return PanelBuilder([panel]).build()

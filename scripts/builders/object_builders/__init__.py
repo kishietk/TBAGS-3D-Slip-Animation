@@ -1,3 +1,4 @@
+# scripts/builders/object_builders/__init__.py
 from .beam_builder import BeamBuilder
 from .column_builder import ColumnBuilder
 from .ground_builder import GroundBuilder

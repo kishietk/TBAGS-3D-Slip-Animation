@@ -5,7 +5,6 @@ from mathutils import Vector
 from typing import Dict, Tuple, List, Optional
 from utils import setup_logging
 from builders.base import BuilderBase
-from builders.builder_registry import register_builder
 from cores.entities import Panel
 from configs import EPS_XY_MATCH, ROOF_OBJ_NAME
 
@@ -72,13 +71,13 @@ class RoofBuilder(BuilderBase):
             return None, quads
 
 
-@register_builder(Panel)
-def build_roof(scene_builder, roof: Panel, ctx):
+def build_roof(scene_builder, roof_panel: Panel, ctx):
     """
+    SceneBuilder から要素単位で呼び出される関数。
     Panel.kind == 'roof' のものだけ RoofBuilder で処理。
     """
-    if roof.kind != "roof":
+    if roof_panel.kind != "roof":
         return None, []
     # ノードID→Vector マッピングを作成
-    nodes_map = {n.id: n.pos for n in roof.nodes}
+    nodes_map = {n.id: n.pos for n in roof_panel.nodes}
     return RoofBuilder(nodes_map).build()
