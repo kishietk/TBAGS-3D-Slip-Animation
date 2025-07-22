@@ -1,35 +1,39 @@
-"""
-ファイル名: cores/beam_core.py
-
-責務:
-- Edgeクラスを継承した「梁（Beam）」コアクラスを定義する。
-- is_beam属性を持ち、部材種判定やラベル付与に用いる。
-
-設計ポイント:
-- BeamはEdgeのサブクラス
-- is_beam属性は型判定や他用途にも活用
-"""
-
+# cores/entities/beam_core.py
+from typing import Optional, TYPE_CHECKING
 from .edge_core import Edge
+from ..registry import register_core
+from configs import BEAMS_KIND_IDS
+
+if TYPE_CHECKING:
+    from cores import Node, Panel
 
 
+@register_core(BEAMS_KIND_IDS)
 class Beam(Edge):
     """
-    役割:
-        Edgeクラスを継承した「梁（Beam）」コアクラス。
-        is_beam属性を持ち、型判定やラベル付与等に利用する。
+    梁部材を表すコアクラス。
+    Edgeの機能を継承しつつ、is_beam属性をTrueに設定。
     """
 
-    def __init__(self, *args, **kwargs) -> None:
-        """
-        役割:
-            Beamインスタンスを初期化（Edgeの初期化引数をそのまま利用）。
-            is_beam属性をTrueでセット。
-        引数:
-            *args: Edgeクラスの引数
-            **kwargs: Edgeクラスのキーワード引数
-        返り値:
-            なし
-        """
-        super().__init__(*args, **kwargs)
+    def __init__(
+        self,
+        start: "Node",
+        end: "Node",
+        kind: Optional[int] = None,
+        kind_label: Optional[str] = None,
+        attributes: Optional[dict] = None,
+    ) -> None:
+        super().__init__(
+            start=start,
+            end=end,
+            kind=kind,
+            kind_label=kind_label,
+            attributes=attributes,
+        )
         self.is_beam: bool = True
+
+    def __repr__(self) -> str:
+        return (
+            f"Beam(id={self.id}, nodes={[self.node_a.id, self.node_b.id]}, "
+            f"kind_id={self.kind_id}, is_beam={self.is_beam})"
+        )

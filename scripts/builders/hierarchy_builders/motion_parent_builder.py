@@ -48,27 +48,12 @@ def build_motion_parent(
 def set_parent(
     parent_obj,
     node_objs: dict = None,
-    sandbag_objs: dict = None,
     panel_objs: list = None,
     roof_obj=None,
     member_objs: list = None,
     ground_obj=None,
 ):
-    """
-    複数の建物部材を親オブジェクトに一括で親子付けする
 
-    Args:
-        parent_obj: Blenderの親オブジェクト（Empty等）
-        node_objs (dict): ノード球 {id: Object}
-        sandbag_objs (dict): サンドバッグ {id: Object}
-        panel_objs (list): パネルオブジェクト
-        roof_obj (Object or None): 屋根オブジェクト
-        member_objs (list or None): 柱・梁オブジェクト [(Object, a, b), ...]
-        ground_obj (Object or None): 地面オブジェクト（任意）
-
-    Returns:
-        None
-    """
     # カテゴリ別件数
     counts = {
         "ノード": 0,
@@ -92,13 +77,6 @@ def set_parent(
     if node_objs:
         for obj in node_objs.values():
             _assign_parent(obj, "ノード")
-
-    # サンドバッグ
-    if sandbag_objs:
-        for sb in sandbag_objs.values():
-            empty = sb["empty"] if isinstance(sb, dict) else sb
-            empty.parent = parent_obj
-            empty.parent_type = "OBJECT"
 
     # パネル
     if panel_objs:

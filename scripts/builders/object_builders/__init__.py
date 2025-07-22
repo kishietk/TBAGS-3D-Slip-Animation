@@ -1,23 +1,10 @@
 # builders/object_builders/__init__.py
 
-"""
-object_builders サブパッケージの主要ビルダーをまとめてエクスポート。
-"""
+# Node, Beam, Column, Panel, Roof, Ground 向けビルダーを全て import しておく
+from .node_builder import build_node  # @register_builder(Node)
+from .beam_builder import build_beam  # @register_builder(Edge)
+from .column_builder import build_column  # @register_builder(Column)
+from .panel_builder import build_panel  # @register_builder(Panel)
+from .ground_builder import build_ground  # @register_builder(Ground)
 
-from .beam_builder import BeamBuilder
-from .column_builder import ColumnBuilder
-from .ground_builder import GroundBuilder
-from .node_builder import NodeBuilder
-from .panel_builder import PanelBuilder
-from .roof_builder import RoofBuilder
-from .sandbag_builder import SandbagBuilder
-
-__all__ = [
-    "BeamBuilder",
-    "ColumnBuilder",
-    "GroundBuilder",
-    "NodeBuilder",
-    "PanelBuilder",
-    "RoofBuilder",
-    "SandbagBuilder",
-]
+# 屋根パネル向けロジックが別にあれば import してください

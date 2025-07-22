@@ -1,11 +1,12 @@
-# cores/entities/__init__.py
+# entities/__init__.py
 
 from .beam_core import Beam
 from .column_core import Column
 from .edge_core import Edge
 from .node_core import Node
 from .panel_core import Panel
-from .sandbag_core import Sandbag
+from .ground_core import Ground
+from .roof_core import Roof
 
 __all__ = [
     "Beam",
@@ -13,5 +14,6 @@ __all__ = [
     "Edge",
     "Node",
     "Panel",
-    "Sandbag",
+    "Ground",
+    "Roof",
 ]

@@ -1,37 +1,35 @@
 import bpy
-from typing import List, Tuple, Dict, Any, Optional
+from typing import List, Dict
 from mathutils import Vector, Quaternion
 from configs import EPS_AXIS
 
 
 def update_members(
-    member_objs: List[Tuple[bpy.types.Object, int, int]],
+    member_objs: List[bpy.types.Object],
     node_objs: Dict[int, bpy.types.Object],
-    base_sandbag_pos: Dict[Any, Vector],
-    sandbag_anim_data: Dict[int, Dict[int, Vector]],
     scene: bpy.types.Scene,
 ) -> None:
     """
     柱・梁オブジェクトを再配置・回転・スケール更新する。
+    各オブジェクトにはビルダー側で設定された
+    obj["member_nodes"] = (node_id_a, node_id_b)
+    のカスタムプロパティがある想定です。
     """
     frame = scene.frame_current
     up = Vector((0, 0, 1))
-    for obj, a, b in member_objs:
-        p1 = (
-            node_objs[a].location
-            if a in node_objs
-            else base_sandbag_pos.get(a, Vector())
-            + sandbag_anim_data.get(a, {}).get(frame, Vector())
-        )
-        p2 = (
-            node_objs[b].location
-            if b in node_objs
-            else base_sandbag_pos.get(b, Vector())
-            + sandbag_anim_data.get(b, {}).get(frame, Vector())
-        )
-        mid = (p1 + p2) * 0.5
+    for obj in member_objs:
+        # カスタムプロパティからノードIDを取得
+        nodes = obj.get("member_nodes")
+        if not nodes or len(nodes) != 2:
+            continue
+        a, b = nodes
+        p1 = node_objs[a].location
+        p2 = node_objs[b].location
+        # 中間点に移動
+        obj.location = (p1 + p2) * 0.5
+
+        # 回転更新
         vec = p2 - p1
-        obj.location = mid
         axis = up.cross(vec)
         if axis.length > EPS_AXIS:
             axis.normalize()
@@ -41,6 +39,8 @@ def update_members(
         else:
             obj.rotation_mode = "QUATERNION"
             obj.rotation_quaternion = Quaternion((1, 0, 0, 0))
+
+        # スケール更新（深さ方向のみ）
         length = vec.length
         orig = obj.get("orig_depth", length)
         sx, sy, _ = obj.scale

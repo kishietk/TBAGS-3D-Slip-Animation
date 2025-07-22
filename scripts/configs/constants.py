@@ -21,7 +21,6 @@ PANEL_OBJ_PREFIX = "Panel_"
 MEMBER_OBJ_PREFIX = "Member_"
 COLUMN_OBJ_PREFIX = "Column_"
 LABEL_OBJ_PREFIX = "Label_"
-SANDBAG_OBJ_PREFIX = "Sandbag_"
 ROOF_OBJ_NAME = "Roof"
 ROOF_MESH_NAME = "RoofMesh"
 UV_MAP_NAME = "UVMap"
@@ -35,6 +34,11 @@ GROUND_OBJ_PREFIX = "Ground_"
 SPHERE_RADIUS = 0.1  # ノード球体の半径
 MEMBER_THICK = 0.15  # 梁・柱・部材の既定太さ
 CYLINDER_VERTS = 8  # 円柱プリミティブ分割数
+
+COLUMN_RADIUS = 0.1  # 柱の半径
+COLUMN_SEGMENTS = 16  # 柱の分割数
+
+
 PANEL_VERT_COUNT = 4  # パネル構成頂点数
 CUBE_DEFAULT_SIZE = (1.0, 1.0, 1.0)  # キューブのデフォルトサイズ（xyz）
 CUBE_DEFAULT_LOC = (0.0, 0.0, 0.0)  # キューブのデフォルト位置
@@ -68,7 +72,7 @@ LABEL_OFFSET = Vector((0.8, -0.5, 0.5))
 ANIM_FPS = 32
 ANIM_SECONDS = 30
 ANIM_TOTAL_FRAMES = ANIM_FPS * ANIM_SECONDS
-DISP_SCALE = 1
+DISP_SCALE = 2
 GROUND_ANIMATION_ENABLED = False
 
 # ----------------------------

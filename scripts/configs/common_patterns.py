@@ -1,4 +1,4 @@
-# scripts/configs/common_patterns.py
+# configs/common_patterns.py
 
 import re
 

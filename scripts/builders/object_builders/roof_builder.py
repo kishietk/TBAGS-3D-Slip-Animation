@@ -1,33 +1,21 @@
-"""
-ファイル名: builders/object_builders/roof_builder.py
-
-責務:
-- 最上階ノード群から屋根パネル（四角形クワッド）を抽出し、Blenderオブジェクトとして生成する。
-- Z最大層の格子状ノード配置にのみ対応し、それ以外の形状や異常はログに記録（例外はraiseせず復帰）。
-
-注意点:
-- ノードはID→mathutils.Vectorマッピングとして渡される。
-- EPS_XY_MATCH によるXY一致判定を使用。
-- Mesh.from_pydata は使用せず、頂点情報や面は外部管理（roof_quads）に委ねる。
-
-TODO:
-- 異形パネルや膨張形状対応の強化
-- UV/マテリアル設定、頂点座標直接設定などの汎用化
-"""
-
 import bpy
 from mathutils import Vector
 from typing import Dict, Tuple, List, Optional
 from utils import setup_logging
 from builders.base import BuilderBase
-from configs import EPS_XY_MATCH, ROOF_OBJ_NAME, ROOF_MESH_NAME
+from builders.builder_registry import register_builder
+from cores import Panel, Roof
+from configs import EPS_XY_MATCH, ROOF_OBJ_NAME
 
 log = setup_logging("RoofBuilder")
 
 
 class RoofBuilder(BuilderBase):
+    """
+    最上階ノード群から屋根パネル（四角形クワッド）を抽出し、Blenderオブジェクトとして生成するビルダー。
+    """
+
     def __init__(self, nodes: Dict[int, Vector], name: str = ROOF_OBJ_NAME):
-        """初期化: nodes は {node_id: Vector} 形式。"""
         super().__init__()
         self.nodes = nodes
         self.name = name
@@ -35,33 +23,21 @@ class RoofBuilder(BuilderBase):
     def build(
         self,
     ) -> Tuple[Optional[bpy.types.Object], List[Tuple[int, int, int, int]]]:
-        """
-        役割:
-            1) Z最大層ノードを抽出
-            2) 格子パターンで四角形(quad)を発見
-            3) Blenderオブジェクトを生成し、quadリストをプロパティに格納
-
-        返り値:
-            (RoofObject or None, List of quad tuples)
-        """
-        # 1) Zレベル抽出
         zs = sorted({v.z for v in self.nodes.values()})
         if not zs:
             log.warning("RoofBuilder: No Z levels found")
             return None, []
         top_z = zs[-1]
-        tops: Dict[int, Vector] = {
+        tops = {
             nid: pos
             for nid, pos in self.nodes.items()
             if abs(pos.z - top_z) < EPS_XY_MATCH
         }
 
-        # 2) 格子状ノードをX/Yでソート
         xs = sorted({v.x for v in tops.values()})
         ys = sorted({v.y for v in tops.values()})
 
         def fid(x: float, y: float) -> Optional[int]:
-            """座標(x,y)に最も近いノードIDを返す"""
             return next(
                 (
                     nid
@@ -71,7 +47,6 @@ class RoofBuilder(BuilderBase):
                 None,
             )
 
-        # クワッド探索
         quads: List[Tuple[int, int, int, int]] = []
         for i in range(len(xs) - 1):
             for j in range(len(ys) - 1):
@@ -83,15 +58,27 @@ class RoofBuilder(BuilderBase):
                     quads.append((bl, br, tr, tl))
                     log.debug(f"Roof quad: {bl}-{br}-{tr}-{tl}")
 
-        # 3) Blenderオブジェクト生成
         try:
             mesh = bpy.data.meshes.new(f"{self.name}Mesh")
             obj = bpy.data.objects.new(self.name, mesh)
             bpy.context.collection.objects.link(obj)
-            mesh.update()
             obj["roof_quads"] = quads
             log.info(f"RoofBuilder: Created {self.name} with {len(quads)} quads")
             return obj, quads
         except Exception as e:
             log.error(f"RoofBuilder: Failed to create roof object: {e}")
             return None, quads
+
+
+@register_builder(Roof)
+def build_roof(scene_builder, roof_panel: Roof, ctx):
+    """
+    SceneBuilder から要素単位で呼び出されるビルダー。
+    Roof クラスまたは Panel.kind == 'roof' のものを RoofBuilder で処理。
+    """
+    # 型チェック: Roof または kind プロパティで判定
+    if not isinstance(roof_panel, Roof) and getattr(roof_panel, "kind", "") != "roof":
+        return None, []
+    # ノードID→Vector マッピングを作成
+    nodes_map = {n.id: n.pos for n in roof_panel.nodes}
+    return RoofBuilder(nodes_map).build()

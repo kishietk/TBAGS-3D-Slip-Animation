@@ -30,11 +30,18 @@ TEXTURE_DIR = os.path.join(ROOT_DIR, "textures")
 # =======================
 FILE_WITH_TBAGS = "input-with-tbags.str"
 FILE_NO_TBAGS = "input-no-tbags.str"
+FILE_NOKOTSUDO_WITH_TBAGS = "input-nokotsudo-with-tbags.str"
 
 # =======================
 # 地震データセット
 # =======================
 EARTHQUAKE_DATASETS = {
+    "nokotsudo_kobe_with_tbags": {
+        "base": "nokotsudo-kobe",
+        "tbags": True,
+        "node_file": FILE_NOKOTSUDO_WITH_TBAGS,
+        "label": "Nokotsudo Kobe (with T-BAGS)",
+    },
     "kumamoto_with_tbags": {
         "base": "kumamoto",
         "tbags": True,
@@ -81,7 +88,7 @@ for key, dataset in EARTHQUAKE_DATASETS.items():
     dataset["edges_file"] = os.path.join(DATA_DIR, dataset["node_file"])
     dataset["node_anim_csv"] = os.path.join(DATA_DIR, f"animation-{base}-{tag}.csv")
     dataset["earthquake_anim_csv"] = os.path.join(
-        DATA_DIR, f"{base}-erthquake-disp.csv"
+        DATA_DIR, f"{base}-earthquake-disp.csv"
     )
 
 # =======================
@@ -99,11 +106,6 @@ EDGES_FILE = EARTHQUAKE_DATASETS[DEFAULT_KEY]["edges_file"]
 WALL_IMG = os.path.join(TEXTURE_DIR, "wall_texture.png")
 ROOF_IMG = os.path.join(TEXTURE_DIR, "roof_texture.png")
 TBAGS_TEXTURE = os.path.join(TEXTURE_DIR, "tbags_texture.jpeg")
-
-# =======================
-# T-BAGS モデル 
-# =======================
-TBAGS_MODEL = os.path.join(DATA_DIR, "sandbag_template_low.blend")
 
 # =======================
 # ログ関数

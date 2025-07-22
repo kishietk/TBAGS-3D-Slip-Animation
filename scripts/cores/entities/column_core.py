@@ -1,34 +1,38 @@
-"""
-ファイル名: cores/columnCore.py
-
-責務:
-- Edgeクラスを継承した「柱（Column）」コアクラスを定義する。
-- is_column属性を持ち、部材種判定やラベル出力等に用いる。
-
-設計ポイント:
-- ColumnはEdgeのサブクラス。is_column属性で型安全な分岐やラベル出力を実現。
-"""
-
+### cores/entities/column_core.py
+from typing import Optional, TYPE_CHECKING
 from .edge_core import Edge
+from ..registry import register_core
+from configs import COLUMNS_KIND_IDS
 
+if TYPE_CHECKING:
+    from cores import Node, Panel
 
+@register_core(COLUMNS_KIND_IDS)
 class Column(Edge):
     """
-    役割:
-        Edgeクラスを継承した「柱（Column）」コアクラス。
-        is_column属性を持ち、種別分岐やラベル出力等に利用。
+    柱部材を表すコアクラス。
+    Edgeの機能を継承しつつ、is_column属性をTrueに設定。
     """
 
-    def __init__(self, *args, **kwargs) -> None:
-        """
-        役割:
-            Columnインスタンスを初期化（Edgeの初期化引数をそのまま利用）。
-            is_column属性をTrueでセット。
-        引数:
-            *args: Edgeクラスの引数
-            **kwargs: Edgeクラスのキーワード引数
-        返り値:
-            なし
-        """
-        super().__init__(*args, **kwargs)
+    def __init__(
+        self,
+        start: "Node",
+        end: "Node",
+        kind: Optional[int] = None,
+        kind_label: Optional[str] = None,
+        attributes: Optional[dict] = None,
+    ) -> None:
+        super().__init__(
+            start=start,
+            end=end,
+            kind=kind,
+            kind_label=kind_label,
+            attributes=attributes,
+        )
         self.is_column: bool = True
+
+    def __repr__(self) -> str:
+        return (
+            f"Column(id={self.id}, nodes={[self.node_a.id, self.node_b.id]}, "
+            f"kind_id={self.kind_id}, is_column={self.is_column})"
+        )
