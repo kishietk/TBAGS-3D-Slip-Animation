@@ -4,7 +4,7 @@ from typing import Dict, Tuple, List, Optional
 from utils import setup_logging
 from builders.base import BuilderBase
 from builders.builder_registry import register_builder
-from entities import Panel, Roof
+from cores import Panel, Roof
 from configs import EPS_XY_MATCH, ROOF_OBJ_NAME
 
 log = setup_logging("RoofBuilder")

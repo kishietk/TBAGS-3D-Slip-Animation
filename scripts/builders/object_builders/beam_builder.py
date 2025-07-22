@@ -5,7 +5,7 @@ from typing import Dict, Set
 from utils import setup_logging
 from builders.base import BuilderBase
 from builders.builder_registry import register_builder
-from entities import Edge
+from cores import Edge
 from configs import MEMBER_THICK, CYLINDER_VERTS, MEMBER_OBJ_PREFIX
 
 log = setup_logging("BeamBuilder")

@@ -6,7 +6,7 @@ from typing import Dict
 from utils import setup_logging
 from builders.base import BuilderBase
 from builders.builder_registry import register_builder
-from entities import Node
+from cores import Node
 from configs import SPHERE_RADIUS, UV_SPHERE_SEGMENTS, UV_SPHERE_RINGS, NODE_OBJ_PREFIX
 
 log = setup_logging("NodeBuilder")

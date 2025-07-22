@@ -42,3 +42,6 @@ def get_builder(core_elem: Any) -> Optional[Callable[..., Any]]:
             return fn
 
     return None
+
+import builders.object_builders
+

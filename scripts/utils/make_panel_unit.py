@@ -13,10 +13,9 @@
 """
 
 from typing import Dict, List, NamedTuple
-from parsers import NodeData, EdgeData
+from cores import NodeData, EdgeData, PanelData
 from configs import EPS_XY_MATCH
 from utils import setup_logging
-from parsers import PanelData
 
 log = setup_logging("makePanelsList")
 

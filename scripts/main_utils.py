@@ -3,8 +3,8 @@ import argparse
 from typing import Tuple, Dict, List, Any, Optional
 
 from utils import clear_scene, setup_logging
-from loaders import LoaderManager, load_earthquake_motion_csv
-from parsers.core_factory import CoreFactory
+from loaders.loader_manager import LoaderManager
+from cores.factory import CoreFactory
 from builders.scene_builder import SceneBuilder
 from builders.hierarchy_builders.motion_parent_builder import (
     build_motion_parent,
@@ -19,17 +19,15 @@ from configs import (
     log_dataset_selection,
     GROUND_ANIMATION_ENABLED,
 )
-from datamodels import NodeData, EdgeData
+from cores import NodeData, EdgeData
 
 log = setup_logging("main_utils")
 
 
 def parse_args() -> argparse.Namespace:
     """
-    役割:
-        コマンドライン引数（地震データセット指定など）をパースして返す。
+    コマンドライン引数（地震データセット指定など）をパースして返す。
     """
-    log.info("=================[データリストを決定]=========================")
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--dataset",
@@ -47,8 +45,7 @@ def get_dataset_from_args(
     datasets_dict: Dict[str, Any],
 ) -> Dict[str, Any]:
     """
-    役割:
-        引数の 'dataset' が辞書に存在すれば該当データセット辞書を返す。なければ ValueError。
+    引数の 'dataset' が辞書に存在すれば該当データセット辞書を返す。
     """
     if args.dataset not in datasets_dict:
         raise ValueError(f"指定データセットが存在しません: {args.dataset}")
@@ -57,8 +54,7 @@ def get_dataset_from_args(
 
 def setup_scene() -> None:
     """
-    役割:
-        Blender シーンの初期化とアニメーション設定（FPS・フレーム範囲）。
+    Blender シーンの初期化とアニメーション設定（FPS・フレーム範囲）。
     """
     clear_scene()
     scene = bpy.context.scene
@@ -73,17 +69,13 @@ def load_all_data(
     earthquake_anim_csv: str,
 ) -> Tuple[Dict[int, NodeData], List[EdgeData], Dict[int, Any], Any]:
     """
-    役割:
-        必要な全データ（ノード、エッジ、アニメーション、地震基準面）を指定パスでロードする。
+    必要な全データ（ノード、エッジ、アニメーション、地震基準面）を
+    指定パスでロードする。
     """
-    loader = LoaderManager(
-        node_path=node_csv,
-        node_anim_path=node_anim_csv,
-        earthquake_anim_path=earthquake_anim_csv,
-    )
-    nodes_data, edges_data = loader.load_structure()
-    anim_data = loader.load_animation()
-    eq_anim_data = loader.load_earthquake_motion()
+    loader = LoaderManager()
+    nodes_data, edges_data = loader.load_structure(node_csv)
+    anim_data = loader.load_animation(node_anim_csv)
+    eq_anim_data = loader.load_earthquake_motion(earthquake_anim_csv)
     return nodes_data, edges_data, anim_data, eq_anim_data
 
 
@@ -92,8 +84,7 @@ def build_core_model(
     edges_data: List[EdgeData],
 ) -> CoreFactory:
     """
-    役割:
-        コアモデル(CoreFactory)を構築する。
+    コアモデル(CoreFactory)を構築する。
     """
     return CoreFactory(nodes_data, edges_data)
 
@@ -101,16 +92,15 @@ def build_core_model(
 def build_blender_objects_from_core(
     core: CoreFactory,
 ) -> Tuple[
-    Dict[int, bpy.types.Object],  # node_objs
-    List[bpy.types.Object],  # panel_objs
-    Optional[bpy.types.Object],  # roof_obj
-    List[Tuple[int, int, int, int]],  # roof_quads
-    List[bpy.types.Object],  # member_objs
-    Optional[bpy.types.Object],  # ground_obj
+    Dict[int, bpy.types.Object],
+    List[bpy.types.Object],
+    Optional[bpy.types.Object],
+    List[Tuple[int, int, int, int]],
+    List[bpy.types.Object],
+    Optional[bpy.types.Object],
 ]:
     """
-    役割:
-        コアモデルから Blender 用のオブジェクト群を一括生成する。
+    コアモデルから Blender 用のオブジェクト群を一括生成する。
     """
     builder = SceneBuilder(core, include_ground=True)
     return builder.build()
@@ -118,7 +108,6 @@ def build_blender_objects_from_core(
 
 def apply_materials_to_all(
     blender_objs: Tuple[
-        Dict[int, bpy.types.Object],
         Dict[int, bpy.types.Object],
         List[bpy.types.Object],
         Optional[bpy.types.Object],
@@ -128,18 +117,9 @@ def apply_materials_to_all(
     ],
 ) -> None:
     """
-    役割:
-        すべての Blender オブジェクトにマテリアルを一括適用する。
+    すべての Blender オブジェクトにマテリアルを一括適用する。
     """
-    (
-        node_objs,
-        panel_objs,
-        roof_obj,
-        _,
-        member_objs,
-        ground_obj,
-    ) = blender_objs
-
+    node_objs, panel_objs, roof_obj, roof_quads, member_objs, ground_obj = blender_objs
     apply_all_materials(
         node_objs=node_objs,
         panel_objs=panel_objs,
@@ -154,29 +134,20 @@ def setup_animation_handlers(
     anim_data: Dict[int, Any],
     blender_objs: Tuple[
         Dict[int, bpy.types.Object],
-        Dict[int, bpy.types.Object],
         List[bpy.types.Object],
         Optional[bpy.types.Object],
         List[Tuple[int, int, int, int]],
         List[bpy.types.Object],
         Optional[bpy.types.Object],
     ],
-    earthquake_anim_data: Any = load_earthquake_motion_csv(EARTHQUAKE_ANIM_CSV),
+    earthquake_anim_data: Any,
 ) -> None:
     """
-    役割:
-        アニメーションハンドラをセットアップする（建物・地面のアニメイベントを登録）。
+    アニメーションハンドラをセットアップする。
     """
-    (
-        node_objs,
-        panel_objs,
-        roof_obj,
-        roof_quads,
-        member_objs,
-        ground_obj,
-    ) = blender_objs
+    node_objs, panel_objs, roof_obj, roof_quads, member_objs, ground_obj = blender_objs
 
-    # モーション親オブジェクト生成＆親子付け
+    # モーション親オブジェクト生成 & 親子付け
     motion_parent = build_motion_parent()
     set_parent(
         motion_parent,
@@ -187,11 +158,11 @@ def setup_animation_handlers(
         ground_obj=ground_obj,
     )
 
-    # ノード種別ごとにアニメーションデータを分割
-    base_node_pos = {n.id: n.pos for n in core.nodes.values()}
+    # ベースノードポジション取得
+    base_node_pos = {n.id: n.pos for n in core._nodes.values()}
     node_anim_data = {nid: v for nid, v in anim_data.items() if nid in base_node_pos}
 
-    # フレームチェンジハンドラをクリア＆再登録
+    # フレームチェンジハンドラをクリア
     bpy.app.handlers.frame_change_pre.clear()
 
     # 地面アニメーション
@@ -202,7 +173,7 @@ def setup_animation_handlers(
             enabled=GROUND_ANIMATION_ENABLED,
         )
 
-    # 建物部材アニメーションをフレーム毎に実行
+    # 建物アニメーションハンドラ
     def _on_frame_building(scene):
         on_frame_building(
             scene,

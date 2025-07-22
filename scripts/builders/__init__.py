@@ -1,7 +1,3 @@
-from .base import BuilderBase
-from .scene_builder import SceneBuilder
-
-__all__ = [
-    "BuilderBase",
-    "SceneBuilder",
-]
+# builders/__init__.py
+from .builder_registry import *
+from .scene_builder import *

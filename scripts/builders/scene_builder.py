@@ -4,7 +4,7 @@ from utils import setup_logging
 from builders.base import BuilderBase
 from builders.builder_registry import get_builder
 from builders.object_builders.ground_builder import GroundBuilder
-from entities import Panel, Roof
+from cores import Panel, Roof
 from collections.abc import Mapping
 
 log = setup_logging("SceneBuilder")

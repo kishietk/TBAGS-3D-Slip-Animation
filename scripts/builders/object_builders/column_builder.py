@@ -5,7 +5,7 @@ from typing import Dict, Set
 from utils import setup_logging
 from builders.base import BuilderBase
 from builders.builder_registry import register_builder
-from entities import Column
+from cores import Column
 from configs import MEMBER_THICK, CYLINDER_VERTS, COLUMN_OBJ_PREFIX
 
 log = setup_logging("ColumnBuilder")

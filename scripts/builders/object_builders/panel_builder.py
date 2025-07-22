@@ -3,7 +3,7 @@ from typing import List
 from utils import setup_logging
 from builders.base import BuilderBase
 from builders.builder_registry import register_builder
-from entities import Panel
+from cores import Panel
 from configs import PANEL_VERT_COUNT, PANEL_OBJ_PREFIX
 
 log = setup_logging("PanelBuilder")

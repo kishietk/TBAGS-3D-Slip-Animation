@@ -11,7 +11,7 @@ from configs import (
     GROUND_NAME,
     GROUND_PRIMITIVE_SIZE,
 )
-from entities import Ground
+from cores import Ground
 
 log = setup_logging("GroundBuilder")
 
